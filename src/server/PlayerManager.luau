@@ -23,7 +23,14 @@ local players: { [number]: PlayerData } = {}
 local seatOrder: { number } = {} -- Ordered list of userIds by seat (1..6)
 local nextBotId = -100
 
--- Helper: create standard starting hand
+-- Helper: create standard starting hand (shuffled so Skull position is random)
+local function shuffleHand(hand: { string })
+	for i = #hand, 2, -1 do
+		local j = math.random(1, i)
+		hand[i], hand[j] = hand[j], hand[i]
+	end
+end
+
 local function createDefaultHand(): { string }
 	local hand = {}
 	for _ = 1, Constants.ROSES_PER_PLAYER do
@@ -32,6 +39,7 @@ local function createDefaultHand(): { string }
 	for _ = 1, Constants.SKULLS_PER_PLAYER do
 		table.insert(hand, Enums.CardType.Skull)
 	end
+	shuffleHand(hand)
 	return hand
 end
 
@@ -174,11 +182,12 @@ end
 function PlayerManager.ResetRoundState()
 	for _, p in pairs(players) do
 		if not p.isEliminated then
-			-- Return played cards back to hand
+			-- Return played cards back to hand and reshuffle
 			for _, card in ipairs(p.playedStack) do
 				table.insert(p.hand, card)
 			end
 			table.clear(p.playedStack)
+			shuffleHand(p.hand)
 			p.hasPassedBid = false
 		end
 	end

@@ -152,3 +152,4 @@ function AudioController.PlayTimerTick()
 end
 
 return AudioController
+

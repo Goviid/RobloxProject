@@ -113,8 +113,13 @@ local function buildUI()
 	-- 6. Match Victory Overlay
 	VictoryModal.Create(screenGui)
 
-	-- 7. Pre-populate initial oversized hand & place button immediately on startup
-	HandBar.UpdateHand({ Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Skull }, true, true)
+	-- 7. Pre-populate initial circular hand & bid controls on startup
+	local initHand = { Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Skull }
+	for i = #initHand, 2, -1 do
+		local j = math.random(1, i)
+		initHand[i], initHand[j] = initHand[j], initHand[i]
+	end
+	HandBar.UpdateHand(initHand, true, true)
 	ActionBar.UpdateState(true, Enums.GameState.Placement, 0, 0, true, false)
 
 	print("[Skulls & Roses] Fresh SkullsGui built and parented successfully.")
@@ -180,6 +185,9 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 		-- 2. Update Hand Tray
 		local canPlace = (payload.gameState == Enums.GameState.Placement)
 		HandBar.UpdateHand(myHand, isMyTurn, canPlace)
+		if payload.gameState == Enums.GameState.Bidding or payload.gameState == Enums.GameState.Revealing then
+			HandBar.SetVisible(false)
+		end
 
 		-- 3. Update Action Buttons
 		ActionBar.UpdateState(
@@ -196,7 +204,9 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 			NotificationBanner.StartTimer(Constants.TURN_TIMEOUT)
 			if isMyTurn then
 				if payload.gameState == Enums.GameState.Placement then
-					NotificationBanner.Show("👉 YOUR TURN: Click [🌹 PLACE ROSE] or [💀 PLACE SKULL]!", "info")
+					NotificationBanner.Show("👉 YOUR TURN: Choose a card from your hand to place!", "info")
+				elseif payload.gameState == Enums.GameState.Bidding then
+					NotificationBanner.Show("👉 YOUR TURN: Raise your bid or Pass!", "info")
 				elseif payload.gameState == Enums.GameState.Revealing then
 					if myStackCount > 0 then
 						NotificationBanner.Show("YOU ARE CHALLENGER: Click YOUR stack to flip your cards first!", "warning")

@@ -195,3 +195,4 @@ function VictoryModal.Show(winnerName: string, isLocalPlayer: boolean)
 end
 
 return VictoryModal
+
