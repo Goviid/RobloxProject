@@ -216,7 +216,7 @@ function TableView.Create(parent: GuiObject, onStackClicked: StackClickCallback?
 	pLabel.Font = Theme.Fonts.Header
 	pLabel.TextSize = 11
 	pLabel.TextColor3 = Theme.Colors.TextSecondary
-	pLabel.Text = "STARTING MATCH..."
+	pLabel.Text = "PLACEMENT PHASE"
 	pLabel.Parent = center
 
 	-- Main Metric (Bid / Status)
@@ -228,7 +228,7 @@ function TableView.Create(parent: GuiObject, onStackClicked: StackClickCallback?
 	bLabel.Font = Theme.Fonts.Title
 	bLabel.TextSize = 17
 	bLabel.TextColor3 = Theme.Colors.TextGold
-	bLabel.Text = "SKULL & ROSES"
+	bLabel.Text = "PLACE A CARD"
 	bLabel.Parent = center
 
 	-- Subtitle (Total cards in play)

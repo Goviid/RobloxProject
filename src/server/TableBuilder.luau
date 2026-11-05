@@ -1,11 +1,10 @@
 --!strict
 -- TableBuilder.luau
--- Constructs the 3D tabletop environment, enclosed room, chandelier lighting, standing pods, and avatar dummies (LOCOfficial style)
+-- Constructs the clean, open 3D tabletop environment with regular bright lighting (LOCOfficial 1-to-1 style)
 
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local TableBuilder = {}
 
@@ -22,7 +21,7 @@ local botDummies: { [number]: Model } = {}
 local playerBillboards: { [number]: BillboardGui } = {}
 
 -- ============================================================================
--- 1. CONSTRUCT ENCLOSED ROOM & ATMOSPHERIC LIGHTING (LOCOfficial Aesthetic)
+-- 1. CONSTRUCT BASIC OPEN LEVEL WITH REGULAR BRIGHT LIGHTING
 -- ============================================================================
 function TableBuilder.Build()
 	-- Clean up any previous arena instance on live reload
@@ -34,68 +33,50 @@ function TableBuilder.Build()
 	arena.Parent = Workspace
 
 	-- ------------------------------------------------------------------------
-	-- A. Room Enclosure (Blocks all harsh outdoor daylight)
+	-- A. Regular Bright Studio Lighting Setup
 	-- ------------------------------------------------------------------------
-	local ROOM_WIDTH = 70
-	local ROOM_HEIGHT = 22
+	Lighting.Technology = Enum.Technology.ShadowMap
+	Lighting.Brightness = 2.0
+	Lighting.Ambient = Color3.fromRGB(140, 140, 140)
+	Lighting.OutdoorAmbient = Color3.fromRGB(120, 120, 120)
+	Lighting.ClockTime = 14.0 -- 2 PM clear daytime
+	Lighting.GlobalShadows = true
 
-	-- Floor: Dark polished mahogany planks
+	-- Clean up any harsh dark color corrections from previous sessions
+	local oldCC = Lighting:FindFirstChild("SkullsColorCorrection")
+	if oldCC then oldCC:Destroy() end
+	local oldBloom = Lighting:FindFirstChild("SkullsBloom")
+	if oldBloom then oldBloom:Destroy() end
+
+	-- ------------------------------------------------------------------------
+	-- B. Open Studio Arena Floor (LOCOfficial Style)
+	-- ------------------------------------------------------------------------
 	local floor = Instance.new("Part")
 	floor.Name = "ArenaFloor"
-	floor.Size = Vector3.new(ROOM_WIDTH, 2, ROOM_WIDTH)
+	floor.Size = Vector3.new(120, 2, 120)
 	floor.Position = Vector3.new(0, -1, 0)
 	floor.Anchored = true
 	floor.CanCollide = true
 	floor.Material = Enum.Material.WoodPlanks
-	floor.Color = Color3.fromRGB(26, 18, 14)
+	floor.Color = Color3.fromRGB(115, 88, 70)
 	floor.Parent = arena
 
-	-- Ceiling: Dark acoustic wood coffering
-	local ceiling = Instance.new("Part")
-	ceiling.Name = "ArenaCeiling"
-	ceiling.Size = Vector3.new(ROOM_WIDTH, 1.5, ROOM_WIDTH)
-	ceiling.Position = Vector3.new(0, ROOM_HEIGHT, 0)
-	ceiling.Anchored = true
-	ceiling.CanCollide = true
-	ceiling.Material = Enum.Material.Wood
-	ceiling.Color = Color3.fromRGB(18, 14, 12)
-	ceiling.Parent = arena
-
-	-- 4 Enclosing Walls to completely block outdoor sunlight
-	local wallConfigs = {
-		{ name = "Wall_North", size = Vector3.new(ROOM_WIDTH, ROOM_HEIGHT, 2), pos = Vector3.new(0, ROOM_HEIGHT / 2, -ROOM_WIDTH / 2) },
-		{ name = "Wall_South", size = Vector3.new(ROOM_WIDTH, ROOM_HEIGHT, 2), pos = Vector3.new(0, ROOM_HEIGHT / 2, ROOM_WIDTH / 2) },
-		{ name = "Wall_East",  size = Vector3.new(2, ROOM_HEIGHT, ROOM_WIDTH), pos = Vector3.new(ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0) },
-		{ name = "Wall_West",  size = Vector3.new(2, ROOM_HEIGHT, ROOM_WIDTH), pos = Vector3.new(-ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0) },
-	}
-
-	for _, cfg in ipairs(wallConfigs) do
-		local wall = Instance.new("Part")
-		wall.Name = cfg.name
-		wall.Size = cfg.size
-		wall.Position = cfg.pos
-		wall.Anchored = true
-		wall.CanCollide = true
-		wall.Material = Enum.Material.WoodPlanks
-		wall.Color = Color3.fromRGB(22, 16, 14)
-		wall.Parent = arena
-
-		-- Subtle warm decorative wainscot trim along bottom of each wall
-		local trim = Instance.new("Part")
-		trim.Name = cfg.name .. "_Trim"
-		trim.Size = (cfg.size.X > cfg.size.Z) and Vector3.new(cfg.size.X, 4, 2.4) or Vector3.new(2.4, 4, cfg.size.Z)
-		trim.Position = Vector3.new(cfg.pos.X, 2, cfg.pos.Z)
-		trim.Anchored = true
-		trim.CanCollide = true
-		trim.Material = Enum.Material.Wood
-		trim.Color = Color3.fromRGB(38, 26, 20)
-		trim.Parent = arena
-	end
+	-- Center Circular Accent Rug under the table
+	local rug = Instance.new("Part")
+	rug.Name = "TableRug"
+	rug.Shape = Enum.PartType.Cylinder
+	rug.Size = Vector3.new(0.05, 26, 26)
+	rug.CFrame = CFrame.new(0, 0.03, 0) * CFrame.Angles(0, 0, math.rad(90))
+	rug.Anchored = true
+	rug.CanCollide = false
+	rug.Material = Enum.Material.Fabric
+	rug.Color = Color3.fromRGB(50, 32, 26)
+	rug.Parent = arena
 
 	-- ------------------------------------------------------------------------
-	-- B. Center Circular Table & Felt Inset
+	-- C. Center Circular Table & Felt Inset
 	-- ------------------------------------------------------------------------
-	-- Outer table rim (Dark polished oak)
+	-- Outer table rim (Polished dark oak)
 	local tableBase = Instance.new("Part")
 	tableBase.Name = "MainTable"
 	tableBase.Shape = Enum.PartType.Cylinder
@@ -104,10 +85,10 @@ function TableBuilder.Build()
 	tableBase.Anchored = true
 	tableBase.CanCollide = true
 	tableBase.Material = Enum.Material.Wood
-	tableBase.Color = Color3.fromRGB(48, 28, 18)
+	tableBase.Color = Color3.fromRGB(65, 42, 28)
 	tableBase.Parent = arena
 
-	-- Center Felt Inset (Rich burgundy fabric surface)
+	-- Center Felt Inset (Rich clean burgundy fabric surface)
 	local felt = Instance.new("Part")
 	felt.Name = "TableFelt"
 	felt.Shape = Enum.PartType.Cylinder
@@ -116,7 +97,7 @@ function TableBuilder.Build()
 	felt.Anchored = true
 	felt.CanCollide = true
 	felt.Material = Enum.Material.Fabric
-	felt.Color = Color3.fromRGB(32, 16, 14)
+	felt.Color = Color3.fromRGB(110, 24, 34)
 	felt.Parent = arena
 
 	-- Table Pedestal Leg
@@ -128,101 +109,40 @@ function TableBuilder.Build()
 	leg.Anchored = true
 	leg.CanCollide = true
 	leg.Material = Enum.Material.Wood
-	leg.Color = Color3.fromRGB(36, 20, 14)
+	leg.Color = Color3.fromRGB(48, 30, 20)
 	leg.Parent = arena
 
 	-- ------------------------------------------------------------------------
-	-- C. Chandelier & Atmospheric Light Setup
+	-- D. Overhead Brass Chandelier (Visual Polish & Soft Warm Accent)
 	-- ------------------------------------------------------------------------
-	-- Hanging Chandelier Stem
-	local stem = Instance.new("Part")
-	stem.Name = "ChandelierStem"
-	stem.Size = Vector3.new(0.3, 7, 0.3)
-	stem.Position = Vector3.new(0, 17.5, 0)
-	stem.Anchored = true
-	stem.CanCollide = false
-	stem.Material = Enum.Material.Metal
-	stem.Color = Color3.fromRGB(60, 48, 25)
-	stem.Parent = arena
+	local lampHood = Instance.new("Part")
+	lampHood.Name = "OverheadLamp"
+	lampHood.Shape = Enum.PartType.Cylinder
+	lampHood.Size = Vector3.new(0.6, 3.2, 3.2)
+	lampHood.CFrame = CFrame.new(0, 13.5, 0) * CFrame.Angles(0, 0, math.rad(90))
+	lampHood.Anchored = true
+	lampHood.CanCollide = false
+	lampHood.Material = Enum.Material.Metal
+	lampHood.Color = Color3.fromRGB(55, 42, 25)
+	lampHood.Parent = arena
 
-	-- Chandelier Hood & Frosted Glow Fixture
-	local hood = Instance.new("Part")
-	hood.Name = "ChandelierHood"
-	hood.Shape = Enum.PartType.Cylinder
-	hood.Size = Vector3.new(0.8, 3.6, 3.6)
-	hood.CFrame = CFrame.new(0, 14.0, 0) * CFrame.Angles(0, 0, math.rad(90))
-	hood.Anchored = true
-	hood.CanCollide = false
-	hood.Material = Enum.Material.Metal
-	hood.Color = Color3.fromRGB(45, 35, 20)
-	hood.Parent = arena
+	local glowDiffuser = Instance.new("Part")
+	glowDiffuser.Name = "LampGlow"
+	glowDiffuser.Shape = Enum.PartType.Cylinder
+	glowDiffuser.Size = Vector3.new(0.2, 2.8, 2.8)
+	glowDiffuser.CFrame = CFrame.new(0, 13.2, 0) * CFrame.Angles(0, 0, math.rad(90))
+	glowDiffuser.Anchored = true
+	glowDiffuser.CanCollide = false
+	glowDiffuser.Material = Enum.Material.Neon
+	glowDiffuser.Color = Color3.fromRGB(255, 245, 220)
+	glowDiffuser.Parent = arena
 
-	local glowRing = Instance.new("Part")
-	glowRing.Name = "ChandelierGlow"
-	glowRing.Shape = Enum.PartType.Cylinder
-	glowRing.Size = Vector3.new(0.3, 3.2, 3.2)
-	glowRing.CFrame = CFrame.new(0, 13.6, 0) * CFrame.Angles(0, 0, math.rad(90))
-	glowRing.Anchored = true
-	glowRing.CanCollide = false
-	glowRing.Material = Enum.Material.Neon
-	glowRing.Color = Color3.fromRGB(255, 235, 190)
-	glowRing.Parent = arena
-
-	-- Central Pool Light: Warm, diffused, non-shadow to avoid voxel/shadow acne
-	local centerLight = Instance.new("PointLight")
-	centerLight.Color = Color3.fromRGB(255, 225, 175)
-	centerLight.Brightness = 1.3
-	centerLight.Range = 26
-	centerLight.Shadows = false -- Eliminates harsh flickering shadow artifacts
-	centerLight.Parent = glowRing
-
-	-- 4 Perimeter Wall Sconces for warm ambient fill
-	local sconcePositions = {
-		Vector3.new(0, 11, -33.8),
-		Vector3.new(0, 11, 33.8),
-		Vector3.new(33.8, 11, 0),
-		Vector3.new(-33.8, 11, 0),
-	}
-	for i, pos in ipairs(sconcePositions) do
-		local sconcePart = Instance.new("Part")
-		sconcePart.Name = "Sconce_" .. i
-		sconcePart.Size = Vector3.new(0.8, 1.2, 0.8)
-		sconcePart.Position = pos
-		sconcePart.Anchored = true
-		sconcePart.CanCollide = false
-		sconcePart.Material = Enum.Material.Neon
-		sconcePart.Color = Color3.fromRGB(255, 215, 150)
-		sconcePart.Parent = arena
-
-		local sconceLight = Instance.new("PointLight")
-		sconceLight.Color = Color3.fromRGB(255, 205, 140)
-		sconceLight.Brightness = 0.5
-		sconceLight.Range = 16
-		sconceLight.Shadows = false
-		sconceLight.Parent = sconcePart
-	end
-
-	-- Configure Lighting Post-Processing
-	local cc = Lighting:FindFirstChild("SkullsColorCorrection") :: ColorCorrectionEffect?
-	if not cc then
-		cc = Instance.new("ColorCorrectionEffect")
-		cc.Name = "SkullsColorCorrection"
-		cc.Parent = Lighting
-	end
-	cc.Brightness = 0.02
-	cc.Contrast = 0.08
-	cc.Saturation = 0.12
-	cc.TintColor = Color3.fromRGB(255, 246, 236)
-
-	local bloom = Lighting:FindFirstChild("SkullsBloom") :: BloomEffect?
-	if not bloom then
-		bloom = Instance.new("BloomEffect")
-		bloom.Name = "SkullsBloom"
-		bloom.Parent = Lighting
-	end
-	bloom.Intensity = 0.35
-	bloom.Size = 16
-	bloom.Threshold = 0.9
+	local tableLight = Instance.new("PointLight")
+	tableLight.Color = Color3.fromRGB(255, 235, 200)
+	tableLight.Brightness = 0.8
+	tableLight.Range = 22
+	tableLight.Shadows = false
+	tableLight.Parent = glowDiffuser
 
 	-- Container for 3D card stacks
 	local stacksFolder = Instance.new("Folder")
@@ -230,7 +150,7 @@ function TableBuilder.Build()
 	stacksFolder.Parent = arena
 
 	-- ------------------------------------------------------------------------
-	-- D. 6 Standing Pods, Coasters, and Spawn Location
+	-- E. 6 Standing Pods, Coasters, and Spawn Location
 	-- ------------------------------------------------------------------------
 	for seatIdx = 1, 6 do
 		-- Seat 1 starts at angle 90 deg (positive Z axis, facing center)
@@ -248,7 +168,7 @@ function TableBuilder.Build()
 		coaster.Anchored = true
 		coaster.CanCollide = false
 		coaster.Material = Enum.Material.SmoothPlastic
-		coaster.Color = Color3.fromRGB(60, 38, 24)
+		coaster.Color = Color3.fromRGB(68, 42, 28)
 		coaster.Parent = arena
 		coasterParts[seatIdx] = coaster
 
@@ -256,7 +176,7 @@ function TableBuilder.Build()
 		local trim = Instance.new("Highlight")
 		trim.Name = "GoldTrim"
 		trim.FillTransparency = 1
-		trim.OutlineColor = Color3.fromRGB(230, 180, 50)
+		trim.OutlineColor = Color3.fromRGB(235, 185, 55)
 		trim.OutlineTransparency = 0.3
 		trim.Adornee = coaster
 		trim.Parent = coaster
@@ -271,7 +191,7 @@ function TableBuilder.Build()
 		standPad.Anchored = true
 		standPad.CanCollide = false
 		standPad.Material = Enum.Material.Metal
-		standPad.Color = Color3.fromRGB(55, 42, 28)
+		standPad.Color = Color3.fromRGB(70, 52, 35)
 		standPad.Parent = arena
 
 		-- Standing CFrame: Standing on the pad, facing directly at the table center
@@ -289,13 +209,13 @@ function TableBuilder.Build()
 			spawn.CanCollide = false
 			spawn.Transparency = 1
 			spawn.Neutral = true
-			spawn.Duration = 0 -- Eliminates the white glowing forcefield ball
+			spawn.Duration = 0
 			spawn.Parent = arena
 		end
 	end
 
 	arenaModel = arena
-	print("[TableBuilder] 3D Enclosed Arena, atmospheric lighting, and 6 pods built.")
+	print("[TableBuilder] Clean LOCOfficial basic level with regular bright lighting created.")
 	return arena
 end
 
@@ -314,8 +234,8 @@ local function createOverheadBillboard(adorneePart: BasePart, displayName: strin
 	local frame = Instance.new("Frame")
 	frame.Name = "Container"
 	frame.Size = UDim2.new(1, 0, 1, 0)
-	frame.BackgroundColor3 = Color3.fromRGB(18, 12, 10)
-	frame.BackgroundTransparency = 0.25
+	frame.BackgroundColor3 = Color3.fromRGB(24, 18, 16)
+	frame.BackgroundTransparency = 0.2
 	frame.BorderSizePixel = 0
 	frame.Parent = bill
 
@@ -325,7 +245,7 @@ local function createOverheadBillboard(adorneePart: BasePart, displayName: strin
 
 	local stroke = Instance.new("UIStroke")
 	stroke.Name = "BorderStroke"
-	stroke.Color = Color3.fromRGB(180, 140, 60)
+	stroke.Color = Color3.fromRGB(190, 150, 60)
 	stroke.Thickness = 1.5
 	stroke.Parent = frame
 
@@ -364,7 +284,7 @@ local function createOverheadBillboard(adorneePart: BasePart, displayName: strin
 		gem.Font = Enum.Font.GothamBold
 		gem.TextSize = 13
 		gem.Text = "◇"
-		gem.TextColor3 = Color3.fromRGB(120, 100, 80)
+		gem.TextColor3 = Color3.fromRGB(130, 110, 90)
 		gem.LayoutOrder = i
 		gem.Parent = scoreFrame
 	end
@@ -380,28 +300,21 @@ function TableBuilder.StandPlayer(player: Player, seatIndex: number)
 	if not targetCF then return end
 
 	local function setupPlayerCharacter(char: Model)
-		-- Wait for HumanoidRootPart and Humanoid to replicate
 		local hrp = char:WaitForChild("HumanoidRootPart", 10) :: Part?
 		local humanoid = char:WaitForChild("Humanoid", 10) :: Humanoid?
 		if not hrp or not humanoid then return end
 
-		-- Allow character physics and appearance loading to settle
 		task.wait(0.2)
 
-		-- Position standing directly on pad facing the table
 		char:PivotTo(targetCF)
 		hrp.CFrame = targetCF
-
-		-- Anchor HumanoidRootPart so physics engine does not override position or slide character
 		hrp.Anchored = true
 
-		-- Disable locomotion for seated/standing tabletop immersion
 		humanoid.WalkSpeed = 0
 		humanoid.JumpPower = 0
 		humanoid.JumpHeight = 0
 		humanoid.AutoRotate = false
 
-		-- Add Overhead Billboard Tag for human player
 		local head = char:WaitForChild("Head", 5) :: BasePart?
 		if head then
 			playerBillboards[player.UserId] = createOverheadBillboard(head, player.DisplayName, false)
@@ -423,27 +336,25 @@ function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	local targetCF = standingCFrames[seatIndex]
 	if not targetCF or not arenaModel then return end
 
-	-- Clean up previous bot model at this seat if re-spawning
 	if botDummies[seatIndex] then
 		botDummies[seatIndex]:Destroy()
 		botDummies[seatIndex] = nil
 	end
 
-	-- Personality Suit Palette per character
 	local botColorThemes: { [string]: { suit: Color3, trim: Color3 } } = {
-		["Doña Flor"]    = { suit = Color3.fromRGB(140, 24, 34),  trim = Color3.fromRGB(240, 200, 70) },
-		["El Bandido"]   = { suit = Color3.fromRGB(38, 38, 42),   trim = Color3.fromRGB(180, 130, 60) },
-		["Don Diego"]    = { suit = Color3.fromRGB(22, 44, 82),   trim = Color3.fromRGB(210, 210, 220) },
-		["La Catrina"]   = { suit = Color3.fromRGB(75, 25, 88),   trim = Color3.fromRGB(245, 195, 65) },
-		["Señor Hueso"]  = { suit = Color3.fromRGB(210, 205, 195), trim = Color3.fromRGB(25, 20, 22) },
+		["Doña Flor"]    = { suit = Color3.fromRGB(150, 30, 42),  trim = Color3.fromRGB(240, 200, 70) },
+		["El Bandido"]   = { suit = Color3.fromRGB(45, 45, 50),   trim = Color3.fromRGB(190, 140, 70) },
+		["Don Diego"]    = { suit = Color3.fromRGB(28, 52, 95),   trim = Color3.fromRGB(220, 220, 230) },
+		["La Catrina"]   = { suit = Color3.fromRGB(85, 30, 100),  trim = Color3.fromRGB(245, 200, 75) },
+		["Señor Hueso"]  = { suit = Color3.fromRGB(220, 215, 205), trim = Color3.fromRGB(30, 25, 28) },
 	}
-	local theme = botColorThemes[botName] or { suit = Color3.fromRGB(45, 32, 26), trim = Color3.fromRGB(210, 180, 60) }
+	local theme = botColorThemes[botName] or { suit = Color3.fromRGB(50, 38, 30), trim = Color3.fromRGB(210, 180, 60) }
 
 	local botModel = Instance.new("Model")
 	botModel.Name = "Bot_" .. botName
 	botModel.Parent = arenaModel
 
-	-- Stylized Torso (Standing upright)
+	-- Stylized Torso
 	local torso = Instance.new("Part")
 	torso.Name = "Torso"
 	torso.Size = Vector3.new(2.0, 2.4, 1.2)
@@ -454,7 +365,7 @@ function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	torso.Color = theme.suit
 	torso.Parent = botModel
 
-	-- Stylized Suit Lapel Accent
+	-- Suit Lapel
 	local lapel = Instance.new("Part")
 	lapel.Name = "Lapel"
 	lapel.Size = Vector3.new(1.0, 1.6, 0.2)
@@ -474,10 +385,10 @@ function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	head.Anchored = true
 	head.CanCollide = false
 	head.Material = Enum.Material.SmoothPlastic
-	head.Color = Color3.fromRGB(225, 190, 160)
+	head.Color = Color3.fromRGB(230, 195, 165)
 	head.Parent = botModel
 
-	-- Arms (Resting neatly at side)
+	-- Arms
 	local leftArm = Instance.new("Part")
 	leftArm.Name = "LeftArm"
 	leftArm.Size = Vector3.new(0.8, 2.2, 0.8)
@@ -506,10 +417,9 @@ function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	legs.Anchored = true
 	legs.CanCollide = false
 	legs.Material = Enum.Material.SmoothPlastic
-	legs.Color = Color3.fromRGB(20, 18, 20)
+	legs.Color = Color3.fromRGB(25, 22, 25)
 	legs.Parent = botModel
 
-	-- Overhead Billboard Tag for Bot
 	createOverheadBillboard(head, botName, true)
 
 	botDummies[seatIndex] = botModel

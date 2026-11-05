@@ -53,17 +53,17 @@
     "Lighting": {
       "$properties": {
         "Ambient": [
-          0.45,
-          0.42,
-          0.40
+          0.55,
+          0.55,
+          0.55
         ],
         "OutdoorAmbient": [
-          0.25,
-          0.22,
-          0.22
+          0.45,
+          0.45,
+          0.45
         ],
-        "Brightness": 0.8,
-        "ClockTime": 21.0,
+        "Brightness": 2.0,
+        "ClockTime": 14.0,
         "GlobalShadows": true,
         "Outlines": false,
         "Technology": "ShadowMap"

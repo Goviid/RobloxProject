@@ -28,23 +28,29 @@ local isWaitingForAction = false
 local function broadcastState()
 	for _, p in pairs(PlayerManager.GetAllPlayers()) do
 		if not p.isBot then
-			local playerObj = game.Players:GetPlayerByUserId(p.userId)
-			if playerObj then
-				local payload = {
-					gameState = currentGameState,
-					activePlayerId = RoundManager.GetActivePlayerId(),
-					challengerId = challengerId,
-					highestBid = highestBid,
-					highestBidderId = highestBidderId,
-					cardsFlipped = cardsFlippedThisRound,
-					targetCards = targetCardsToFlip,
-					totalCardsOnTable = PlayerManager.GetTotalCardsOnTable(),
-					tableState = PlayerManager.GetClientState(p.userId),
-				}
-				Network.GameStateChanged:FireClient(playerObj, payload)
-			end
+			RoundManager.SendStateToPlayer(p.userId)
 		end
 	end
+end
+
+function RoundManager.SendStateToPlayer(userId: number)
+	local p = PlayerManager.GetPlayer(userId)
+	if not p or p.isBot then return end
+	local playerObj = game.Players:GetPlayerByUserId(userId)
+	if not playerObj then return end
+
+	local payload = {
+		gameState = currentGameState,
+		activePlayerId = RoundManager.GetActivePlayerId(),
+		challengerId = challengerId,
+		highestBid = highestBid,
+		highestBidderId = highestBidderId,
+		cardsFlipped = cardsFlippedThisRound,
+		targetCards = targetCardsToFlip,
+		totalCardsOnTable = PlayerManager.GetTotalCardsOnTable(),
+		tableState = PlayerManager.GetClientState(userId),
+	}
+	Network.GameStateChanged:FireClient(playerObj, payload)
 end
 
 local function broadcastNotification(text: string, style: string?)

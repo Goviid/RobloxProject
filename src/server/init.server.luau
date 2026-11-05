@@ -21,6 +21,16 @@ Network.SubmitAction.OnServerInvoke = function(player: Player, action: string, d
 	return RoundManager.HandlePlayerAction(player.UserId, action, data)
 end
 
+-- Client Initial State Request (guarantees UI gets synced immediately upon client load)
+Network.RequestState.OnServerEvent:Connect(function(player: Player)
+	print("[Server] Client requested state: " .. player.Name .. " (" .. player.UserId .. ")")
+	if RoundManager.GetGameState() == require(ReplicatedStorage.Shared.Enums).GameState.Lobby then
+		RoundManager.StartRound()
+	else
+		RoundManager.SendStateToPlayer(player.UserId)
+	end
+end)
+
 -- Bot Spawner Helper
 local function spawnTestBots(neededCount: number)
 	local botNames = { "Doña Flor", "El Bandido", "Don Diego", "La Catrina", "Señor Hueso" }

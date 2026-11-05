@@ -179,4 +179,20 @@ Network.GameOver.OnClientEvent:Connect(function(winnerId: number)
 	NotificationBanner.Show("👑 " .. name .. " WINS THE MATCH! 👑", "success")
 end)
 
+-- ============================================================================
+-- 5. INITIAL STATE SYNC (Request current game state from server)
+-- ============================================================================
+task.spawn(function()
+	task.wait(0.2)
+	print("[Skulls & Roses] Requesting initial game state from server...")
+	Network.RequestState:FireServer()
+
+	-- Retry once if state hasn't arrived within 1.5 seconds
+	task.wait(1.5)
+	if next(lastKnownPlayers) == nil then
+		print("[Skulls & Roses] Retrying game state request...")
+		Network.RequestState:FireServer()
+	end
+end)
+
 print("[Skulls & Roses] Client ready!")

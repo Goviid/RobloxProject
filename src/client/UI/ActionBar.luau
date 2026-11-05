@@ -53,8 +53,9 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 
 	local container = Instance.new("Frame")
 	container.Name = "ActionBar"
-	container.Size = UDim2.new(0, 360, 0, 110)
-	container.Position = UDim2.new(1, -380, 1, -126)
+	container.AnchorPoint = Vector2.new(1, 1)
+	container.Size = UDim2.new(0, 320, 0, 100)
+	container.Position = UDim2.new(1, -20, 1, -16)
 	container.BackgroundColor3 = Theme.Colors.PanelBackground
 	container.BackgroundTransparency = 0.2
 	container.BorderSizePixel = 0

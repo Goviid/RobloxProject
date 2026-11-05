@@ -72,9 +72,9 @@ F:\RobloxProject\
 ### 2. Server Modules (`src/server/`)
 
 #### `TableBuilder.luau`
-* **Purpose:** Builds the enclosed 3D table arena and atmospheric lighting in `Workspace` (LOCOfficial style).
-* **Enclosed Parlor Room:** 4 solid mahogany walls and a dark coffered ceiling completely block harsh outdoor sun glare.
-* **Warm Diffused Lighting:** Overhead chandelier with non-shadow warm point light + 4 perimeter wall sconces, paired with `ShadowMap` technology and post-processing bloom/color correction.
+* **Purpose:** Builds the clean, open 3D tabletop environment with regular bright lighting (LOCOfficial 1-to-1 style).
+* **Open Studio Arena:** Clean, spacious warm wood floor (120x120 studs) with a circular center rug and circular mahogany table with rich burgundy felt.
+* **Regular Bright Lighting:** Standard Roblox daytime lighting (`Brightness: 2.0`, `ClockTime: 14.0`, `ShadowMap`, natural ambient fill) with zero dark walls or dim gloom.
 * **Spawn & Positioning:** Placed an invisible `SpawnLocation` directly at Seat 1 and anchors `HumanoidRootPart` with disabled locomotion so the player never spawns in the middle or slides off.
 * **Standing Avatars:** Positions human players and builds stylish custom-suited dummy avatars for bots around the circular table facing inward.
 

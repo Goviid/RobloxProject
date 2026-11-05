@@ -1,6 +1,6 @@
 --!strict
 -- HandBar.luau
--- Floating 2D Card Dock at bottom of screen with spring hover and arcade polish (LOCOfficial style)
+-- Floating 2D Card Dock at bottom center of screen with spring hover and arcade polish (LOCOfficial style)
 
 local TweenService = game:GetService("TweenService")
 local Theme = require(script.Parent.Theme)
@@ -10,7 +10,7 @@ local HandBar = {}
 
 local dockFrame: Frame? = nil
 local cardButtons: { [string]: ImageButton } = {}
-local selectedCard: string? = nil
+local selectedCard: string? = Enums.CardType.Rose
 
 export type CardSelectCallback = (cardType: string) -> ()
 local onCardClickedCallback: CardSelectCallback? = nil
@@ -24,7 +24,7 @@ local function createFloatingCard(cardType: string): ImageButton
 	-- Main floating card button (squircle card)
 	local btn = Instance.new("ImageButton")
 	btn.Name = "Card_" .. cardType
-	btn.Size = UDim2.new(0, 96, 0, 118)
+	btn.Size = UDim2.new(0, 96, 0, 120)
 	btn.BackgroundColor3 = isRose and Theme.Colors.RosePrimary or Theme.Colors.SkullPrimary
 	btn.BorderSizePixel = 0
 	btn.AutoButtonColor = false
@@ -98,46 +98,38 @@ local function createFloatingCard(cardType: string): ImageButton
 	countPill.BorderSizePixel = 0
 	countPill.Parent = btn
 
-	local pillCorner = Instance.new("UICorner")
-	pillCorner.CornerRadius = Theme.CornerRadius.Circular
-	pillCorner.Parent = countPill
+	local countCorner = Instance.new("UICorner")
+	countCorner.CornerRadius = Theme.CornerRadius.Circular
+	countCorner.Parent = countPill
 
-	local pillStroke = Instance.new("UIStroke")
-	pillStroke.Color = Theme.Colors.Gold
-	pillStroke.Thickness = 2
-	pillStroke.Parent = countPill
+	local countStroke = Instance.new("UIStroke")
+	countStroke.Color = Theme.Colors.Gold
+	countStroke.Thickness = 1.5
+	countStroke.Parent = countPill
 
 	local countNum = Instance.new("TextLabel")
 	countNum.Name = "CountNum"
 	countNum.Size = UDim2.new(1, 0, 1, 0)
 	countNum.BackgroundTransparency = 1
-	countNum.Font = Theme.Fonts.Title
-	countNum.TextSize = 13
-	countNum.TextColor3 = Theme.Colors.TextGold
-	countNum.Text = "1"
+	countNum.Font = Theme.Fonts.Header
+	countNum.TextSize = 12
+	countNum.TextColor3 = Theme.Colors.TextPrimary
+	countNum.Text = isRose and "3" or "1"
 	countNum.Parent = countPill
 
-	-- LOCOFFICIAL HOVER & BOUNCE INTERACTION
+	-- Spring Hover and Click Interactions
 	btn.MouseEnter:Connect(function()
 		if btn:GetAttribute("Disabled") == true then return end
-		TweenService:Create(btn, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Size = UDim2.new(0, 104, 0, 128),
-			Position = UDim2.new(btn.Position.X.Scale, btn.Position.X.Offset, 1, -26),
+		TweenService:Create(btn, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Position = UDim2.new(btn.Position.X.Scale, btn.Position.X.Offset, 1, -14),
 		}):Play()
-		stroke.Color = Theme.Colors.GoldGlow
-		stroke.Thickness = 4
 	end)
 
 	btn.MouseLeave:Connect(function()
 		local isSel = (selectedCard == cardType)
-		local targetY = isSel and -24 or -4
-		local targetSize = isSel and UDim2.new(0, 100, 0, 122) or UDim2.new(0, 96, 0, 118)
-		TweenService:Create(btn, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = targetSize,
-			Position = UDim2.new(btn.Position.X.Scale, btn.Position.X.Offset, 1, targetY),
+		TweenService:Create(btn, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = UDim2.new(btn.Position.X.Scale, btn.Position.X.Offset, 1, isSel and -14 or 0),
 		}):Play()
-		stroke.Color = isSel and Theme.Colors.GoldGlow or Theme.Colors.GoldMuted
-		stroke.Thickness = isSel and 4 or 3
 	end)
 
 	btn.MouseButton1Click:Connect(function()
@@ -152,32 +144,37 @@ local function createFloatingCard(cardType: string): ImageButton
 end
 
 -- ============================================================================
--- 2. SETUP FLOATING DOCK
+-- 2. SETUP FLOATING DOCK AT BOTTOM OF SCREEN
 -- ============================================================================
 function HandBar.Create(parent: GuiObject, onSelect: CardSelectCallback?): Frame
 	onCardClickedCallback = onSelect
 
-	-- Floating invisible dock at bottom center of screen
+	-- Floating invisible dock pinned cleanly at bottom center of screen
 	local dock = Instance.new("Frame")
 	dock.Name = "FloatingHandDock"
-	dock.Size = UDim2.new(0, 260, 0, 140)
-	dock.Position = UDim2.new(0.5, -130, 1, 0)
+	dock.AnchorPoint = Vector2.new(0.5, 1)
+	dock.Size = UDim2.new(0, 260, 0, 134)
+	dock.Position = UDim2.new(0.5, 0, 1, -14)
 	dock.BackgroundTransparency = 1
 	dock.Parent = parent
 
 	-- Rose Card
 	local roseBtn = createFloatingCard(Enums.CardType.Rose)
-	roseBtn.Position = UDim2.new(0, 56, 1, -4)
+	roseBtn.Position = UDim2.new(0, 60, 1, 0)
 	roseBtn.Parent = dock
 	cardButtons[Enums.CardType.Rose] = roseBtn
 
 	-- Skull Card
 	local skullBtn = createFloatingCard(Enums.CardType.Skull)
-	skullBtn.Position = UDim2.new(0, 204, 1, -4)
+	skullBtn.Position = UDim2.new(0, 196, 1, 0)
 	skullBtn.Parent = dock
 	cardButtons[Enums.CardType.Skull] = skullBtn
 
 	dockFrame = dock
+
+	-- Default select Rose
+	HandBar.SelectCard(Enums.CardType.Rose)
+
 	return dock
 end
 
@@ -192,8 +189,8 @@ function HandBar.SelectCard(cardType: string)
 			stroke.Thickness = isSel and 4 or 3
 		end
 		TweenService:Create(btn, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Position = UDim2.new(btn.Position.X.Scale, btn.Position.X.Offset, 1, isSel and -24 or -4),
-			Size = isSel and UDim2.new(0, 102, 0, 124) or UDim2.new(0, 96, 0, 118),
+			Position = UDim2.new(btn.Position.X.Scale, btn.Position.X.Offset, 1, isSel and -14 or 0),
+			Size = isSel and UDim2.new(0, 100, 0, 126) or UDim2.new(0, 96, 0, 120),
 		}):Play()
 	end
 end
@@ -222,7 +219,7 @@ function HandBar.UpdateHand(handCards: { string }, isMyTurn: boolean, canPlace: 
 		roseBtn.Visible = (roseCount > 0)
 		local isEnabled = (isMyTurn and canPlace and roseCount > 0)
 		roseBtn:SetAttribute("Disabled", not isEnabled)
-		roseBtn.ImageTransparency = isEnabled and 0 or 0.5
+		roseBtn.ImageTransparency = isEnabled and 0 or 0.4
 	end
 
 	-- Skull update
@@ -233,10 +230,10 @@ function HandBar.UpdateHand(handCards: { string }, isMyTurn: boolean, canPlace: 
 		skullBtn.Visible = (skullCount > 0)
 		local isEnabled = (isMyTurn and canPlace and skullCount > 0)
 		skullBtn:SetAttribute("Disabled", not isEnabled)
-		skullBtn.ImageTransparency = isEnabled and 0 or 0.5
+		skullBtn.ImageTransparency = isEnabled and 0 or 0.4
 	end
 
-	-- Default select first valid
+	-- Keep valid selection
 	if selectedCard == Enums.CardType.Rose and roseCount == 0 then
 		selectedCard = (skullCount > 0) and Enums.CardType.Skull or nil
 	elseif selectedCard == Enums.CardType.Skull and skullCount == 0 then

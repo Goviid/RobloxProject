@@ -54,6 +54,7 @@ local Network = {
 
 	-- Client -> Server Actions
 	SubmitAction = getOrCreateRemoteFunction("SubmitAction"),
+	RequestState = getOrCreateRemoteEvent("RequestState"),
 }
 
 return Network
