@@ -56,10 +56,11 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	container.Name = "ActionBar"
 	container.AnchorPoint = Vector2.new(1, 1)
 	container.Size = UDim2.new(0, 310, 0, 114)
-	container.Position = UDim2.new(1, -20, 1, -16)
+	container.Position = UDim2.new(1, -20, 1, -20)
 	container.BackgroundColor3 = Theme.Colors.PanelBackground
 	container.BackgroundTransparency = 0.2
 	container.BorderSizePixel = 0
+	container.ZIndex = 20
 	container.Parent = parent
 
 	local corner = Instance.new("UICorner")
@@ -95,6 +96,7 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	local placeBtn = createActionButton("PlaceCardBtn", "🌹 PLACE ROSE", Color3.fromRGB(36, 125, 230))
 	placeBtn.Size = UDim2.new(1, 0, 0, 48)
 	placeBtn.Position = UDim2.new(0, 0, 0, 0)
+	placeBtn.ZIndex = 22
 	placeBtn.Parent = buttonsBox
 	placeBtn.MouseButton1Click:Connect(function()
 		if onActionCallback then
@@ -106,6 +108,7 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	local passBtn = createActionButton("PassBtn", "PASS", Color3.fromRGB(120, 40, 40))
 	passBtn.Size = UDim2.new(0.48, 0, 0, 42)
 	passBtn.Position = UDim2.new(0, 0, 0, 0)
+	passBtn.ZIndex = 22
 	passBtn.Visible = false
 	passBtn.Parent = buttonsBox
 	passBtn.MouseButton1Click:Connect(function()
@@ -120,6 +123,7 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	bidRow.Size = UDim2.new(1, 0, 0, 36)
 	bidRow.Position = UDim2.new(0, 0, 0, 44)
 	bidRow.BackgroundTransparency = 1
+	bidRow.ZIndex = 21
 	bidRow.Visible = false
 	bidRow.Parent = buttonsBox
 
@@ -133,6 +137,7 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	minusBtn.TextSize = 16
 	minusBtn.TextColor3 = Theme.Colors.TextGold
 	minusBtn.Text = "-"
+	minusBtn.ZIndex = 22
 	minusBtn.Parent = bidRow
 	Instance.new("UICorner", minusBtn).CornerRadius = Theme.CornerRadius.Small
 
@@ -146,6 +151,7 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	bidVal.TextSize = 16
 	bidVal.TextColor3 = Theme.Colors.TextGold
 	bidVal.Text = "1"
+	bidVal.ZIndex = 22
 	bidVal.Parent = bidRow
 	Instance.new("UICorner", bidVal).CornerRadius = Theme.CornerRadius.Small
 
@@ -159,6 +165,7 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	plusBtn.TextSize = 16
 	plusBtn.TextColor3 = Theme.Colors.TextGold
 	plusBtn.Text = "+"
+	plusBtn.ZIndex = 22
 	plusBtn.Parent = bidRow
 	Instance.new("UICorner", plusBtn).CornerRadius = Theme.CornerRadius.Small
 
@@ -166,6 +173,7 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	local bidConfirmBtn = createActionButton("BidConfirmBtn", "BID 1", Color3.fromRGB(210, 130, 20))
 	bidConfirmBtn.Size = UDim2.new(1, -126, 1, 0)
 	bidConfirmBtn.Position = UDim2.new(0, 126, 0, 0)
+	bidConfirmBtn.ZIndex = 22
 	bidConfirmBtn.Parent = bidRow
 
 	bidConfirmBtn.MouseButton1Click:Connect(function()

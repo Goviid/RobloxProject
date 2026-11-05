@@ -40,6 +40,8 @@ CameraController.Init()
 local screenGui: ScreenGui
 local onSubmitAction: (action: string, data: any) -> ()
 local lastKnownPlayers: { [string]: any } = {}
+local currentGameState: string = Enums.GameState.Placement
+local isCurrentPlayerTurn: boolean = true
 
 local function buildUI()
 	local existing = playerGui:FindFirstChild("SkullsGui") :: ScreenGui?
@@ -51,7 +53,7 @@ local function buildUI()
 	screenGui.Name = "SkullsGui"
 	screenGui.ResetOnSpawn = false
 	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	screenGui.IgnoreGuiInset = true
+	screenGui.IgnoreGuiInset = false
 	screenGui.Parent = playerGui
 
 	-- 1. Top Banner & Timer
@@ -66,6 +68,18 @@ local function buildUI()
 	HandBar.Create(screenGui, function(cardType: string)
 		print("[HandBar] Selected card: " .. cardType)
 		ActionBar.SetSelectedCard(cardType)
+
+		-- Immediate direct placement on card click if it's our turn during Placement phase!
+		if currentGameState == Enums.GameState.Placement and isCurrentPlayerTurn then
+			print("[HandBar] Directly placing card: " .. cardType)
+			CardAnimation.PlayCardFly(
+				screenGui,
+				UDim2.new(0.5, 0, 0.82, 0),
+				UDim2.new(0.5, 0, 0.52, 0),
+				cardType
+			)
+			onSubmitAction(Enums.PlayerAction.PlaceCard, { cardType = cardType })
+		end
 	end)
 
 	-- 4. Bottom-Right Action Buttons
@@ -128,7 +142,9 @@ end
 Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 	local ok, err = pcall(function()
 		lastKnownPlayers = (payload.tableState and payload.tableState.players) or {}
-		local isMyTurn = (payload.activePlayerId == localPlayer.UserId)
+		currentGameState = payload.gameState
+		isCurrentPlayerTurn = (payload.activePlayerId == localPlayer.UserId)
+		local isMyTurn = isCurrentPlayerTurn
 		local myData = lastKnownPlayers[tostring(localPlayer.UserId)]
 		local myStackCount = myData and myData.stackCount or 0
 		local myHand = myData and myData.hand
@@ -165,14 +181,18 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 			myStackCount > 0
 		)
 
-		-- 4. Turn Timer Reset
+		-- 4. Turn Timer Reset & Turn Prompt
 		if payload.gameState == Enums.GameState.Placement or payload.gameState == Enums.GameState.Bidding or payload.gameState == Enums.GameState.Revealing then
 			NotificationBanner.StartTimer(Constants.TURN_TIMEOUT)
-			if isMyTurn and payload.gameState == Enums.GameState.Revealing then
-				if myStackCount > 0 then
-					NotificationBanner.Show("YOU ARE CHALLENGER: Click YOUR stack to flip your cards first!", "warning")
-				else
-					NotificationBanner.Show("YOUR STACK IS CLEAR: Click an OPPONENT'S stack to flip!", "warning")
+			if isMyTurn then
+				if payload.gameState == Enums.GameState.Placement then
+					NotificationBanner.Show("👉 YOUR TURN: Click [🌹 PLACE ROSE] or [💀 PLACE SKULL]!", "info")
+				elseif payload.gameState == Enums.GameState.Revealing then
+					if myStackCount > 0 then
+						NotificationBanner.Show("YOU ARE CHALLENGER: Click YOUR stack to flip your cards first!", "warning")
+					else
+						NotificationBanner.Show("YOUR STACK IS CLEAR: Click an OPPONENT'S stack to flip!", "warning")
+					end
 				end
 			end
 		else

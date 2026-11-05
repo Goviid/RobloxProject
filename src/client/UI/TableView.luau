@@ -241,7 +241,7 @@ function TableView.Create(parent: GuiObject, onStackClicked: StackClickCallback?
 	sLabel.BackgroundTransparency = 1
 	sLabel.Font = Theme.Fonts.Body
 	sLabel.TextSize = 11
-	sLabel.TextColor3 = Theme.Colors.TextMuted
+	sLabel.TextColor3 = Theme.Colors.TextMuted or Theme.Colors.TextSecondary or Color3.fromRGB(150, 130, 120)
 	sLabel.Text = ""
 	sLabel.Parent = center
 

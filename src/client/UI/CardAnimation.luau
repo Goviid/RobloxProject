@@ -9,7 +9,7 @@ local Enums = require(game:GetService("ReplicatedStorage").Shared.Enums)
 local CardAnimation = {}
 
 -- Fly a card from the hand dock into the center table stack
-function CardAnimation.PlayCardFly(parentGui: GuiObject, startPos: UDim2, endPos: UDim2, cardType: string)
+function CardAnimation.PlayCardFly(parentGui: Instance, startPos: UDim2, endPos: UDim2, cardType: string)
 	local isRose = (cardType == Enums.CardType.Rose)
 
 	-- Temp flying card element

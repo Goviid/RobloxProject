@@ -31,6 +31,7 @@ Theme.Colors = {
 	PanelBorder = Color3.fromRGB(60, 42, 34),       -- Panel stroke
 	TextPrimary = Color3.fromRGB(250, 245, 240),    -- Crisp warm white
 	TextSecondary = Color3.fromRGB(180, 165, 155),  -- Muted beige
+	TextMuted = Color3.fromRGB(145, 130, 120),      -- Soft muted beige
 	TextGold = Color3.fromRGB(245, 200, 70),        -- Golden highlighted text
 
 	-- Status & Turn Accents
