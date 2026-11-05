@@ -116,6 +116,15 @@ function PlayerManager.GetPlayer(userId: number): PlayerData?
 	return players[userId]
 end
 
+function PlayerManager.GetPlayerBySeat(seatIndex: number): PlayerData?
+	for _, p in pairs(players) do
+		if p.seatIndex == seatIndex then
+			return p
+		end
+	end
+	return nil
+end
+
 function PlayerManager.GetAllPlayers(): { [number]: PlayerData }
 	return players
 end

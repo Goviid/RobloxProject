@@ -53,14 +53,20 @@
     "Lighting": {
       "$properties": {
         "Ambient": [
-          0,
-          0,
-          0
+          0.45,
+          0.42,
+          0.40
         ],
-        "Brightness": 2,
+        "OutdoorAmbient": [
+          0.25,
+          0.22,
+          0.22
+        ],
+        "Brightness": 0.8,
+        "ClockTime": 21.0,
         "GlobalShadows": true,
         "Outlines": false,
-        "Technology": "Voxel"
+        "Technology": "ShadowMap"
       }
     },
     "SoundService": {

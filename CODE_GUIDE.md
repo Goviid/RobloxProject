@@ -72,12 +72,18 @@ F:\RobloxProject\
 ### 2. Server Modules (`src/server/`)
 
 #### `TableBuilder.luau`
-* **Purpose:** Builds the 3D table arena in `Workspace`.
-* Generates a circular mahogany table, warm overhead lighting, 6 standing floor pads, and gold-trimmed coaster plates on the table surface. Automatically teleports and positions standing characters facing the table.
+* **Purpose:** Builds the enclosed 3D table arena and atmospheric lighting in `Workspace` (LOCOfficial style).
+* **Enclosed Parlor Room:** 4 solid mahogany walls and a dark coffered ceiling completely block harsh outdoor sun glare.
+* **Warm Diffused Lighting:** Overhead chandelier with non-shadow warm point light + 4 perimeter wall sconces, paired with `ShadowMap` technology and post-processing bloom/color correction.
+* **Spawn & Positioning:** Placed an invisible `SpawnLocation` directly at Seat 1 and anchors `HumanoidRootPart` with disabled locomotion so the player never spawns in the middle or slides off.
+* **Standing Avatars:** Positions human players and builds stylish custom-suited dummy avatars for bots around the circular table facing inward.
 
 #### `Card3DManager.luau`
 * **Purpose:** Manages physical 3D cards placed on the table in front of players (LOCOfficial style).
-* Spawns physical 3D round coaster cards on the table directly in front of whichever player plays a card, stacking them vertically with natural jitter. When a challenger reveals a card, the top 3D card lifts into the air and physically spins 180 degrees to reveal its true face (`🌹 Rose` or `💀 Skull`).
+* **3D Physical Stacking:** Spawns physical 3D round cylinder cards on table coasters in front of each avatar, stacking vertically with rotational jitter.
+* **Interactive Flipping:** Equipped with `ClickDetector` so challengers can click physical 3D cards directly on the table.
+* **Reveal Animation:** Card lifts +2.2 studs into the air and physically spins 180° to reveal its true face (`🌹 Rose` or `💀 Skull`).
+* **Round Cleanup:** Smooth shrink-and-destroy animation between rounds.
 
 #### `PlayerManager.luau`
 * **Purpose:** Handles all player state, seat assignments, scores, and **secret hands**.
@@ -106,7 +112,9 @@ F:\RobloxProject\
 
 #### `CameraController.luau`
 * **Purpose:** Fixed 2.5D scriptable camera locked above the 3D table (LOCOfficial style).
-* Frames the circular table and seated avatars, smoothly zooms FOV on your turn for arcade focus, and shakes on a skull hit.
+* **Per-Frame Override Lock:** Binds to `RunService.RenderStepped` above standard camera priority to prevent Roblox's built-in `CameraModule` from hijacking camera control upon character spawn.
+* **Cinematic Framing:** Frames the player's back/shoulders at Seat 1, keeping the circular table, all opponent avatars, and 3D card stacks clearly visible.
+* **Dynamic Polish:** Smooth FOV turn punch on active turn and dramatic screen shake on Skull hits.
 
 #### `UI/Theme.luau`
 * **Purpose:** Theme A (Calavera / Day of the Dead) design tokens.
@@ -117,16 +125,17 @@ F:\RobloxProject\
 * Features smooth slide/bounce animations and a depleting progress bar for the 15-second turn countdown.
 
 #### `UI/HandBar.luau`
-* **Purpose:** Bottom card tray showing your available cards (3 Roses + 1 Skull).
-* Features hover elevation (+10px bounce), gold glowing borders on selection, and count badges. Dims when placing is not allowed.
+* **Purpose:** Floating squircle card dock at the bottom of the screen (LOCOfficial style).
+* Features spring hover elevation, gold glowing borders on selection, and count badges. Dims when placing is not allowed.
 
 #### `UI/ActionBar.luau`
 * **Purpose:** Bottom-right contextual action buttons.
 * Dynamically switches between `[Place Card]` (during placement), `[Start/Raise Bid]` with a +/- number stepper, and `[Pass]` (during bidding).
 
 #### `UI/TableView.luau`
-* **Purpose:** The 2D tabletop view supporting 2 to 6 players radially.
-* Displays player names, stack height (stacked coaster tokens), 2-point score gems, turn highlight glow rings, and clickable stacks for the challenger during the reveal phase.
+* **Purpose:** Sleek LOCOfficial Top HUD Status Badge & Compact Player Strip.
+* Pinned neatly at the top of the screen to leave the center 3D table completely unobstructed. Shows player names, avatars, stack counts, score gems, and active turn halos.
+* Allows challengers to click player pills (or the physical 3D table cards) to reveal cards.
 
 #### `UI/CardRevealModal.luau`
 * **Purpose:** Center-screen card flip popup.

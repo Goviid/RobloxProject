@@ -62,11 +62,11 @@ ActionBar.Create(screenGui, function(action: string, data: any)
 		local selected = HandBar.GetSelectedCard()
 		if selected then
 			data.cardType = selected
-			-- Trigger LOCOfficial flying card animation
+			-- Trigger LOCOfficial flying card animation towards player's 3D coaster
 			CardAnimation.PlayCardFly(
 				screenGui,
-				UDim2.new(0.5, 0, 1, -50),
-				UDim2.new(0.5, 0, 0.45, 0),
+				UDim2.new(0.5, 0, 0.92, 0),
+				UDim2.new(0.5, 0, 0.64, 0),
 				selected
 			)
 			onSubmitAction(action, data)

@@ -510,5 +510,8 @@ function RoundManager.HandlePlayerAction(userId: number, action: string, data: a
 	return false, "Invalid action for current game state."
 end
 
+-- Connect 3D table card click detector to RoundManager action arbiter
+Card3DManager.SetActionHandler(RoundManager.HandlePlayerAction)
+
 return RoundManager
 
