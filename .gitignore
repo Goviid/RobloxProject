@@ -1,0 +1,18 @@
+# Project place files (keep code in src/, places built with Rojo)
+*.rbxlx
+*.rbxl
+*.rbxlx.lock
+*.rbxl.lock
+
+# Rojo sourcemap
+sourcemap.json
+.rojo/
+
+# MCP / local auth
+.robloxstudio-mcp/
+
+# OS and temporary files
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.tmp
