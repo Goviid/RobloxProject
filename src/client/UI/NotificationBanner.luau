@@ -119,9 +119,10 @@ function NotificationBanner.StartTimer(durationSeconds: number)
 	timerBar.Size = UDim2.new(1, 0, 1, 0)
 	timerBar.BackgroundColor3 = Theme.Colors.TimerBar
 
-	-- Smoothly deplete bar to 0% over turn duration
+	-- Smoothly deplete bar to 0% over turn duration with color transition to AlertRed
 	timerTween = TweenService:Create(timerBar, TweenInfo.new(durationSeconds, Enum.EasingStyle.Linear), {
 		Size = UDim2.new(0, 0, 1, 0),
+		BackgroundColor3 = Theme.Colors.AlertRed,
 	})
 	timerTween:Play()
 end

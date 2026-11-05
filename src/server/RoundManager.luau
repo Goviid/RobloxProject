@@ -10,6 +10,7 @@ local Network = require(ReplicatedStorage.Shared.Network)
 local PlayerManager = require(script.Parent.PlayerManager)
 local BotController = require(script.Parent.BotController)
 local Card3DManager = require(script.Parent.Card3DManager)
+local TableBuilder = require(script.Parent.TableBuilder)
 
 local RoundManager = {}
 
@@ -28,10 +29,15 @@ local isWaitingForAction = false
 
 local function broadcastState()
 	for _, p in pairs(PlayerManager.GetAllPlayers()) do
+		TableBuilder.UpdateScore(p.seatIndex, p.score)
 		if not p.isBot then
 			RoundManager.SendStateToPlayer(p.userId)
 		end
 	end
+
+	local activeId = RoundManager.GetActivePlayerId()
+	local activePlayer = activeId and PlayerManager.GetPlayer(activeId)
+	TableBuilder.HighlightTurn(activePlayer and activePlayer.seatIndex or nil)
 end
 
 function RoundManager.SendStateToPlayer(userId: number)
@@ -251,6 +257,12 @@ local function onChallengerSuccess()
 
 	challenger.score += 1
 	broadcastNotification("🎉 " .. challenger.name .. " successfully flipped " .. targetCardsToFlip .. " Roses! Point scored!", "success")
+	if challenger.isBot then
+		TableBuilder.SetBotEmote(challenger.seatIndex, "🎉")
+		task.delay(3.0, function()
+			TableBuilder.SetBotEmote(challenger.seatIndex, "🤠")
+		end)
+	end
 	broadcastState()
 
 	-- Check Victory
@@ -296,6 +308,13 @@ local function onChallengerFailed(skullOwnerId: number)
 	if challenger.isEliminated then
 		broadcastNotification("❌ " .. challenger.name .. " has no cards left and is ELIMINATED!", "alert")
 		Network.PlayerEliminated:FireAllClients(challengerId)
+	end
+
+	if challenger.isBot then
+		TableBuilder.SetBotEmote(challenger.seatIndex, "😱")
+		task.delay(3.0, function()
+			TableBuilder.SetBotEmote(challenger.seatIndex, "🤠")
+		end)
 	end
 
 	broadcastState()

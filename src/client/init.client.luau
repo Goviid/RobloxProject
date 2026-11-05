@@ -21,8 +21,10 @@ local TableView = require(script.UI.TableView)
 local HandBar = require(script.UI.HandBar)
 local ActionBar = require(script.UI.ActionBar)
 local CardRevealModal = require(script.UI.CardRevealModal)
+local VictoryModal = require(script.UI.VictoryModal)
 local CardAnimation = require(script.UI.CardAnimation)
 local CameraController = require(script.CameraController)
+local AudioController = require(script.AudioController)
 
 local localPlayer = Players.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui") :: PlayerGui
@@ -30,9 +32,10 @@ local playerGui = localPlayer:WaitForChild("PlayerGui") :: PlayerGui
 print("[Skulls & Roses] Client UI initializing for " .. localPlayer.Name .. "...")
 
 -- ============================================================================
--- 1. CAMERA CONTROLLER SETUP (LOCOfficial Tabletop Over-the-Shoulder Style)
+-- 1. CONTROLLERS SETUP (Camera & Audio)
 -- ============================================================================
 CameraController.Init()
+AudioController.Init()
 
 -- ============================================================================
 -- 2. SCREEN GUI & MODULAR UI SETUP (Guaranteed persistence on spawn)
@@ -67,11 +70,13 @@ local function buildUI()
 	-- 3. Bottom Hand Tray
 	HandBar.Create(screenGui, function(cardType: string)
 		print("[HandBar] Selected card: " .. cardType)
+		AudioController.PlayButtonClick()
 		ActionBar.SetSelectedCard(cardType)
 
 		-- Immediate direct placement on card click if it's our turn during Placement phase!
 		if currentGameState == Enums.GameState.Placement and isCurrentPlayerTurn then
 			print("[HandBar] Directly placing card: " .. cardType)
+			AudioController.PlayCardPlace()
 			CardAnimation.PlayCardFly(
 				screenGui,
 				UDim2.new(0.5, 0, 0.82, 0),
@@ -84,9 +89,11 @@ local function buildUI()
 
 	-- 4. Bottom-Right Action Buttons
 	ActionBar.Create(screenGui, function(action: string, data: any)
+		AudioController.PlayButtonClick()
 		if action == Enums.PlayerAction.PlaceCard then
 			local selected = HandBar.GetSelectedCard() or Enums.CardType.Rose
 			data.cardType = selected
+			AudioController.PlayCardPlace()
 			-- Trigger flying card animation towards player's 3D coaster
 			CardAnimation.PlayCardFly(
 				screenGui,
@@ -103,7 +110,10 @@ local function buildUI()
 	-- 5. Center Card Reveal Popup
 	CardRevealModal.Create(screenGui)
 
-	-- 6. Pre-populate initial oversized hand & place button immediately on startup
+	-- 6. Match Victory Overlay
+	VictoryModal.Create(screenGui)
+
+	-- 7. Pre-populate initial oversized hand & place button immediately on startup
 	HandBar.UpdateHand({ Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Skull }, true, true)
 	ActionBar.UpdateState(true, Enums.GameState.Placement, 0, 0, true, false)
 
@@ -208,11 +218,14 @@ end)
 -- Banner Notifications
 Network.Notification.OnClientEvent:Connect(function(data: { text: string, style: string? })
 	NotificationBanner.Show(data.text, data.style)
+	if data.style == "success" or string.find(data.text, "Point scored") then
+		AudioController.PlayPointScored()
+	end
 end)
 
 -- Card Played SFX / Alert
 Network.CardPlayed.OnClientEvent:Connect(function(playerId: number, stackCount: number)
-	-- Animated bounce or sound effect hook
+	AudioController.PlayCardPlace()
 end)
 
 -- Card Revealed (Card flipped by Challenger)
@@ -220,6 +233,18 @@ Network.CardRevealed.OnClientEvent:Connect(function(data: any)
 	local isSkull = (data.cardType == Enums.CardType.Skull)
 	local targetP = lastKnownPlayers[tostring(data.targetUserId)]
 	local targetName = targetP and targetP.name or "Player"
+
+	-- Sound effects
+	AudioController.PlayCardFlip()
+	if isSkull then
+		task.delay(0.12, function()
+			AudioController.PlaySkullReveal()
+		end)
+	else
+		task.delay(0.12, function()
+			AudioController.PlayRoseReveal()
+		end)
+	end
 
 	-- Trigger center screen flip animation popup
 	CardRevealModal.ShowCard(data.cardType, targetName, data.cardsFlipped, data.targetCards)
@@ -236,6 +261,8 @@ end)
 Network.GameOver.OnClientEvent:Connect(function(winnerId: number)
 	local winner = Players:GetPlayerByUserId(winnerId)
 	local name = winner and winner.DisplayName or ("Player " .. winnerId)
+	AudioController.PlayVictory()
+	VictoryModal.Show(name, winnerId == localPlayer.UserId)
 	NotificationBanner.Show("👑 " .. name .. " WINS THE MATCH! 👑", "success")
 end)
 

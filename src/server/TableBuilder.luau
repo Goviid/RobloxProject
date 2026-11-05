@@ -18,7 +18,8 @@ local arenaModel: Model? = nil
 local standingCFrames: { [number]: CFrame } = {}
 local coasterParts: { [number]: Part } = {}
 local botDummies: { [number]: Model } = {}
-local playerBillboards: { [number]: BillboardGui } = {}
+local standPads: { [number]: Part } = {}
+local seatBillboards: { [number]: BillboardGui } = {}
 
 -- ============================================================================
 -- 1. CONSTRUCT BASIC OPEN LEVEL WITH REGULAR BRIGHT LIGHTING
@@ -31,6 +32,8 @@ function TableBuilder.Build()
 	table.clear(standingCFrames)
 	table.clear(coasterParts)
 	table.clear(botDummies)
+	table.clear(standPads)
+	table.clear(seatBillboards)
 
 	local arena = Instance.new("Model")
 	arena.Name = "SkullsArena"
@@ -202,6 +205,7 @@ function TableBuilder.Build()
 		standPad.Material = Enum.Material.Metal
 		standPad.Color = Color3.fromRGB(75, 55, 38)
 		standPad.Parent = arena
+		standPads[seatIdx] = standPad
 
 		-- Standing CFrame: Standing on the pad (Y=4.0 for HumanoidRootPart), facing directly at table center
 		local lookTarget = Vector3.new(TABLE_POSITION.X, TABLE_POSITION.Y + 0.5, TABLE_POSITION.Z)
@@ -326,7 +330,7 @@ function TableBuilder.StandPlayer(player: Player, seatIndex: number)
 
 		local head = char:WaitForChild("Head", 5) :: BasePart?
 		if head then
-			playerBillboards[player.UserId] = createOverheadBillboard(head, player.DisplayName, false)
+			seatBillboards[seatIndex] = createOverheadBillboard(head, player.DisplayName, false)
 		end
 	end
 
@@ -446,14 +450,71 @@ function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	legs.Color = Color3.fromRGB(25, 22, 25)
 	legs.Parent = botModel
 
-	createOverheadBillboard(head, botName, true)
+	seatBillboards[seatIndex] = createOverheadBillboard(head, botName, true)
 
 	botDummies[seatIndex] = botModel
 	print("[TableBuilder] Spawned visible standing bot:", botName, "at seat", seatIndex)
 end
 
 -- ============================================================================
--- 5. ACCESSORS & GETTERS
+-- 5. VISUAL POLISH & FEEDBACK (LOCOfficial Turn Glow, Scores & Emotes)
+-- ============================================================================
+-- Highlight floor pod of active player with glowing golden ring
+function TableBuilder.HighlightTurn(activeSeatIndex: number?)
+	for seatIdx, pad in pairs(standPads) do
+		local isActive = (activeSeatIndex ~= nil and seatIdx == activeSeatIndex)
+		local highlight = pad:FindFirstChild("TurnGlow") :: Highlight?
+		if isActive then
+			if not highlight then
+				highlight = Instance.new("Highlight")
+				highlight.Name = "TurnGlow"
+				highlight.FillColor = Color3.fromRGB(245, 195, 55)
+				highlight.FillTransparency = 0.5
+				highlight.OutlineColor = Color3.fromRGB(255, 220, 80)
+				highlight.OutlineTransparency = 0.1
+				highlight.Adornee = pad
+				highlight.Parent = pad
+			end
+		else
+			if highlight then
+				highlight:Destroy()
+			end
+		end
+	end
+end
+
+-- Update overhead billboard score gems (◆ ◆)
+function TableBuilder.UpdateScore(seatIndex: number, score: number)
+	local bill = seatBillboards[seatIndex]
+	if not bill then return end
+	local container = bill:FindFirstChild("Container") :: Frame?
+	local scoreRow = container and container:FindFirstChild("ScoreRow") :: Frame?
+	if not scoreRow then return end
+
+	for i = 1, 2 do
+		local gem = scoreRow:FindFirstChild("Gem_" .. i) :: TextLabel?
+		if gem then
+			local hasPoint = (score >= i)
+			gem.Text = hasPoint and "◆" or "◇"
+			gem.TextColor3 = hasPoint and Color3.fromRGB(255, 215, 60) or Color3.fromRGB(140, 120, 100)
+		end
+	end
+end
+
+-- Change bot face emote (e.g. "😱" on skull, "🎉" on score, "🤠" normal)
+function TableBuilder.SetBotEmote(seatIndex: number, emote: string)
+	local bot = botDummies[seatIndex]
+	if not bot then return end
+	local head = bot:FindFirstChild("Head") :: BasePart?
+	local faceGui = head and head:FindFirstChild("FaceGui") :: SurfaceGui?
+	local icon = faceGui and faceGui:FindFirstChild("Icon") :: TextLabel?
+	if icon then
+		icon.Text = emote
+	end
+end
+
+-- ============================================================================
+-- 6. ACCESSORS & GETTERS
 -- ============================================================================
 function TableBuilder.GetCoasterCFrame(seatIndex: number): CFrame?
 	local coaster = coasterParts[seatIndex]
