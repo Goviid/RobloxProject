@@ -23,8 +23,8 @@ local isShakeActive = false
 local shakeOffset = Vector3.zero
 local isInitialized = false
 
--- Dynamic target positions
-local currentTargetPos = Vector3.new(0, 6.8, 14.8)
+-- Dynamic target offsets & FOV
+local currentTurnOffset = Vector3.zero
 local currentTargetFOV = DEFAULT_FOV
 
 -- ============================================================================
@@ -43,7 +43,7 @@ function CameraController.Init()
 		end
 
 		local lookTarget, defaultCamPos = getCameraConfig()
-		local camPos = currentTargetPos + shakeOffset
+		local camPos = defaultCamPos + currentTurnOffset + shakeOffset
 		cam.CFrame = CFrame.lookAt(camPos, lookTarget)
 		cam.FieldOfView = currentTargetFOV
 	end
@@ -58,14 +58,12 @@ end
 -- 2. DYNAMIC CAMERA EFFECTS (Turn Focus & Skull Shake)
 -- ============================================================================
 function CameraController.SetTurnFocus(isMyTurn: boolean)
-	local lookTarget, defaultCamPos = getCameraConfig()
-	local focusOffset = isMyTurn and Vector3.new(0, -1.0, -1.4) or Vector3.zero
-	local targetPos = defaultCamPos + focusOffset
+	local targetOffset = isMyTurn and Vector3.new(0, -1.0, -1.4) or Vector3.zero
 	local targetFOV = isMyTurn and 59 or DEFAULT_FOV
 
 	local tweenObj = Instance.new("NumberValue")
 	tweenObj.Value = 0
-	local startPos = currentTargetPos
+	local startOffset = currentTurnOffset
 	local startFOV = currentTargetFOV
 
 	local tween = TweenService:Create(tweenObj, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
@@ -75,13 +73,13 @@ function CameraController.SetTurnFocus(isMyTurn: boolean)
 	local conn: RBXScriptConnection? = nil
 	conn = RunService.RenderStepped:Connect(function()
 		local alpha = tweenObj.Value
-		currentTargetPos = startPos:Lerp(targetPos, alpha)
+		currentTurnOffset = startOffset:Lerp(targetOffset, alpha)
 		currentTargetFOV = startFOV + (targetFOV - startFOV) * alpha
 	end)
 
 	tween.Completed:Connect(function()
 		if conn then conn:Disconnect() end
-		currentTargetPos = targetPos
+		currentTurnOffset = targetOffset
 		currentTargetFOV = targetFOV
 		tweenObj:Destroy()
 	end)
