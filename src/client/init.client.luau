@@ -54,25 +54,22 @@ end)
 -- 3. Bottom Hand Tray
 HandBar.Create(screenGui, function(cardType: string)
 	print("[HandBar] Selected card: " .. cardType)
+	ActionBar.SetSelectedCard(cardType)
 end)
 
 -- 4. Bottom-Right Action Buttons
 ActionBar.Create(screenGui, function(action: string, data: any)
 	if action == Enums.PlayerAction.PlaceCard then
-		local selected = HandBar.GetSelectedCard()
-		if selected then
-			data.cardType = selected
-			-- Trigger LOCOfficial flying card animation towards player's 3D coaster
-			CardAnimation.PlayCardFly(
-				screenGui,
-				UDim2.new(0.5, 0, 0.92, 0),
-				UDim2.new(0.5, 0, 0.64, 0),
-				selected
-			)
-			onSubmitAction(action, data)
-		else
-			NotificationBanner.Show("Select a card from your hand first!", "warning")
-		end
+		local selected = HandBar.GetSelectedCard() or Enums.CardType.Rose
+		data.cardType = selected
+		-- Trigger LOCOfficial flying card animation towards player's 3D coaster
+		CardAnimation.PlayCardFly(
+			screenGui,
+			UDim2.new(0.5, 0, 0.85, 0),
+			UDim2.new(0.5, 0, 0.55, 0),
+			selected
+		)
+		onSubmitAction(action, data)
 	else
 		onSubmitAction(action, data)
 	end
@@ -102,8 +99,15 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 	lastKnownPlayers = payload.tableState and payload.tableState.players or {}
 	local isMyTurn = (payload.activePlayerId == localPlayer.UserId)
 	local myData = payload.tableState and payload.tableState.players[tostring(localPlayer.UserId)]
-	local myHand = myData and myData.hand or {}
 	local myStackCount = myData and myData.stackCount or 0
+	local myHand = myData and myData.hand
+	if not myHand or #myHand == 0 then
+		if myStackCount == 0 then
+			myHand = { Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Skull }
+		else
+			myHand = {}
+		end
+	end
 	local challengerData = payload.challengerId and payload.tableState.players[tostring(payload.challengerId)]
 
 	-- 1. Update Table View (seats, stack heights, score gems)

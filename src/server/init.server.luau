@@ -52,6 +52,13 @@ local function onPlayerAdded(player: Player)
 		TableBuilder.StandPlayer(player, pData.seatIndex)
 	end
 
+	-- Ensure models exist in Workspace for all registered bots
+	for _, p in pairs(PlayerManager.GetAllPlayers()) do
+		if p.isBot then
+			TableBuilder.SpawnStandingBot(p.name, p.seatIndex)
+		end
+	end
+
 	-- Solo / Test mode: Auto-populate bots if we don't have enough players
 	local active = PlayerManager.GetActivePlayers()
 	if Constants.ENABLE_BOTS and #active < (Constants.DEFAULT_TEST_BOTS + 1) then
@@ -61,9 +68,11 @@ local function onPlayerAdded(player: Player)
 
 	-- Start the game if currently in Lobby
 	if RoundManager.GetGameState() == require(ReplicatedStorage.Shared.Enums).GameState.Lobby then
-		task.delay(1.5, function()
+		task.delay(1.0, function()
 			RoundManager.StartRound()
 		end)
+	else
+		RoundManager.SendStateToPlayer(player.UserId)
 	end
 end
 

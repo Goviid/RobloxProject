@@ -1,6 +1,6 @@
 --!strict
 -- ActionBar.luau
--- Bottom-right contextual buttons for playing cards, raising bids, and passing
+-- Bottom-right contextual buttons for playing cards, raising bids, and passing (LOCOfficial style)
 
 local Theme = require(script.Parent.Theme)
 local Enums = require(game:GetService("ReplicatedStorage").Shared.Enums)
@@ -16,6 +16,7 @@ local bidValueLabel: TextLabel? = nil
 
 local currentBidSelected = 1
 local currentActiveGameState = Enums.GameState.Placement
+local currentCardType = Enums.CardType.Rose
 local onActionCallback: ((action: string, data: any) -> ())? = nil
 
 -- ============================================================================
@@ -24,12 +25,12 @@ local onActionCallback: ((action: string, data: any) -> ())? = nil
 local function createActionButton(name: string, text: string, bgColor: Color3): TextButton
 	local btn = Instance.new("TextButton")
 	btn.Name = name
-	btn.Size = UDim2.new(0, 160, 0, 42)
+	btn.Size = UDim2.new(1, 0, 0, 46)
 	btn.BackgroundColor3 = bgColor
 	btn.BorderSizePixel = 0
 	btn.AutoButtonColor = true
-	btn.Font = Theme.Fonts.Header
-	btn.TextSize = 13
+	btn.Font = Theme.Fonts.Title
+	btn.TextSize = 15
 	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	btn.Text = text
 
@@ -39,7 +40,7 @@ local function createActionButton(name: string, text: string, bgColor: Color3): 
 
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Theme.Colors.GoldMuted
-	stroke.Thickness = 1
+	stroke.Thickness = 1.5
 	stroke.Parent = btn
 
 	return btn
@@ -54,7 +55,7 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	local container = Instance.new("Frame")
 	container.Name = "ActionBar"
 	container.AnchorPoint = Vector2.new(1, 1)
-	container.Size = UDim2.new(0, 320, 0, 100)
+	container.Size = UDim2.new(0, 310, 0, 114)
 	container.Position = UDim2.new(1, -20, 1, -16)
 	container.BackgroundColor3 = Theme.Colors.PanelBackground
 	container.BackgroundTransparency = 0.2
@@ -79,20 +80,20 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	title.Font = Theme.Fonts.Header
 	title.TextSize = 10
 	title.TextColor3 = Theme.Colors.TextSecondary
-	title.Text = "ACTIONS"
+	title.Text = "YOUR ACTIONS"
 	title.Parent = container
 
 	-- Buttons Layout Box
 	local buttonsBox = Instance.new("Frame")
 	buttonsBox.Name = "ButtonsBox"
-	buttonsBox.Size = UDim2.new(1, -20, 0, 76)
+	buttonsBox.Size = UDim2.new(1, -20, 0, 80)
 	buttonsBox.Position = UDim2.new(0, 10, 0, 26)
 	buttonsBox.BackgroundTransparency = 1
 	buttonsBox.Parent = container
 
-	-- 1. Place Card Button
-	local placeBtn = createActionButton("PlaceCardBtn", "Place Card", Color3.fromRGB(40, 120, 220))
-	placeBtn.Size = UDim2.new(0.48, 0, 0, 38)
+	-- 1. Prominent Place Card Button (Full Width during Placement)
+	local placeBtn = createActionButton("PlaceCardBtn", "🌹 PLACE ROSE", Color3.fromRGB(36, 125, 230))
+	placeBtn.Size = UDim2.new(1, 0, 0, 48)
 	placeBtn.Position = UDim2.new(0, 0, 0, 0)
 	placeBtn.Parent = buttonsBox
 	placeBtn.MouseButton1Click:Connect(function()
@@ -101,10 +102,11 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 		end
 	end)
 
-	-- 2. Pass Button
-	local passBtn = createActionButton("PassBtn", "Pass", Color3.fromRGB(90, 80, 80))
-	passBtn.Size = UDim2.new(0.48, 0, 0, 38)
+	-- 2. Pass Button (During Bidding)
+	local passBtn = createActionButton("PassBtn", "PASS", Color3.fromRGB(150, 40, 40))
+	passBtn.Size = UDim2.new(0.48, 0, 0, 40)
 	passBtn.Position = UDim2.new(0.52, 0, 0, 0)
+	passBtn.Visible = false
 	passBtn.Parent = buttonsBox
 	passBtn.MouseButton1Click:Connect(function()
 		if onActionCallback then
@@ -112,21 +114,22 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 		end
 	end)
 
-	-- 3. Bid Stepper & Challenge Button Row (Bottom Row)
+	-- 3. Bid Stepper Row (During Bidding or Placement after 1st card)
 	local bidRow = Instance.new("Frame")
 	bidRow.Name = "BidRow"
-	bidRow.Size = UDim2.new(1, 0, 0, 34)
-	bidRow.Position = UDim2.new(0, 0, 0, 42)
+	bidRow.Size = UDim2.new(1, 0, 0, 36)
+	bidRow.Position = UDim2.new(0, 0, 0, 44)
 	bidRow.BackgroundTransparency = 1
+	bidRow.Visible = false
 	bidRow.Parent = buttonsBox
 
 	-- Stepper Minus
 	local minusBtn = Instance.new("TextButton")
 	minusBtn.Name = "MinusBtn"
-	minusBtn.Size = UDim2.new(0, 32, 1, 0)
+	minusBtn.Size = UDim2.new(0, 34, 1, 0)
 	minusBtn.BackgroundColor3 = Color3.fromRGB(50, 40, 35)
 	minusBtn.Font = Theme.Fonts.Header
-	minusBtn.TextSize = 14
+	minusBtn.TextSize = 16
 	minusBtn.TextColor3 = Theme.Colors.TextGold
 	minusBtn.Text = "-"
 	minusBtn.Parent = bidRow
@@ -136,7 +139,7 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	local bidVal = Instance.new("TextLabel")
 	bidVal.Name = "BidVal"
 	bidVal.Size = UDim2.new(0, 40, 1, 0)
-	bidVal.Position = UDim2.new(0, 36, 0, 0)
+	bidVal.Position = UDim2.new(0, 38, 0, 0)
 	bidVal.BackgroundTransparency = 1
 	bidVal.Font = Theme.Fonts.Title
 	bidVal.TextSize = 16
@@ -147,20 +150,20 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	-- Stepper Plus
 	local plusBtn = Instance.new("TextButton")
 	plusBtn.Name = "PlusBtn"
-	plusBtn.Size = UDim2.new(0, 32, 1, 0)
-	plusBtn.Position = UDim2.new(0, 80, 0, 0)
+	plusBtn.Size = UDim2.new(0, 34, 1, 0)
+	plusBtn.Position = UDim2.new(0, 82, 0, 0)
 	plusBtn.BackgroundColor3 = Color3.fromRGB(50, 40, 35)
 	plusBtn.Font = Theme.Fonts.Header
-	plusBtn.TextSize = 14
+	plusBtn.TextSize = 16
 	plusBtn.TextColor3 = Theme.Colors.TextGold
 	plusBtn.Text = "+"
 	plusBtn.Parent = bidRow
 	Instance.new("UICorner", plusBtn).CornerRadius = Theme.CornerRadius.Small
 
 	-- Bid Confirm Button
-	local bidConfirmBtn = createActionButton("BidConfirmBtn", "Bid 1", Color3.fromRGB(200, 120, 20))
-	bidConfirmBtn.Size = UDim2.new(1, -120, 1, 0)
-	bidConfirmBtn.Position = UDim2.new(0, 120, 0, 0)
+	local bidConfirmBtn = createActionButton("BidConfirmBtn", "BID 1", Color3.fromRGB(210, 130, 20))
+	bidConfirmBtn.Size = UDim2.new(1, -126, 1, 0)
+	bidConfirmBtn.Position = UDim2.new(0, 126, 0, 0)
 	bidConfirmBtn.Parent = bidRow
 
 	bidConfirmBtn.MouseButton1Click:Connect(function()
@@ -189,7 +192,23 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 end
 
 -- ============================================================================
--- 3. DYNAMIC STATE & VALIDATION
+-- 3. DYNAMIC CARD SELECTION UPDATE
+-- ============================================================================
+function ActionBar.SetSelectedCard(cardType: string)
+	currentCardType = cardType
+	if placeButton then
+		if cardType == Enums.CardType.Rose then
+			placeButton.Text = "🌹 PLACE ROSE"
+			placeButton.BackgroundColor3 = Color3.fromRGB(36, 125, 230)
+		else
+			placeButton.Text = "💀 PLACE SKULL"
+			placeButton.BackgroundColor3 = Color3.fromRGB(180, 45, 60)
+		end
+	end
+end
+
+-- ============================================================================
+-- 4. DYNAMIC STATE & VALIDATION
 -- ============================================================================
 local minAllowedBid = 1
 local maxAllowedBid = 1
@@ -201,7 +220,7 @@ function ActionBar.AdjustBid(delta: number)
 		bidValueLabel.Text = tostring(currentBidSelected)
 	end
 	if bidButton then
-		bidButton.Text = "Bid " .. currentBidSelected
+		bidButton.Text = "BID " .. currentBidSelected
 	end
 end
 
@@ -213,36 +232,50 @@ function ActionBar.UpdateState(
 	hasCardsInHand: boolean,
 	hasPlacedFirstCard: boolean
 )
-	if not containerFrame or not placeButton or not passButton or not bidButton then return end
+	if not containerFrame or not placeButton or not passButton or not bidButton or not bidStepperFrame then return end
 	currentActiveGameState = gameState
 
 	-- 1. Placement Phase
 	if gameState == Enums.GameState.Placement then
 		placeButton.Visible = true
 		passButton.Visible = false
-		bidStepperFrame.Visible = hasPlacedFirstCard
+
+		-- If player has already placed a card, split the layout to allow starting a bid
+		if hasPlacedFirstCard and totalCardsOnTable >= 1 then
+			placeButton.Size = UDim2.new(0.48, 0, 0, 40)
+			bidStepperFrame.Visible = true
+			bidStepperFrame.Size = UDim2.new(1, 0, 0, 34)
+			bidStepperFrame.Position = UDim2.new(0, 0, 0, 44)
+		else
+			placeButton.Size = UDim2.new(1, 0, 0, 50)
+			bidStepperFrame.Visible = false
+		end
 
 		local canPlace = isMyTurn and hasCardsInHand
 		placeButton.AutoButtonColor = canPlace
-		placeButton.BackgroundTransparency = canPlace and 0 or 0.6
-		placeButton.Text = "Place Card"
+		placeButton.BackgroundTransparency = canPlace and 0 or 0.5
+		ActionBar.SetSelectedCard(currentCardType)
 
-		-- Can start bid if mandatory 1st card placed by all
+		-- Stepper limits
 		minAllowedBid = 1
 		maxAllowedBid = math.max(1, totalCardsOnTable)
 		if currentBidSelected < minAllowedBid then
 			currentBidSelected = minAllowedBid
 		end
 		ActionBar.AdjustBid(0)
-		bidButton.Text = "Start Bid " .. currentBidSelected
+		bidButton.Text = "START BID " .. currentBidSelected
 		bidButton.AutoButtonColor = isMyTurn and hasPlacedFirstCard
-		bidButton.BackgroundTransparency = (isMyTurn and hasPlacedFirstCard) and 0 or 0.6
+		bidButton.BackgroundTransparency = (isMyTurn and hasPlacedFirstCard) and 0 or 0.5
 
 	-- 2. Bidding Phase
 	elseif gameState == Enums.GameState.Bidding then
 		placeButton.Visible = false
 		passButton.Visible = true
+		passButton.Size = UDim2.new(0.48, 0, 0, 40)
+		passButton.Position = UDim2.new(0, 0, 0, 0)
+
 		bidStepperFrame.Visible = true
+		bidStepperFrame.Position = UDim2.new(0, 0, 0, 44)
 
 		minAllowedBid = currentHighestBid + 1
 		maxAllowedBid = math.max(minAllowedBid, totalCardsOnTable)
@@ -250,12 +283,12 @@ function ActionBar.UpdateState(
 		ActionBar.AdjustBid(0)
 
 		local canRaise = isMyTurn and (minAllowedBid <= totalCardsOnTable)
-		bidButton.Text = "Raise Bid " .. currentBidSelected
+		bidButton.Text = "RAISE " .. currentBidSelected
 		bidButton.AutoButtonColor = canRaise
-		bidButton.BackgroundTransparency = canRaise and 0 or 0.6
+		bidButton.BackgroundTransparency = canRaise and 0 or 0.5
 
 		passButton.AutoButtonColor = isMyTurn
-		passButton.BackgroundTransparency = isMyTurn and 0 or 0.6
+		passButton.BackgroundTransparency = isMyTurn and 0 or 0.5
 
 	-- 3. Revealing or End Phases
 	else
@@ -266,4 +299,3 @@ function ActionBar.UpdateState(
 end
 
 return ActionBar
-

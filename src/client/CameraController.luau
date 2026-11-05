@@ -1,6 +1,6 @@
 --!strict
 -- CameraController.luau
--- 2.5D Tabletop Camera framing the 3D table, standing avatars, and 3D card stacks (LOCOfficial style)
+-- First-person tabletop camera locked at Seat 1 facing the table and opponents (LOCOfficial style)
 
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
@@ -8,68 +8,74 @@ local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 
 local CameraController = {}
-local camera = Workspace.CurrentCamera or Workspace:WaitForChild("Camera") :: Camera
 
--- Camera Angles & Framing
+-- Camera Framing: Positioned at Seat 1 eye-level, looking across the table at opponents
 local TABLE_CENTER = Vector3.new(0, 3.2, 0)
-local DEFAULT_CAMERA_POS = Vector3.new(0, 13.5, 17.5)
-local DEFAULT_FOV = 60
+local EYE_CAMERA_POS = Vector3.new(0, 5.4, 8.6) -- Seat 1 eye-level facing table
+local DEFAULT_FOV = 68
 
-local currentTargetPos = DEFAULT_CAMERA_POS
+local currentTargetPos = EYE_CAMERA_POS
 local currentTargetFOV = DEFAULT_FOV
 local isShakeActive = false
 local shakeOffset = Vector3.zero
 local isInitialized = false
 
 -- ============================================================================
--- 1. SETUP & PER-FRAME CAMERA LOCK (Overrides Roblox CameraModule)
+-- 1. SETUP & PER-FRAME CAMERA LOCK (Guaranteed live camera sync)
 -- ============================================================================
 function CameraController.Init()
 	if isInitialized then return end
 	isInitialized = true
 
-	camera.CameraType = Enum.CameraType.Scriptable
-	camera.FieldOfView = DEFAULT_FOV
-	camera.CFrame = CFrame.lookAt(DEFAULT_CAMERA_POS, TABLE_CENTER)
+	local function lockCamera()
+		local cam = Workspace.CurrentCamera
+		if not cam then return end
 
-	-- Bind to RenderStep with priority above standard Camera to prevent Roblox CameraModule hijack
-	RunService:BindToRenderStep("TabletopCameraLock", Enum.RenderPriority.Camera.Value + 10, function()
-		if camera.CameraType ~= Enum.CameraType.Scriptable then
-			camera.CameraType = Enum.CameraType.Scriptable
+		if cam.CameraType ~= Enum.CameraType.Scriptable then
+			cam.CameraType = Enum.CameraType.Scriptable
 		end
 
 		local lookTarget = TABLE_CENTER
 		local camPos = currentTargetPos + shakeOffset
-		camera.CFrame = CFrame.lookAt(camPos, lookTarget)
-		camera.FieldOfView = currentTargetFOV
-	end)
+		cam.CFrame = CFrame.lookAt(camPos, lookTarget)
+		cam.FieldOfView = currentTargetFOV
+	end
 
-	-- Re-assert scriptable on character spawn
+	-- Run every frame above Camera priority to override Roblox default CameraModule
+	RunService:BindToRenderStep("TabletopCameraLock", Enum.RenderPriority.Camera.Value + 20, lockCamera)
+
+	-- Also handle character spawning / respawning
 	local localPlayer = Players.LocalPlayer
 	if localPlayer then
-		localPlayer.CharacterAdded:Connect(function()
-			task.wait(0.1)
-			camera.CameraType = Enum.CameraType.Scriptable
+		localPlayer.CharacterAdded:Connect(function(char)
+			-- Hide local player's character head/torso locally so it doesn't clip into your own first-person camera
+			task.spawn(function()
+				task.wait(0.1)
+				for _, part in ipairs(char:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.LocalTransparencyModifier = 1
+					end
+				end
+			end)
 		end)
 	end
 
-	print("[CameraController] 2.5D Tabletop Camera locked and initialized.")
+	print("[CameraController] LOCOfficial Seat 1 tabletop camera locked.")
 end
 
 -- ============================================================================
--- 2. DYNAMIC CAMERA EFFECTS (LOCOfficial Style Focus & Skull Shake)
+-- 2. DYNAMIC CAMERA EFFECTS (Turn Focus & Skull Shake)
 -- ============================================================================
--- Subtle forward punch when it becomes your turn
 function CameraController.SetTurnFocus(isMyTurn: boolean)
-	local targetPos = isMyTurn and Vector3.new(0, 13.0, 16.5) or DEFAULT_CAMERA_POS
-	local targetFOV = isMyTurn and 58 or DEFAULT_FOV
+	local targetPos = isMyTurn and Vector3.new(0, 5.2, 8.2) or EYE_CAMERA_POS
+	local targetFOV = isMyTurn and 66 or DEFAULT_FOV
 
 	local tweenObj = Instance.new("NumberValue")
 	tweenObj.Value = 0
 	local startPos = currentTargetPos
 	local startFOV = currentTargetFOV
 
-	local tween = TweenService:Create(tweenObj, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+	local tween = TweenService:Create(tweenObj, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 		Value = 1,
 	})
 
@@ -90,7 +96,6 @@ function CameraController.SetTurnFocus(isMyTurn: boolean)
 	tween:Play()
 end
 
--- Dramatic screen shake when a Skull is flipped
 function CameraController.ShakeOnSkull()
 	task.spawn(function()
 		if isShakeActive then return end
@@ -98,11 +103,11 @@ function CameraController.ShakeOnSkull()
 
 		local shakes = 8
 		for i = 1, shakes do
-			local intensity = (shakes - i + 1) / shakes * 0.5
+			local intensity = (shakes - i + 1) / shakes * 0.6
 			shakeOffset = Vector3.new(
 				(math.random() * 2 - 1) * intensity,
 				(math.random() * 2 - 1) * intensity,
-				(math.random() * 2 - 1) * intensity * 0.5
+				(math.random() * 2 - 1) * intensity * 0.4
 			)
 			task.wait(0.035)
 		end

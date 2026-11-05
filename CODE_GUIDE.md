@@ -79,10 +79,10 @@ F:\RobloxProject\
 * **Standing Avatars:** Positions human players and builds stylish custom-suited dummy avatars for bots around the circular table facing inward.
 
 #### `Card3DManager.luau`
-* **Purpose:** Manages physical 3D cards placed on the table in front of players (LOCOfficial style).
-* **3D Physical Stacking:** Spawns physical 3D round cylinder cards on table coasters in front of each avatar, stacking vertically with rotational jitter.
+* **Purpose:** Manages physical oversized 3D cards placed on the table in front of players (LOCOfficial style).
+* **3D Physical Stacking:** Spawns physical oversized 3D cylinder cards (2.9 studs wide) on table coasters (3.2 studs wide) in front of each avatar, stacking vertically with rotational jitter.
 * **Interactive Flipping:** Equipped with `ClickDetector` so challengers can click physical 3D cards directly on the table.
-* **Reveal Animation:** Card lifts +2.2 studs into the air and physically spins 180° to reveal its true face (`🌹 Rose` or `💀 Skull`).
+* **Reveal Animation:** Card lifts +2.5 studs into the air and physically spins 180° to reveal its true face (`🌹 Rose` or `💀 Skull`).
 * **Round Cleanup:** Smooth shrink-and-destroy animation between rounds.
 
 #### `PlayerManager.luau`
@@ -111,9 +111,9 @@ F:\RobloxProject\
 ### 3. Client Modules (`src/client/`)
 
 #### `CameraController.luau`
-* **Purpose:** Fixed 2.5D scriptable camera locked above the 3D table (LOCOfficial style).
-* **Per-Frame Override Lock:** Binds to `RunService.RenderStepped` above standard camera priority to prevent Roblox's built-in `CameraModule` from hijacking camera control upon character spawn.
-* **Cinematic Framing:** Frames the player's back/shoulders at Seat 1, keeping the circular table, all opponent avatars, and 3D card stacks clearly visible.
+* **Purpose:** First-person tabletop camera locked at Seat 1 facing the table and opponents (LOCOfficial style).
+* **Per-Frame Override Lock:** Binds to `RunService.RenderStepped` above standard camera priority, fetching the live `Workspace.CurrentCamera` dynamically to prevent Roblox engine hijacking.
+* **Tabletop Framing:** Eye-level view from Seat 1 (`Vector3.new(0, 5.4, 8.6)`) looking directly across the table at opponent bot avatars, table coasters, and card stacks.
 * **Dynamic Polish:** Smooth FOV turn punch on active turn and dramatic screen shake on Skull hits.
 
 #### `UI/Theme.luau`
@@ -125,12 +125,14 @@ F:\RobloxProject\
 * Features smooth slide/bounce animations and a depleting progress bar for the 15-second turn countdown.
 
 #### `UI/HandBar.luau`
-* **Purpose:** Floating squircle card dock at the bottom of the screen (LOCOfficial style).
-* Features spring hover elevation, gold glowing borders on selection, and count badges. Dims when placing is not allowed.
+* **Purpose:** Oversized 2D floating card hand at the bottom of the screen (LOCOfficial style).
+* Large, chunky cards (140x195px) with giant 🌹 and 💀 icons, tactile spring hover elevation, and gold glowing selection border.
+* Never disappears when count reaches 0—gracefully dims to maintain tactile hand presence.
 
 #### `UI/ActionBar.luau`
-* **Purpose:** Bottom-right contextual action buttons.
-* Dynamically switches between `[Place Card]` (during placement), `[Start/Raise Bid]` with a +/- number stepper, and `[Pass]` (during bidding).
+* **Purpose:** Bottom-right contextual action buttons (LOCOfficial style).
+* Features a prominent `[ 🌹 PLACE ROSE ]` / `[ 💀 PLACE SKULL ]` action button that reflects the active hand selection and automatically places cards with one click.
+* Dynamically switches to bidding stepper and pass button during bidding phase.
 
 #### `UI/TableView.luau`
 * **Purpose:** Sleek LOCOfficial Top HUD Status Badge & Compact Player Strip.

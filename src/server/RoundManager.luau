@@ -192,7 +192,15 @@ function RoundManager.StartRound(leaderId: number?)
 	if leaderId and PlayerManager.GetPlayer(leaderId) and not PlayerManager.GetPlayer(leaderId).isEliminated then
 		roundLeaderId = leaderId
 	else
-		roundLeaderId = active[1].userId
+		-- Prefer human player for round 1 so they can immediately play
+		local human = nil
+		for _, p in ipairs(active) do
+			if not p.isBot then
+				human = p
+				break
+			end
+		end
+		roundLeaderId = human and human.userId or active[1].userId
 	end
 
 	-- Set active index to round leader

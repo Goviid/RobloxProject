@@ -1,6 +1,6 @@
 --!strict
 -- TableBuilder.luau
--- Constructs the clean, open 3D tabletop environment with regular bright lighting (LOCOfficial 1-to-1 style)
+-- Constructs the clean, open 3D tabletop environment with regular bright lighting and standing bot avatars (LOCOfficial style)
 
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
@@ -12,7 +12,7 @@ local TableBuilder = {}
 local TABLE_POSITION = Vector3.new(0, 3.0, 0)
 local TABLE_RADIUS = 7.5
 local STAND_DISTANCE = 9.8        -- Distance from table center to player standing pod
-local COASTER_DISTANCE = 5.2      -- Distance from table center to card coaster on table surface
+local COASTER_DISTANCE = 5.0      -- Distance from table center to card coaster on table surface
 
 local arenaModel: Model? = nil
 local standingCFrames: { [number]: CFrame } = {}
@@ -28,6 +28,10 @@ function TableBuilder.Build()
 	local existing = Workspace:FindFirstChild("SkullsArena")
 	if existing then existing:Destroy() end
 
+	table.clear(standingCFrames)
+	table.clear(coasterParts)
+	table.clear(botDummies)
+
 	local arena = Instance.new("Model")
 	arena.Name = "SkullsArena"
 	arena.Parent = Workspace
@@ -37,12 +41,11 @@ function TableBuilder.Build()
 	-- ------------------------------------------------------------------------
 	Lighting.Technology = Enum.Technology.ShadowMap
 	Lighting.Brightness = 2.0
-	Lighting.Ambient = Color3.fromRGB(140, 140, 140)
-	Lighting.OutdoorAmbient = Color3.fromRGB(120, 120, 120)
+	Lighting.Ambient = Color3.fromRGB(150, 150, 150)
+	Lighting.OutdoorAmbient = Color3.fromRGB(130, 130, 130)
 	Lighting.ClockTime = 14.0 -- 2 PM clear daytime
 	Lighting.GlobalShadows = true
 
-	-- Clean up any harsh dark color corrections from previous sessions
 	local oldCC = Lighting:FindFirstChild("SkullsColorCorrection")
 	if oldCC then oldCC:Destroy() end
 	local oldBloom = Lighting:FindFirstChild("SkullsBloom")
@@ -58,7 +61,7 @@ function TableBuilder.Build()
 	floor.Anchored = true
 	floor.CanCollide = true
 	floor.Material = Enum.Material.WoodPlanks
-	floor.Color = Color3.fromRGB(115, 88, 70)
+	floor.Color = Color3.fromRGB(125, 95, 75)
 	floor.Parent = arena
 
 	-- Center Circular Accent Rug under the table
@@ -70,13 +73,12 @@ function TableBuilder.Build()
 	rug.Anchored = true
 	rug.CanCollide = false
 	rug.Material = Enum.Material.Fabric
-	rug.Color = Color3.fromRGB(50, 32, 26)
+	rug.Color = Color3.fromRGB(55, 36, 28)
 	rug.Parent = arena
 
 	-- ------------------------------------------------------------------------
 	-- C. Center Circular Table & Felt Inset
 	-- ------------------------------------------------------------------------
-	-- Outer table rim (Polished dark oak)
 	local tableBase = Instance.new("Part")
 	tableBase.Name = "MainTable"
 	tableBase.Shape = Enum.PartType.Cylinder
@@ -85,7 +87,7 @@ function TableBuilder.Build()
 	tableBase.Anchored = true
 	tableBase.CanCollide = true
 	tableBase.Material = Enum.Material.Wood
-	tableBase.Color = Color3.fromRGB(65, 42, 28)
+	tableBase.Color = Color3.fromRGB(70, 45, 30)
 	tableBase.Parent = arena
 
 	-- Center Felt Inset (Rich clean burgundy fabric surface)
@@ -97,19 +99,19 @@ function TableBuilder.Build()
 	felt.Anchored = true
 	felt.CanCollide = true
 	felt.Material = Enum.Material.Fabric
-	felt.Color = Color3.fromRGB(110, 24, 34)
+	felt.Color = Color3.fromRGB(115, 26, 36)
 	felt.Parent = arena
 
 	-- Table Pedestal Leg
 	local leg = Instance.new("Part")
 	leg.Name = "TablePedestal"
 	leg.Shape = Enum.PartType.Cylinder
-	leg.Size = Vector3.new(3.0, 3.6, 3.6)
+	leg.Size = Vector3.new(3.0, 3.8, 3.8)
 	leg.CFrame = CFrame.new(0, 1.5, 0) * CFrame.Angles(0, 0, math.rad(90))
 	leg.Anchored = true
 	leg.CanCollide = true
 	leg.Material = Enum.Material.Wood
-	leg.Color = Color3.fromRGB(48, 30, 20)
+	leg.Color = Color3.fromRGB(50, 32, 22)
 	leg.Parent = arena
 
 	-- ------------------------------------------------------------------------
@@ -123,7 +125,7 @@ function TableBuilder.Build()
 	lampHood.Anchored = true
 	lampHood.CanCollide = false
 	lampHood.Material = Enum.Material.Metal
-	lampHood.Color = Color3.fromRGB(55, 42, 25)
+	lampHood.Color = Color3.fromRGB(60, 48, 28)
 	lampHood.Parent = arena
 
 	local glowDiffuser = Instance.new("Part")
@@ -158,12 +160,12 @@ function TableBuilder.Build()
 		local dirX = math.cos(angle)
 		local dirZ = math.sin(angle)
 
-		-- 3D Card Coaster on Table Surface (Y = 3.96)
+		-- 3D Card Coaster on Table Surface (Y = 3.96) - Oversized 3.2 studs
 		local coasterPos = Vector3.new(TABLE_POSITION.X + dirX * COASTER_DISTANCE, 3.96, TABLE_POSITION.Z + dirZ * COASTER_DISTANCE)
 		local coaster = Instance.new("Part")
 		coaster.Name = "Coaster_" .. seatIdx
 		coaster.Shape = Enum.PartType.Cylinder
-		coaster.Size = Vector3.new(0.08, 2.7, 2.7)
+		coaster.Size = Vector3.new(0.08, 3.2, 3.2)
 		coaster.CFrame = CFrame.new(coasterPos) * CFrame.Angles(0, 0, math.rad(90))
 		coaster.Anchored = true
 		coaster.CanCollide = false
@@ -177,7 +179,7 @@ function TableBuilder.Build()
 		trim.Name = "GoldTrim"
 		trim.FillTransparency = 1
 		trim.OutlineColor = Color3.fromRGB(235, 185, 55)
-		trim.OutlineTransparency = 0.3
+		trim.OutlineTransparency = 0.2
 		trim.Adornee = coaster
 		trim.Parent = coaster
 
@@ -186,16 +188,16 @@ function TableBuilder.Build()
 		local standPad = Instance.new("Part")
 		standPad.Name = "StandPad_" .. seatIdx
 		standPad.Shape = Enum.PartType.Cylinder
-		standPad.Size = Vector3.new(0.1, 3.4, 3.4)
+		standPad.Size = Vector3.new(0.1, 3.6, 3.6)
 		standPad.CFrame = CFrame.new(standPos) * CFrame.Angles(0, 0, math.rad(90))
 		standPad.Anchored = true
 		standPad.CanCollide = false
 		standPad.Material = Enum.Material.Metal
-		standPad.Color = Color3.fromRGB(70, 52, 35)
+		standPad.Color = Color3.fromRGB(75, 55, 38)
 		standPad.Parent = arena
 
 		-- Standing CFrame: Standing on the pad, facing directly at the table center
-		local lookTarget = Vector3.new(TABLE_POSITION.X, 3.0, TABLE_POSITION.Z)
+		local lookTarget = Vector3.new(TABLE_POSITION.X, 3.2, TABLE_POSITION.Z)
 		local charStandPos = Vector3.new(standPos.X, 3.0, standPos.Z)
 		standingCFrames[seatIdx] = CFrame.lookAt(charStandPos, lookTarget)
 
@@ -225,8 +227,8 @@ end
 local function createOverheadBillboard(adorneePart: BasePart, displayName: string, isBot: boolean): BillboardGui
 	local bill = Instance.new("BillboardGui")
 	bill.Name = "PlayerInfoTag"
-	bill.Size = UDim2.new(0, 140, 0, 48)
-	bill.StudsOffset = Vector3.new(0, 2.5, 0)
+	bill.Size = UDim2.new(0, 150, 0, 52)
+	bill.StudsOffset = Vector3.new(0, 2.8, 0)
 	bill.AlwaysOnTop = true
 	bill.Adornee = adorneePart
 	bill.Parent = adorneePart
@@ -245,27 +247,27 @@ local function createOverheadBillboard(adorneePart: BasePart, displayName: strin
 
 	local stroke = Instance.new("UIStroke")
 	stroke.Name = "BorderStroke"
-	stroke.Color = Color3.fromRGB(190, 150, 60)
-	stroke.Thickness = 1.5
+	stroke.Color = Color3.fromRGB(210, 165, 60)
+	stroke.Thickness = 1.8
 	stroke.Parent = frame
 
 	-- Player Name Label
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "NameLabel"
-	nameLabel.Size = UDim2.new(1, 0, 0, 22)
+	nameLabel.Size = UDim2.new(1, 0, 0, 24)
 	nameLabel.Position = UDim2.new(0, 0, 0, 2)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Font = Enum.Font.GothamBold
-	nameLabel.TextSize = 12
-	nameLabel.TextColor3 = Color3.fromRGB(250, 235, 205)
+	nameLabel.TextSize = 13
+	nameLabel.TextColor3 = Color3.fromRGB(255, 240, 215)
 	nameLabel.Text = displayName .. (isBot and " [BOT]" or "")
 	nameLabel.Parent = frame
 
 	-- Score Gems Display (Two gems for 2 points to win)
 	local scoreFrame = Instance.new("Frame")
 	scoreFrame.Name = "ScoreRow"
-	scoreFrame.Size = UDim2.new(1, 0, 0, 18)
-	scoreFrame.Position = UDim2.new(0, 0, 0, 24)
+	scoreFrame.Size = UDim2.new(1, 0, 0, 20)
+	scoreFrame.Position = UDim2.new(0, 0, 0, 26)
 	scoreFrame.BackgroundTransparency = 1
 	scoreFrame.Parent = frame
 
@@ -273,18 +275,18 @@ local function createOverheadBillboard(adorneePart: BasePart, displayName: strin
 	layout.FillDirection = Enum.FillDirection.Horizontal
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, 8)
+	layout.Padding = UDim.new(0, 10)
 	layout.Parent = scoreFrame
 
 	for i = 1, 2 do
 		local gem = Instance.new("TextLabel")
 		gem.Name = "Gem_" .. i
-		gem.Size = UDim2.new(0, 16, 0, 16)
+		gem.Size = UDim2.new(0, 18, 0, 18)
 		gem.BackgroundTransparency = 1
 		gem.Font = Enum.Font.GothamBold
-		gem.TextSize = 13
+		gem.TextSize = 14
 		gem.Text = "◇"
-		gem.TextColor3 = Color3.fromRGB(130, 110, 90)
+		gem.TextColor3 = Color3.fromRGB(140, 120, 100)
 		gem.LayoutOrder = i
 		gem.Parent = scoreFrame
 	end
@@ -336,28 +338,28 @@ function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	local targetCF = standingCFrames[seatIndex]
 	if not targetCF or not arenaModel then return end
 
-	if botDummies[seatIndex] then
+	if botDummies[seatIndex] and botDummies[seatIndex].Parent then
 		botDummies[seatIndex]:Destroy()
 		botDummies[seatIndex] = nil
 	end
 
-	local botColorThemes: { [string]: { suit: Color3, trim: Color3 } } = {
-		["Doña Flor"]    = { suit = Color3.fromRGB(150, 30, 42),  trim = Color3.fromRGB(240, 200, 70) },
-		["El Bandido"]   = { suit = Color3.fromRGB(45, 45, 50),   trim = Color3.fromRGB(190, 140, 70) },
-		["Don Diego"]    = { suit = Color3.fromRGB(28, 52, 95),   trim = Color3.fromRGB(220, 220, 230) },
-		["La Catrina"]   = { suit = Color3.fromRGB(85, 30, 100),  trim = Color3.fromRGB(245, 200, 75) },
-		["Señor Hueso"]  = { suit = Color3.fromRGB(220, 215, 205), trim = Color3.fromRGB(30, 25, 28) },
+	local botColorThemes: { [string]: { suit: Color3, trim: Color3, skin: Color3 } } = {
+		["Doña Flor"]    = { suit = Color3.fromRGB(160, 30, 45),  trim = Color3.fromRGB(245, 205, 75), skin = Color3.fromRGB(235, 195, 165) },
+		["El Bandido"]   = { suit = Color3.fromRGB(48, 48, 54),   trim = Color3.fromRGB(195, 145, 70), skin = Color3.fromRGB(215, 175, 145) },
+		["Don Diego"]    = { suit = Color3.fromRGB(28, 55, 105),  trim = Color3.fromRGB(225, 225, 235), skin = Color3.fromRGB(230, 190, 160) },
+		["La Catrina"]   = { suit = Color3.fromRGB(90, 32, 110),  trim = Color3.fromRGB(250, 205, 80), skin = Color3.fromRGB(240, 235, 225) },
+		["Señor Hueso"]  = { suit = Color3.fromRGB(225, 220, 210), trim = Color3.fromRGB(35, 28, 32), skin = Color3.fromRGB(245, 240, 230) },
 	}
-	local theme = botColorThemes[botName] or { suit = Color3.fromRGB(50, 38, 30), trim = Color3.fromRGB(210, 180, 60) }
+	local theme = botColorThemes[botName] or { suit = Color3.fromRGB(55, 40, 32), trim = Color3.fromRGB(215, 185, 65), skin = Color3.fromRGB(225, 190, 160) }
 
 	local botModel = Instance.new("Model")
 	botModel.Name = "Bot_" .. botName
 	botModel.Parent = arenaModel
 
-	-- Stylized Torso
+	-- Stylized Torso (Prominent R6 proportions)
 	local torso = Instance.new("Part")
 	torso.Name = "Torso"
-	torso.Size = Vector3.new(2.0, 2.4, 1.2)
+	torso.Size = Vector3.new(2.4, 2.8, 1.4)
 	torso.CFrame = targetCF
 	torso.Anchored = true
 	torso.CanCollide = false
@@ -365,11 +367,11 @@ function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	torso.Color = theme.suit
 	torso.Parent = botModel
 
-	-- Suit Lapel
+	-- Suit Lapel / Vest
 	local lapel = Instance.new("Part")
 	lapel.Name = "Lapel"
-	lapel.Size = Vector3.new(1.0, 1.6, 0.2)
-	lapel.CFrame = targetCF * CFrame.new(0, 0.3, -0.6)
+	lapel.Size = Vector3.new(1.2, 1.8, 0.2)
+	lapel.CFrame = targetCF * CFrame.new(0, 0.4, -0.7)
 	lapel.Anchored = true
 	lapel.CanCollide = false
 	lapel.Material = Enum.Material.SmoothPlastic
@@ -380,19 +382,36 @@ function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	local head = Instance.new("Part")
 	head.Name = "Head"
 	head.Shape = Enum.PartType.Ball
-	head.Size = Vector3.new(1.5, 1.5, 1.5)
-	head.CFrame = targetCF * CFrame.new(0, 1.9, 0)
+	head.Size = Vector3.new(1.8, 1.8, 1.8)
+	head.CFrame = targetCF * CFrame.new(0, 2.1, 0)
 	head.Anchored = true
 	head.CanCollide = false
 	head.Material = Enum.Material.SmoothPlastic
-	head.Color = Color3.fromRGB(230, 195, 165)
+	head.Color = theme.skin
 	head.Parent = botModel
+
+	-- Stylized Face SurfaceGui (Looking directly at table center)
+	local faceGui = Instance.new("SurfaceGui")
+	faceGui.Name = "FaceGui"
+	faceGui.Face = Enum.NormalId.Front
+	faceGui.CanvasSize = Vector2.new(128, 128)
+	faceGui.AlwaysOnTop = false
+	faceGui.Adornee = head
+	faceGui.Parent = head
+
+	local faceIcon = Instance.new("TextLabel")
+	faceIcon.Size = UDim2.new(1, 0, 1, 0)
+	faceIcon.BackgroundTransparency = 1
+	faceIcon.Font = Enum.Font.FredokaOne
+	faceIcon.TextSize = 64
+	faceIcon.Text = (botName == "Señor Hueso" or botName == "La Catrina") and "💀" or "🤠"
+	faceIcon.Parent = faceGui
 
 	-- Arms
 	local leftArm = Instance.new("Part")
 	leftArm.Name = "LeftArm"
-	leftArm.Size = Vector3.new(0.8, 2.2, 0.8)
-	leftArm.CFrame = targetCF * CFrame.new(-1.4, -0.1, 0)
+	leftArm.Size = Vector3.new(1.0, 2.6, 1.0)
+	leftArm.CFrame = targetCF * CFrame.new(-1.7, -0.1, 0)
 	leftArm.Anchored = true
 	leftArm.CanCollide = false
 	leftArm.Material = Enum.Material.SmoothPlastic
@@ -401,8 +420,8 @@ function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 
 	local rightArm = Instance.new("Part")
 	rightArm.Name = "RightArm"
-	rightArm.Size = Vector3.new(0.8, 2.2, 0.8)
-	rightArm.CFrame = targetCF * CFrame.new(1.4, -0.1, 0)
+	rightArm.Size = Vector3.new(1.0, 2.6, 1.0)
+	rightArm.CFrame = targetCF * CFrame.new(1.7, -0.1, 0)
 	rightArm.Anchored = true
 	rightArm.CanCollide = false
 	rightArm.Material = Enum.Material.SmoothPlastic
@@ -412,8 +431,8 @@ function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	-- Legs
 	local legs = Instance.new("Part")
 	legs.Name = "Legs"
-	legs.Size = Vector3.new(1.8, 2.0, 1.0)
-	legs.CFrame = targetCF * CFrame.new(0, -2.1, 0)
+	legs.Size = Vector3.new(2.2, 2.4, 1.2)
+	legs.CFrame = targetCF * CFrame.new(0, -2.4, 0)
 	legs.Anchored = true
 	legs.CanCollide = false
 	legs.Material = Enum.Material.SmoothPlastic
@@ -423,6 +442,7 @@ function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	createOverheadBillboard(head, botName, true)
 
 	botDummies[seatIndex] = botModel
+	print("[TableBuilder] Spawned visible standing bot:", botName, "at seat", seatIndex)
 end
 
 -- ============================================================================
