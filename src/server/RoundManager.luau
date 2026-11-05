@@ -8,6 +8,7 @@ local Constants = require(ReplicatedStorage.Shared.Constants)
 local Network = require(ReplicatedStorage.Shared.Network)
 local PlayerManager = require(script.Parent.PlayerManager)
 local BotController = require(script.Parent.BotController)
+local Card3DManager = require(script.Parent.Card3DManager)
 
 local RoundManager = {}
 
@@ -165,6 +166,7 @@ end
 function RoundManager.StartRound(leaderId: number?)
 	cancelTurnTimer()
 	PlayerManager.ResetRoundState()
+	Card3DManager.ClearAllCards()
 
 	challengerId = nil
 	highestBid = 0
@@ -320,6 +322,7 @@ function RoundManager.HandlePlayerAction(userId: number, action: string, data: a
 			local success = PlayerManager.PlayCard(userId, cardType)
 			if success then
 				cancelTurnTimer()
+				Card3DManager.PlaceCard3D(p.seatIndex, #p.playedStack)
 				Network.CardPlayed:FireAllClients(userId, #p.playedStack)
 				broadcastNotification(p.name .. " placed a card face-down.", "info")
 
@@ -469,6 +472,8 @@ function RoundManager.HandlePlayerAction(userId: number, action: string, data: a
 			-- Pop top card from target's played stack
 			local revealedCard = table.remove(targetPlayer.playedStack)
 			cardsFlippedThisRound += 1
+
+			Card3DManager.RevealCard3D(targetPlayer.seatIndex, revealedCard)
 
 			Network.CardRevealed:FireAllClients({
 				targetUserId = targetUserId,

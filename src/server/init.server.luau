@@ -26,8 +26,11 @@ local function spawnTestBots(neededCount: number)
 	local botNames = { "Doña Flor", "El Bandido", "Don Diego", "La Catrina", "Señor Hueso" }
 	for i = 1, neededCount do
 		local name = botNames[i] or ("Bot " .. i)
-		PlayerManager.AddBot(name)
-		print("[Skulls & Roses] Added bot: " .. name)
+		local botData = PlayerManager.AddBot(name)
+		if botData then
+			TableBuilder.SpawnStandingBot(name, botData.seatIndex)
+		end
+		print("[Skulls & Roses] Added standing bot: " .. name)
 	end
 end
 
@@ -36,7 +39,7 @@ local function onPlayerAdded(player: Player)
 	print("[Skulls & Roses] Player joined: " .. player.Name .. " (" .. player.UserId .. ")")
 	local pData = PlayerManager.AddPlayer(player)
 	if pData then
-		TableBuilder.SeatPlayer(player, pData.seatIndex)
+		TableBuilder.StandPlayer(player, pData.seatIndex)
 	end
 
 	-- Solo / Test mode: Auto-populate bots if we don't have enough players
@@ -48,7 +51,7 @@ local function onPlayerAdded(player: Player)
 
 	-- Start the game if currently in Lobby
 	if RoundManager.GetGameState() == require(ReplicatedStorage.Shared.Enums).GameState.Lobby then
-		task.delay(2, function()
+		task.delay(1.5, function()
 			RoundManager.StartRound()
 		end)
 	end
@@ -66,14 +69,5 @@ Players.PlayerRemoving:Connect(onPlayerRemoving)
 for _, player in ipairs(Players:GetPlayers()) do
 	task.spawn(onPlayerAdded, player)
 end
-
--- If running in Studio edit mode or empty test server with bots enabled
-task.defer(function()
-	if #Players:GetPlayers() == 0 and Constants.ENABLE_BOTS then
-		print("[Skulls & Roses] Headless test server detected, initializing bots...")
-		spawnTestBots(Constants.DEFAULT_TEST_BOTS + 1)
-		RoundManager.StartRound()
-	end
-end)
 
 print("[Skulls & Roses] Server ready!")

@@ -20,7 +20,8 @@ F:\RobloxProject\
 │   │
 │   ├── server/                    <-- ServerScriptService.Server (Runs strictly on the Roblox Server)
 │   │   ├── init.server.luau       <-- Server entry point & player join/leave hooks
-│   │   ├── TableBuilder.luau      <-- Builds 3D table arena, chairs, and coasters in Workspace
+│   │   ├── TableBuilder.luau      <-- Builds 3D table arena, standing floor pads, and bot avatars
+│   │   ├── Card3DManager.luau     <-- Spawns and flips physical 3D cards/coasters on the table
 │   │   ├── PlayerManager.luau     <-- Secret hands, played stacks, scores, seats, bot data
 │   │   ├── BotController.luau     <-- AI decision making (bluffing, bidding, revealing)
 │   │   └── RoundManager.luau      <-- State machine enforcing all Skull & Roses rules
@@ -72,7 +73,11 @@ F:\RobloxProject\
 
 #### `TableBuilder.luau`
 * **Purpose:** Builds the 3D table arena in `Workspace`.
-* Generates a circular mahogany table, warm overhead lighting, 6 wooden chairs, and gold-trimmed coaster plates on the table surface. Automatically teleports and seats players when they join.
+* Generates a circular mahogany table, warm overhead lighting, 6 standing floor pads, and gold-trimmed coaster plates on the table surface. Automatically teleports and positions standing characters facing the table.
+
+#### `Card3DManager.luau`
+* **Purpose:** Manages physical 3D cards placed on the table in front of players (LOCOfficial style).
+* Spawns physical 3D round coaster cards on the table directly in front of whichever player plays a card, stacking them vertically with natural jitter. When a challenger reveals a card, the top 3D card lifts into the air and physically spins 180 degrees to reveal its true face (`🌹 Rose` or `💀 Skull`).
 
 #### `PlayerManager.luau`
 * **Purpose:** Handles all player state, seat assignments, scores, and **secret hands**.

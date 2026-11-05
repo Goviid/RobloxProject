@@ -55,3 +55,4 @@ function CardAnimation.PlayCardFly(parentGui: GuiObject, startPos: UDim2, endPos
 end
 
 return CardAnimation
+

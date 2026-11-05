@@ -237,33 +237,33 @@ function TableView.Create(parent: GuiObject, onStackClicked: StackClickCallback?
 	container.BackgroundTransparency = 1
 	container.Parent = parent
 
-	-- Center Circular Board
+	-- Compact Top-Center Status Badge (leaves 3D table completely visible)
 	local center = Instance.new("Frame")
 	center.Name = "CenterTable"
-	center.Size = UDim2.new(0, 200, 0, 200)
-	center.Position = UDim2.new(0.5, -100, 0.45, -100)
-	center.BackgroundColor3 = Theme.Colors.TableSurface
+	center.Size = UDim2.new(0, 220, 0, 54)
+	center.Position = UDim2.new(0.5, -110, 0, 8)
+	center.BackgroundColor3 = Theme.Colors.PanelBackground
 	center.BackgroundTransparency = 0.2
 	center.BorderSizePixel = 0
 	center.Parent = container
 
 	local centerCorner = Instance.new("UICorner")
-	centerCorner.CornerRadius = Theme.CornerRadius.Circular
+	centerCorner.CornerRadius = Theme.CornerRadius.Large
 	centerCorner.Parent = center
 
 	local centerStroke = Instance.new("UIStroke")
-	centerStroke.Color = Theme.Colors.TableBorder
-	centerStroke.Thickness = 4
+	centerStroke.Color = Theme.Colors.PanelBorder
+	centerStroke.Thickness = 1.5
 	centerStroke.Parent = center
 
 	-- Center Phase Title
 	local phaseLabel = Instance.new("TextLabel")
 	phaseLabel.Name = "PhaseLabel"
-	phaseLabel.Size = UDim2.new(1, 0, 0, 24)
-	phaseLabel.Position = UDim2.new(0, 0, 0, 36)
+	phaseLabel.Size = UDim2.new(1, 0, 0, 18)
+	phaseLabel.Position = UDim2.new(0, 0, 0, 6)
 	phaseLabel.BackgroundTransparency = 1
 	phaseLabel.Font = Theme.Fonts.Header
-	phaseLabel.TextSize = 12
+	phaseLabel.TextSize = 10
 	phaseLabel.TextColor3 = Theme.Colors.TextSecondary
 	phaseLabel.Text = "WAITING FOR PLAYERS"
 	phaseLabel.Parent = center
@@ -271,25 +271,22 @@ function TableView.Create(parent: GuiObject, onStackClicked: StackClickCallback?
 	-- Center Highest Bid Value
 	local bidLabel = Instance.new("TextLabel")
 	bidLabel.Name = "BidLabel"
-	bidLabel.Size = UDim2.new(1, 0, 0, 48)
-	bidLabel.Position = UDim2.new(0, 0, 0, 64)
+	bidLabel.Size = UDim2.new(1, 0, 0, 24)
+	bidLabel.Position = UDim2.new(0, 0, 0, 24)
 	bidLabel.BackgroundTransparency = 1
 	bidLabel.Font = Theme.Fonts.Title
-	bidLabel.TextSize = 28
+	bidLabel.TextSize = 16
 	bidLabel.TextColor3 = Theme.Colors.TextGold
 	bidLabel.Text = "SKULL & ROSES"
 	bidLabel.Parent = center
 
-	-- Subtitle (e.g. Total cards on table)
+	-- Subtitle (Total cards)
 	local subLabel = Instance.new("TextLabel")
 	subLabel.Name = "SubLabel"
-	subLabel.Size = UDim2.new(1, 0, 0, 20)
-	subLabel.Position = UDim2.new(0, 0, 0, 118)
+	subLabel.Size = UDim2.new(1, 0, 0, 16)
+	subLabel.Position = UDim2.new(0, 0, 0, 24)
 	subLabel.BackgroundTransparency = 1
-	subLabel.Font = Theme.Fonts.Body
-	subLabel.TextSize = 11
-	subLabel.TextColor3 = Theme.Colors.TextSecondary
-	subLabel.Text = "4 Cards on Table"
+	subLabel.Visible = false
 	subLabel.Parent = center
 
 	tableFrame = container

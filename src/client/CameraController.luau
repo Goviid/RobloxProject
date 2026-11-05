@@ -11,8 +11,8 @@ local camera = Workspace.CurrentCamera or Workspace:WaitForChild("Camera") :: Ca
 
 -- Camera Angles
 local TABLE_CENTER = Vector3.new(0, 3.2, 0)
-local DEFAULT_CAMERA_POS = Vector3.new(0, 18, 21)
-local DEFAULT_FOV = 62
+local DEFAULT_CAMERA_POS = Vector3.new(0, 14.2, 17.8)
+local DEFAULT_FOV = 60
 
 local isInitialized = false
 
@@ -58,3 +58,4 @@ function CameraController.ShakeOnSkull()
 end
 
 return CameraController
+
