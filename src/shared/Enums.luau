@@ -43,3 +43,4 @@ Enums.RoundResolution = {
 }
 
 return table.freeze(Enums)
+

@@ -259,3 +259,4 @@ function PlayerManager.GetClientState(forUserId: number?)
 end
 
 return PlayerManager
+

@@ -131,3 +131,4 @@ function BotController.DecideCardToReveal(botId: number, challengerId: number): 
 end
 
 return BotController
+
