@@ -10,6 +10,11 @@ Enums.CardType = {
 	Unknown = "Unknown", -- Client-side placeholder for hidden opponent cards
 }
 
+Enums.ArenaMode = {
+	Void = "Void",     -- LOCOfficial-style serene light blue void, ground card piles, minimalist
+	Table = "Table",   -- Classic tabletop wooden table with felt, coasters, and brass chandelier
+}
+
 Enums.GameState = {
 	Lobby = "Lobby",
 	Placement = "Placement",

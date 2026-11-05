@@ -190,46 +190,43 @@ function TableView.Create(parent: GuiObject, onStackClicked: StackClickCallback?
 	container.BackgroundTransparency = 1
 	container.Parent = parent
 
-	-- A. Top-Center Match Status Badge
+	-- A. Top-Center Match Status (Clean, borderless floating text)
 	local center = Instance.new("Frame")
 	center.Name = "CenterStatusBadge"
-	center.Size = UDim2.new(0, 260, 0, 56)
-	center.Position = UDim2.new(0.5, -130, 0, 56)
-	center.BackgroundColor3 = Theme.Colors.PanelBackground
-	center.BackgroundTransparency = 0.25
+	center.AnchorPoint = Vector2.new(0.5, 0)
+	center.Size = UDim2.new(0, 360, 0, 56)
+	center.Position = UDim2.new(0.5, 0, 0, 72)
+	center.BackgroundTransparency = 1 -- Zero black box!
 	center.BorderSizePixel = 0
 	center.Parent = container
-
-	local centerCorner = Instance.new("UICorner")
-	centerCorner.CornerRadius = Theme.CornerRadius.Large
-	centerCorner.Parent = center
-
-	local centerStroke = Instance.new("UIStroke")
-	centerStroke.Color = Theme.Colors.PanelBorder
-	centerStroke.Thickness = 1.5
-	centerStroke.Parent = center
 
 	-- Phase Title
 	local pLabel = Instance.new("TextLabel")
 	pLabel.Name = "PhaseLabel"
-	pLabel.Size = UDim2.new(1, 0, 0, 18)
-	pLabel.Position = UDim2.new(0, 0, 0, 6)
+	pLabel.Size = UDim2.new(1, 0, 0, 16)
+	pLabel.Position = UDim2.new(0, 0, 0, 2)
 	pLabel.BackgroundTransparency = 1
 	pLabel.Font = Theme.Fonts.Header
 	pLabel.TextSize = 11
-	pLabel.TextColor3 = Theme.Colors.TextSecondary
+	pLabel.TextColor3 = Color3.fromRGB(210, 235, 255)
+	pLabel.TextTransparency = 0.35
+	pLabel.TextStrokeTransparency = 0.65
+	pLabel.TextStrokeColor3 = Color3.fromRGB(15, 35, 65)
 	pLabel.Text = "PLACEMENT PHASE"
 	pLabel.Parent = center
 
 	-- Main Metric (Bid / Status)
 	local bLabel = Instance.new("TextLabel")
 	bLabel.Name = "BidLabel"
-	bLabel.Size = UDim2.new(1, 0, 0, 24)
-	bLabel.Position = UDim2.new(0, 0, 0, 24)
+	bLabel.Size = UDim2.new(1, 0, 0, 26)
+	bLabel.Position = UDim2.new(0, 0, 0, 18)
 	bLabel.BackgroundTransparency = 1
 	bLabel.Font = Theme.Fonts.Title
-	bLabel.TextSize = 17
-	bLabel.TextColor3 = Theme.Colors.TextGold
+	bLabel.TextSize = 19
+	bLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	bLabel.TextTransparency = 0.15
+	bLabel.TextStrokeTransparency = 0.55
+	bLabel.TextStrokeColor3 = Color3.fromRGB(15, 35, 65)
 	bLabel.Text = "PLACE A CARD"
 	bLabel.Parent = center
 
@@ -237,20 +234,24 @@ function TableView.Create(parent: GuiObject, onStackClicked: StackClickCallback?
 	local sLabel = Instance.new("TextLabel")
 	sLabel.Name = "SubLabel"
 	sLabel.Size = UDim2.new(1, 0, 0, 16)
-	sLabel.Position = UDim2.new(0, 0, 1, 4)
+	sLabel.Position = UDim2.new(0, 0, 1, 0)
 	sLabel.BackgroundTransparency = 1
 	sLabel.Font = Theme.Fonts.Body
 	sLabel.TextSize = 11
-	sLabel.TextColor3 = Theme.Colors.TextMuted or Theme.Colors.TextSecondary or Color3.fromRGB(150, 130, 120)
+	sLabel.TextColor3 = Color3.fromRGB(220, 240, 255)
+	sLabel.TextTransparency = 0.4
+	sLabel.TextStrokeTransparency = 0.7
+	sLabel.TextStrokeColor3 = Color3.fromRGB(15, 35, 65)
 	sLabel.Text = ""
 	sLabel.Parent = center
 
-	-- B. Sleek Player Strip (Pinned below status badge)
+	-- B. Sleek Player Strip (Hidden - overhead billboards display info in 3D)
 	local strip = Instance.new("Frame")
 	strip.Name = "PlayerStrip"
 	strip.Size = UDim2.new(1, -40, 0, 50)
 	strip.Position = UDim2.new(0, 20, 0, 120)
 	strip.BackgroundTransparency = 1
+	strip.Visible = false
 	strip.Parent = container
 
 	local stripLayout = Instance.new("UIListLayout")

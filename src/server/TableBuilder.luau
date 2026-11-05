@@ -1,18 +1,18 @@
 --!strict
 -- TableBuilder.luau
--- Constructs the clean, open 3D tabletop environment with regular bright lighting and standing bot avatars (LOCOfficial style)
+-- Constructs the 3D Arena environment (supports LOCOfficial Light Blue Void mode & Table Parlor mode)
+-- Also manages clean, borderless floating overhead nametags with zero black boxes
 
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
-local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Constants = require(ReplicatedStorage.Shared.Constants)
+local Enums = require(ReplicatedStorage.Shared.Enums)
 
 local TableBuilder = {}
 
--- Arena Spatial Configuration
-local TABLE_POSITION = Vector3.new(0, 3.0, 0)
-local TABLE_RADIUS = 7.5
-local STAND_DISTANCE = 9.8        -- Distance from table center to player standing pod
-local COASTER_DISTANCE = 5.0      -- Distance from table center to card coaster on table surface
+-- Spatial Configuration
+local currentArenaMode = Constants.DEFAULT_ARENA_MODE or Enums.ArenaMode.Void
 
 local arenaModel: Model? = nil
 local standingCFrames: { [number]: CFrame } = {}
@@ -22,10 +22,15 @@ local standPads: { [number]: Part } = {}
 local seatBillboards: { [number]: BillboardGui } = {}
 
 -- ============================================================================
--- 1. CONSTRUCT BASIC OPEN LEVEL WITH REGULAR BRIGHT LIGHTING
+-- 1. BUILD ARENA (Supports "Void" vs "Table")
 -- ============================================================================
-function TableBuilder.Build()
-	-- Clean up any previous arena instance on live reload
+function TableBuilder.Build(modeOverride: string?)
+	-- Select arena mode
+	local mode = modeOverride or Workspace:GetAttribute("ArenaMode") or Constants.DEFAULT_ARENA_MODE or Enums.ArenaMode.Void
+	currentArenaMode = mode
+	Workspace:SetAttribute("ArenaMode", mode)
+
+	-- Clean up previous arena on reload
 	local existing = Workspace:FindFirstChild("SkullsArena")
 	if existing then existing:Destroy() end
 
@@ -39,274 +44,389 @@ function TableBuilder.Build()
 	arena.Name = "SkullsArena"
 	arena.Parent = Workspace
 
-	-- ------------------------------------------------------------------------
-	-- A. Regular Bright Studio Lighting Setup
-	-- ------------------------------------------------------------------------
-	pcall(function()
-		Lighting.Brightness = 2.0
-		Lighting.Ambient = Color3.fromRGB(150, 150, 150)
-		Lighting.OutdoorAmbient = Color3.fromRGB(130, 130, 130)
-		Lighting.ClockTime = 14.0 -- 2 PM clear daytime
-		Lighting.GlobalShadows = true
-
-		local oldCC = Lighting:FindFirstChild("SkullsColorCorrection")
-		if oldCC then oldCC:Destroy() end
-		local oldBloom = Lighting:FindFirstChild("SkullsBloom")
-		if oldBloom then oldBloom:Destroy() end
-	end)
-
-	-- Hide the default baseplate so only the polished LOCOfficial arena floor is visible
+	-- Hide the default baseplate so arena styling is seamless
 	local baseplate = Workspace:FindFirstChild("Baseplate")
 	if baseplate and baseplate:IsA("BasePart") then
 		baseplate.Transparency = 1
 	end
 
-	-- ------------------------------------------------------------------------
-	-- B. Open Studio Arena Floor (LOCOfficial Style)
-	-- ------------------------------------------------------------------------
-	local floor = Instance.new("Part")
-	floor.Name = "ArenaFloor"
-	floor.Size = Vector3.new(140, 2, 140)
-	floor.Position = Vector3.new(0, 0, 0) -- Elevated cleanly above baseplate
-	floor.Anchored = true
-	floor.CanCollide = true
-	floor.Material = Enum.Material.WoodPlanks
-	floor.Color = Color3.fromRGB(125, 95, 75)
-	floor.Parent = arena
+	-- ========================================================================
+	-- MODE A: LOCOFFICIAL LIGHT BLUE VOID (No Table, Cards on Ground)
+	-- ========================================================================
+	if mode == Enums.ArenaMode.Void then
+		-- 1. Lighting: Serene clear light blue void
+		pcall(function()
+			Lighting.Brightness = 2.0
+			Lighting.Ambient = Color3.fromRGB(155, 215, 255)
+			Lighting.OutdoorAmbient = Color3.fromRGB(145, 205, 250)
+			Lighting.ClockTime = 14.0
+			Lighting.GlobalShadows = true
+			Lighting.FogColor = Color3.fromRGB(130, 195, 250)
+			Lighting.FogStart = 90
+			Lighting.FogEnd = 320
 
-	-- Center Circular Accent Rug under the table
-	local rug = Instance.new("Part")
-	rug.Name = "TableRug"
-	rug.Shape = Enum.PartType.Cylinder
-	rug.Size = Vector3.new(0.05, 26, 26)
-	rug.CFrame = CFrame.new(0, 1.03, 0) * CFrame.Angles(0, 0, math.rad(90))
-	rug.Anchored = true
-	rug.CanCollide = false
-	rug.Material = Enum.Material.Fabric
-	rug.Color = Color3.fromRGB(55, 36, 28)
-	rug.Parent = arena
+			local oldCC = Lighting:FindFirstChild("SkullsColorCorrection")
+			if oldCC then oldCC:Destroy() end
+		end)
 
-	-- ------------------------------------------------------------------------
-	-- C. Center Circular Table & Felt Inset
-	-- ------------------------------------------------------------------------
-	local tableBase = Instance.new("Part")
-	tableBase.Name = "MainTable"
-	tableBase.Shape = Enum.PartType.Cylinder
-	tableBase.Size = Vector3.new(1.8, TABLE_RADIUS * 2, TABLE_RADIUS * 2)
-	tableBase.CFrame = CFrame.new(TABLE_POSITION) * CFrame.Angles(0, 0, math.rad(90))
-	tableBase.Anchored = true
-	tableBase.CanCollide = true
-	tableBase.Material = Enum.Material.Wood
-	tableBase.Color = Color3.fromRGB(70, 45, 30)
-	tableBase.Parent = arena
+		-- 2. Void Arena Floor Platform (Smooth pastel light blue)
+		local floor = Instance.new("Part")
+		floor.Name = "VoidArenaFloor"
+		floor.Shape = Enum.PartType.Cylinder
+		floor.Size = Vector3.new(0.4, 56, 56)
+		floor.CFrame = CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, math.rad(90))
+		floor.Anchored = true
+		floor.CanCollide = true
+		floor.Material = Enum.Material.SmoothPlastic
+		floor.Color = Color3.fromRGB(118, 188, 246)
+		floor.Parent = arena
 
-	-- Center Felt Inset (Rich clean burgundy fabric surface)
-	local felt = Instance.new("Part")
-	felt.Name = "TableFelt"
-	felt.Shape = Enum.PartType.Cylinder
-	felt.Size = Vector3.new(1.85, (TABLE_RADIUS - 0.7) * 2, (TABLE_RADIUS - 0.7) * 2)
-	felt.CFrame = CFrame.new(TABLE_POSITION + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, 0, math.rad(90))
-	felt.Anchored = true
-	felt.CanCollide = true
-	felt.Material = Enum.Material.Fabric
-	felt.Color = Color3.fromRGB(115, 26, 36)
-	felt.Parent = arena
+		-- Center Swirl Rotation Ring (LOCOfficial style turn swirl)
+		local centerRing = Instance.new("Part")
+		centerRing.Name = "CenterSwirlRing"
+		centerRing.Shape = Enum.PartType.Cylinder
+		centerRing.Size = Vector3.new(0.04, 16, 16)
+		centerRing.CFrame = CFrame.new(0, 0.22, 0) * CFrame.Angles(0, 0, math.rad(90))
+		centerRing.Anchored = true
+		centerRing.CanCollide = false
+		centerRing.Material = Enum.Material.SmoothPlastic
+		centerRing.Color = Color3.fromRGB(240, 250, 255)
+		centerRing.Transparency = 0.55
+		centerRing.Parent = arena
 
-	-- Table Pedestal Leg
-	local leg = Instance.new("Part")
-	leg.Name = "TablePedestal"
-	leg.Shape = Enum.PartType.Cylinder
-	leg.Size = Vector3.new(3.0, 3.8, 3.8)
-	leg.CFrame = CFrame.new(0, 1.5, 0) * CFrame.Angles(0, 0, math.rad(90))
-	leg.Anchored = true
-	leg.CanCollide = true
-	leg.Material = Enum.Material.Wood
-	leg.Color = Color3.fromRGB(50, 32, 22)
-	leg.Parent = arena
+		local centerSg = Instance.new("SurfaceGui")
+		centerSg.Name = "SwirlGui"
+		centerSg.Face = Enum.NormalId.Right
+		centerSg.CanvasSize = Vector2.new(256, 256)
+		centerSg.AlwaysOnTop = false
+		centerSg.Adornee = centerRing
+		centerSg.Parent = centerRing
 
-	-- ------------------------------------------------------------------------
-	-- D. Overhead Brass Chandelier (Visual Polish & Soft Warm Accent)
-	-- ------------------------------------------------------------------------
-	local lampHood = Instance.new("Part")
-	lampHood.Name = "OverheadLamp"
-	lampHood.Shape = Enum.PartType.Cylinder
-	lampHood.Size = Vector3.new(0.6, 3.2, 3.2)
-	lampHood.CFrame = CFrame.new(0, 13.5, 0) * CFrame.Angles(0, 0, math.rad(90))
-	lampHood.Anchored = true
-	lampHood.CanCollide = false
-	lampHood.Material = Enum.Material.Metal
-	lampHood.Color = Color3.fromRGB(60, 48, 28)
-	lampHood.Parent = arena
+		local swirlIcon = Instance.new("TextLabel")
+		swirlIcon.Size = UDim2.new(1, 0, 1, 0)
+		swirlIcon.BackgroundTransparency = 1
+		swirlIcon.Font = Enum.Font.FredokaOne
+		swirlIcon.TextSize = 130
+		swirlIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+		swirlIcon.TextTransparency = 0.4
+		swirlIcon.Text = "↺"
+		swirlIcon.Parent = centerSg
 
-	local glowDiffuser = Instance.new("Part")
-	glowDiffuser.Name = "LampGlow"
-	glowDiffuser.Shape = Enum.PartType.Cylinder
-	glowDiffuser.Size = Vector3.new(0.2, 2.8, 2.8)
-	glowDiffuser.CFrame = CFrame.new(0, 13.2, 0) * CFrame.Angles(0, 0, math.rad(90))
-	glowDiffuser.Anchored = true
-	glowDiffuser.CanCollide = false
-	glowDiffuser.Material = Enum.Material.Neon
-	glowDiffuser.Color = Color3.fromRGB(255, 245, 220)
-	glowDiffuser.Parent = arena
+		-- Outer Arena Border Ring
+		local outerRing = Instance.new("Part")
+		outerRing.Name = "OuterRing"
+		outerRing.Shape = Enum.PartType.Cylinder
+		outerRing.Size = Vector3.new(0.06, 55.5, 55.5)
+		outerRing.CFrame = CFrame.new(0, 0.21, 0) * CFrame.Angles(0, 0, math.rad(90))
+		outerRing.Anchored = true
+		outerRing.CanCollide = false
+		outerRing.Material = Enum.Material.Neon
+		outerRing.Color = Color3.fromRGB(210, 240, 255)
+		outerRing.Transparency = 0.6
+		outerRing.Parent = arena
 
-	local tableLight = Instance.new("PointLight")
-	tableLight.Color = Color3.fromRGB(255, 235, 200)
-	tableLight.Brightness = 0.8
-	tableLight.Range = 22
-	tableLight.Shadows = false
-	tableLight.Parent = glowDiffuser
+		-- 3. Radial Seats: Cards placed on the ground in front of each avatar (No table!)
+		local COASTER_DIST = 4.8
+		local STAND_DIST = 9.2
 
-	-- Container for 3D card stacks
+		for seatIdx = 1, 6 do
+			local angle = math.rad((seatIdx - 1) * (360 / 6) + 90)
+			local dirX = math.cos(angle)
+			local dirZ = math.sin(angle)
+
+			-- Flat Ground Coaster Pad (where cards stack in front of player on the ground)
+			local coasterPos = Vector3.new(dirX * COASTER_DIST, 0.22, dirZ * COASTER_DIST)
+			local coaster = Instance.new("Part")
+			coaster.Name = "Coaster_" .. seatIdx
+			coaster.Shape = Enum.PartType.Cylinder
+			coaster.Size = Vector3.new(0.04, 3.2, 3.2)
+			coaster.CFrame = CFrame.new(coasterPos) * CFrame.Angles(0, 0, math.rad(90))
+			coaster.Anchored = true
+			coaster.CanCollide = false
+			coaster.Material = Enum.Material.SmoothPlastic
+			coaster.Color = Color3.fromRGB(95, 170, 235)
+			coaster.Parent = arena
+			coasterParts[seatIdx] = coaster
+
+			local trim = Instance.new("Highlight")
+			trim.Name = "CoasterTrim"
+			trim.FillTransparency = 1
+			trim.OutlineColor = Color3.fromRGB(245, 250, 255)
+			trim.OutlineTransparency = 0.35
+			trim.Adornee = coaster
+			trim.Parent = coaster
+
+			-- Clean White Floor Standing Pad
+			local standPos = Vector3.new(dirX * STAND_DIST, 0.21, dirZ * STAND_DIST)
+			local standPad = Instance.new("Part")
+			standPad.Name = "StandPad_" .. seatIdx
+			standPad.Shape = Enum.PartType.Cylinder
+			standPad.Size = Vector3.new(0.04, 3.4, 3.4)
+			standPad.CFrame = CFrame.new(standPos) * CFrame.Angles(0, 0, math.rad(90))
+			standPad.Anchored = true
+			standPad.CanCollide = false
+			standPad.Material = Enum.Material.Neon
+			standPad.Color = Color3.fromRGB(245, 250, 255)
+			standPad.Transparency = 0.35
+			standPad.Parent = arena
+			standPads[seatIdx] = standPad
+
+			-- Standing CFrame (Y=3.2 for HumanoidRootPart, facing arena center)
+			local charStandPos = Vector3.new(standPos.X, 3.2, standPos.Z)
+			local lookTarget = Vector3.new(0, 1.2, 0)
+			standingCFrames[seatIdx] = CFrame.lookAt(charStandPos, lookTarget)
+
+			-- Seat 1 Spawn Location
+			if seatIdx == 1 then
+				local spawn = Instance.new("SpawnLocation")
+				spawn.Name = "Seat1_SpawnLocation"
+				spawn.Size = Vector3.new(3.0, 0.2, 3.0)
+				spawn.CFrame = CFrame.lookAt(Vector3.new(standPos.X, 1.0, standPos.Z), lookTarget)
+				spawn.Anchored = true
+				spawn.CanCollide = true
+				spawn.Transparency = 1
+				spawn.Neutral = true
+				spawn.Duration = 0
+				spawn.Parent = arena
+			end
+		end
+
+	-- ========================================================================
+	-- MODE B: CLASSIC WOODEN TABLE PARLOR (Preserved Table Version)
+	-- ========================================================================
+	else
+		pcall(function()
+			Lighting.Brightness = 2.0
+			Lighting.Ambient = Color3.fromRGB(150, 150, 150)
+			Lighting.OutdoorAmbient = Color3.fromRGB(130, 130, 130)
+			Lighting.ClockTime = 14.0
+			Lighting.GlobalShadows = true
+			Lighting.FogEnd = 1000
+		end)
+
+		local floor = Instance.new("Part")
+		floor.Name = "ArenaFloor"
+		floor.Size = Vector3.new(140, 2, 140)
+		floor.Position = Vector3.new(0, 0, 0)
+		floor.Anchored = true
+		floor.CanCollide = true
+		floor.Material = Enum.Material.WoodPlanks
+		floor.Color = Color3.fromRGB(125, 95, 75)
+		floor.Parent = arena
+
+		local rug = Instance.new("Part")
+		rug.Name = "TableRug"
+		rug.Shape = Enum.PartType.Cylinder
+		rug.Size = Vector3.new(0.05, 26, 26)
+		rug.CFrame = CFrame.new(0, 1.03, 0) * CFrame.Angles(0, 0, math.rad(90))
+		rug.Anchored = true
+		rug.CanCollide = false
+		rug.Material = Enum.Material.Fabric
+		rug.Color = Color3.fromRGB(55, 36, 28)
+		rug.Parent = arena
+
+		local TABLE_POS = Vector3.new(0, 3.0, 0)
+		local TABLE_RAD = 7.5
+		local tableBase = Instance.new("Part")
+		tableBase.Name = "MainTable"
+		tableBase.Shape = Enum.PartType.Cylinder
+		tableBase.Size = Vector3.new(1.8, TABLE_RAD * 2, TABLE_RAD * 2)
+		tableBase.CFrame = CFrame.new(TABLE_POS) * CFrame.Angles(0, 0, math.rad(90))
+		tableBase.Anchored = true
+		tableBase.CanCollide = true
+		tableBase.Material = Enum.Material.Wood
+		tableBase.Color = Color3.fromRGB(70, 45, 30)
+		tableBase.Parent = arena
+
+		local felt = Instance.new("Part")
+		felt.Name = "TableFelt"
+		felt.Shape = Enum.PartType.Cylinder
+		felt.Size = Vector3.new(1.85, (TABLE_RAD - 0.7) * 2, (TABLE_RAD - 0.7) * 2)
+		felt.CFrame = CFrame.new(TABLE_POS + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		felt.Anchored = true
+		felt.CanCollide = true
+		felt.Material = Enum.Material.Fabric
+		felt.Color = Color3.fromRGB(115, 26, 36)
+		felt.Parent = arena
+
+		local leg = Instance.new("Part")
+		leg.Name = "TablePedestal"
+		leg.Shape = Enum.PartType.Cylinder
+		leg.Size = Vector3.new(3.0, 3.8, 3.8)
+		leg.CFrame = CFrame.new(0, 1.5, 0) * CFrame.Angles(0, 0, math.rad(90))
+		leg.Anchored = true
+		leg.CanCollide = true
+		leg.Material = Enum.Material.Wood
+		leg.Color = Color3.fromRGB(50, 32, 22)
+		leg.Parent = arena
+
+		local COASTER_DIST = 5.0
+		local STAND_DIST = 9.8
+
+		for seatIdx = 1, 6 do
+			local angle = math.rad((seatIdx - 1) * (360 / 6) + 90)
+			local dirX = math.cos(angle)
+			local dirZ = math.sin(angle)
+
+			local coasterPos = Vector3.new(dirX * COASTER_DIST, TABLE_POS.Y + 0.96, dirZ * COASTER_DIST)
+			local coaster = Instance.new("Part")
+			coaster.Name = "Coaster_" .. seatIdx
+			coaster.Shape = Enum.PartType.Cylinder
+			coaster.Size = Vector3.new(0.08, 3.2, 3.2)
+			coaster.CFrame = CFrame.new(coasterPos) * CFrame.Angles(0, 0, math.rad(90))
+			coaster.Anchored = true
+			coaster.CanCollide = false
+			coaster.Material = Enum.Material.SmoothPlastic
+			coaster.Color = Color3.fromRGB(68, 42, 28)
+			coaster.Parent = arena
+			coasterParts[seatIdx] = coaster
+
+			local standPos = Vector3.new(dirX * STAND_DIST, 1.05, dirZ * STAND_DIST)
+			local standPad = Instance.new("Part")
+			standPad.Name = "StandPad_" .. seatIdx
+			standPad.Shape = Enum.PartType.Cylinder
+			standPad.Size = Vector3.new(0.1, 3.6, 3.6)
+			standPad.CFrame = CFrame.new(standPos) * CFrame.Angles(0, 0, math.rad(90))
+			standPad.Anchored = true
+			standPad.CanCollide = false
+			standPad.Material = Enum.Material.Metal
+			standPad.Color = Color3.fromRGB(75, 55, 38)
+			standPad.Parent = arena
+			standPads[seatIdx] = standPad
+
+			local charStandPos = Vector3.new(standPos.X, 4.0, standPos.Z)
+			local lookTarget = Vector3.new(0, TABLE_POS.Y + 0.5, 0)
+			standingCFrames[seatIdx] = CFrame.lookAt(charStandPos, lookTarget)
+
+			if seatIdx == 1 then
+				local spawn = Instance.new("SpawnLocation")
+				spawn.Name = "Seat1_SpawnLocation"
+				spawn.Size = Vector3.new(3.0, 0.2, 3.0)
+				spawn.CFrame = CFrame.lookAt(Vector3.new(standPos.X, 1.2, standPos.Z), lookTarget)
+				spawn.Anchored = true
+				spawn.CanCollide = true
+				spawn.Transparency = 1
+				spawn.Neutral = true
+				spawn.Duration = 0
+				spawn.Parent = arena
+			end
+		end
+	end
+
+	-- Card Stacks Container
 	local stacksFolder = Instance.new("Folder")
 	stacksFolder.Name = "TableCardStacks"
 	stacksFolder.Parent = arena
 
-	-- ------------------------------------------------------------------------
-	-- E. 6 Standing Pods, Coasters, and Spawn Location
-	-- ------------------------------------------------------------------------
-	for seatIdx = 1, 6 do
-		-- Seat 1 starts at angle 90 deg (positive Z axis, facing center)
-		local angle = math.rad((seatIdx - 1) * (360 / 6) + 90)
-		local dirX = math.cos(angle)
-		local dirZ = math.sin(angle)
-
-		-- 3D Card Coaster on Table Surface (Oversized 3.2 studs)
-		local coasterPos = Vector3.new(TABLE_POSITION.X + dirX * COASTER_DISTANCE, TABLE_POSITION.Y + 0.96, TABLE_POSITION.Z + dirZ * COASTER_DISTANCE)
-		local coaster = Instance.new("Part")
-		coaster.Name = "Coaster_" .. seatIdx
-		coaster.Shape = Enum.PartType.Cylinder
-		coaster.Size = Vector3.new(0.08, 3.2, 3.2)
-		coaster.CFrame = CFrame.new(coasterPos) * CFrame.Angles(0, 0, math.rad(90))
-		coaster.Anchored = true
-		coaster.CanCollide = false
-		coaster.Material = Enum.Material.SmoothPlastic
-		coaster.Color = Color3.fromRGB(68, 42, 28)
-		coaster.Parent = arena
-		coasterParts[seatIdx] = coaster
-
-		-- Gold Trim Ring on Coaster
-		local trim = Instance.new("Highlight")
-		trim.Name = "GoldTrim"
-		trim.FillTransparency = 1
-		trim.OutlineColor = Color3.fromRGB(235, 185, 55)
-		trim.OutlineTransparency = 0.2
-		trim.Adornee = coaster
-		trim.Parent = coaster
-
-		-- Standing Floor Pad (Brass ring on floor resting on ArenaFloor Y=1.0)
-		local standPos = Vector3.new(TABLE_POSITION.X + dirX * STAND_DISTANCE, 1.05, TABLE_POSITION.Z + dirZ * STAND_DISTANCE)
-		local standPad = Instance.new("Part")
-		standPad.Name = "StandPad_" .. seatIdx
-		standPad.Shape = Enum.PartType.Cylinder
-		standPad.Size = Vector3.new(0.1, 3.6, 3.6)
-		standPad.CFrame = CFrame.new(standPos) * CFrame.Angles(0, 0, math.rad(90))
-		standPad.Anchored = true
-		standPad.CanCollide = false
-		standPad.Material = Enum.Material.Metal
-		standPad.Color = Color3.fromRGB(75, 55, 38)
-		standPad.Parent = arena
-		standPads[seatIdx] = standPad
-
-		-- Standing CFrame: Standing on the pad (Y=4.0 for HumanoidRootPart), facing directly at table center
-		local lookTarget = Vector3.new(TABLE_POSITION.X, TABLE_POSITION.Y + 0.5, TABLE_POSITION.Z)
-		local charStandPos = Vector3.new(standPos.X, 4.0, standPos.Z)
-		standingCFrames[seatIdx] = CFrame.lookAt(charStandPos, lookTarget)
-
-		-- Seat 1 Default Spawn Location: Engine places the joining player right on Pad 1
-		if seatIdx == 1 then
-			local spawn = Instance.new("SpawnLocation")
-			spawn.Name = "Seat1_SpawnLocation"
-			spawn.Size = Vector3.new(3.0, 0.2, 3.0)
-			spawn.CFrame = CFrame.lookAt(Vector3.new(standPos.X, 1.2, standPos.Z), lookTarget)
-			spawn.Anchored = true
-			spawn.CanCollide = true
-			spawn.Transparency = 1
-			spawn.Neutral = true
-			spawn.Duration = 0
-			spawn.Parent = arena
-		end
-	end
-
 	arenaModel = arena
-	print("[TableBuilder] Clean LOCOfficial basic level with regular bright lighting created.")
+	print("[TableBuilder] Arena constructed successfully in mode:", mode)
 	return arena
 end
 
 -- ============================================================================
--- 2. HELPER: CREATE OVERHEAD BILLBOARD GUI (LOCOfficial Style)
+-- 2. HELPER: CREATE OVERHEAD FLOATING NAMETAG (Zero Black Boxes!)
 -- ============================================================================
 local function createOverheadBillboard(adorneePart: BasePart, displayName: string, isBot: boolean): BillboardGui
 	local bill = Instance.new("BillboardGui")
 	bill.Name = "PlayerInfoTag"
-	bill.Size = UDim2.new(0, 150, 0, 52)
-	bill.StudsOffset = Vector3.new(0, 2.8, 0)
+	bill.Size = UDim2.new(0, 180, 0, 80)
+	bill.StudsOffset = Vector3.new(0, 3.2, 0)
 	bill.AlwaysOnTop = true
 	bill.Adornee = adorneePart
 	bill.Parent = adorneePart
 
-	local frame = Instance.new("Frame")
-	frame.Name = "Container"
-	frame.Size = UDim2.new(1, 0, 1, 0)
-	frame.BackgroundColor3 = Color3.fromRGB(24, 18, 16)
-	frame.BackgroundTransparency = 0.2
-	frame.BorderSizePixel = 0
-	frame.Parent = bill
+	-- Turn Indicator Arrow (Appears directly above name when active)
+	local turnArrow = Instance.new("TextLabel")
+	turnArrow.Name = "TurnArrow"
+	turnArrow.Size = UDim2.new(1, 0, 0, 16)
+	turnArrow.Position = UDim2.new(0, 0, 0, 0)
+	turnArrow.BackgroundTransparency = 1
+	turnArrow.Font = Enum.Font.FredokaOne
+	turnArrow.TextSize = 15
+	turnArrow.TextColor3 = Color3.fromRGB(255, 225, 75)
+	turnArrow.TextStrokeTransparency = 0.4
+	turnArrow.TextStrokeColor3 = Color3.fromRGB(60, 45, 0)
+	turnArrow.Text = "▼ ACTIVE"
+	turnArrow.Visible = false
+	turnArrow.Parent = bill
 
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
-	corner.Parent = frame
-
-	local stroke = Instance.new("UIStroke")
-	stroke.Name = "BorderStroke"
-	stroke.Color = Color3.fromRGB(210, 165, 60)
-	stroke.Thickness = 1.8
-	stroke.Parent = frame
-
-	-- Player Name Label
+	-- Clean Floating Player Name (No dark rectangular background!)
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "NameLabel"
 	nameLabel.Size = UDim2.new(1, 0, 0, 24)
-	nameLabel.Position = UDim2.new(0, 0, 0, 2)
+	nameLabel.Position = UDim2.new(0, 0, 0, 18)
 	nameLabel.BackgroundTransparency = 1
-	nameLabel.Font = Enum.Font.GothamBold
-	nameLabel.TextSize = 13
-	nameLabel.TextColor3 = Color3.fromRGB(255, 240, 215)
+	nameLabel.Font = Enum.Font.FredokaOne
+	nameLabel.TextSize = 15
+	nameLabel.TextColor3 = Color3.fromRGB(245, 250, 255)
+	nameLabel.TextStrokeTransparency = 0.45
+	nameLabel.TextStrokeColor3 = Color3.fromRGB(15, 35, 65)
 	nameLabel.Text = displayName .. (isBot and " [BOT]" or "")
-	nameLabel.Parent = frame
+	nameLabel.Parent = bill
 
-	-- Score Gems Display (Two gems for 2 points to win)
+	-- Floating Score Gems Display (◇ ◇)
 	local scoreFrame = Instance.new("Frame")
 	scoreFrame.Name = "ScoreRow"
-	scoreFrame.Size = UDim2.new(1, 0, 0, 20)
-	scoreFrame.Position = UDim2.new(0, 0, 0, 26)
+	scoreFrame.Size = UDim2.new(1, 0, 0, 18)
+	scoreFrame.Position = UDim2.new(0, 0, 0, 42)
 	scoreFrame.BackgroundTransparency = 1
-	scoreFrame.Parent = frame
+	scoreFrame.Parent = bill
 
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, 10)
+	layout.Padding = UDim.new(0, 8)
 	layout.Parent = scoreFrame
 
 	for i = 1, 2 do
 		local gem = Instance.new("TextLabel")
 		gem.Name = "Gem_" .. i
-		gem.Size = UDim2.new(0, 18, 0, 18)
+		gem.Size = UDim2.new(0, 16, 0, 16)
 		gem.BackgroundTransparency = 1
-		gem.Font = Enum.Font.GothamBold
-		gem.TextSize = 14
+		gem.Font = Enum.Font.FredokaOne
+		gem.TextSize = 16
 		gem.Text = "◇"
-		gem.TextColor3 = Color3.fromRGB(140, 120, 100)
+		gem.TextColor3 = Color3.fromRGB(210, 230, 255)
+		gem.TextStrokeTransparency = 0.5
+		gem.TextStrokeColor3 = Color3.fromRGB(15, 35, 65)
 		gem.LayoutOrder = i
 		gem.Parent = scoreFrame
 	end
+
+	-- LOCOfficial Clean White Card Count Badge (Floating beside/above)
+	local cardBadge = Instance.new("Frame")
+	cardBadge.Name = "CardCountBadge"
+	cardBadge.Size = UDim2.new(0, 24, 0, 32)
+	cardBadge.Position = UDim2.new(1, -24, 0, 12)
+	cardBadge.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	cardBadge.BorderSizePixel = 0
+	cardBadge.Parent = bill
+
+	local badgeCorner = Instance.new("UICorner")
+	badgeCorner.CornerRadius = UDim.new(0, 5)
+	badgeCorner.Parent = cardBadge
+
+	local badgeStroke = Instance.new("UIStroke")
+	badgeStroke.Color = Color3.fromRGB(180, 205, 235)
+	badgeStroke.Thickness = 1.5
+	badgeStroke.Parent = cardBadge
+
+	local badgeNum = Instance.new("TextLabel")
+	badgeNum.Name = "CountNum"
+	badgeNum.Size = UDim2.new(1, 0, 1, 0)
+	badgeNum.BackgroundTransparency = 1
+	badgeNum.Font = Enum.Font.GothamBold
+	badgeNum.TextSize = 14
+	badgeNum.TextColor3 = Color3.fromRGB(30, 35, 45)
+	badgeNum.Text = "4"
+	badgeNum.Parent = cardBadge
 
 	return bill
 end
 
 -- ============================================================================
--- 3. POSITION HUMAN PLAYERS (STANDING AT POD, FACING TABLE)
+-- 3. POSITION HUMAN PLAYERS (STANDING AT POD)
 -- ============================================================================
 function TableBuilder.StandPlayer(player: Player, seatIndex: number)
 	local function setupPlayerCharacter(char: Model)
@@ -343,7 +463,7 @@ function TableBuilder.StandPlayer(player: Player, seatIndex: number)
 end
 
 -- ============================================================================
--- 4. SPAWN STYLIZED STANDING BOT AVATARS (LOCOfficial Character Style)
+-- 4. SPAWN STYLIZED STANDING BOT AVATARS (LOCOfficial Style)
 -- ============================================================================
 function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	local targetCF = standingCFrames[seatIndex]
@@ -367,7 +487,7 @@ function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	botModel.Name = "Bot_" .. botName
 	botModel.Parent = arenaModel
 
-	-- Stylized Torso (Prominent R6 proportions)
+	-- Stylized Torso
 	local torso = Instance.new("Part")
 	torso.Name = "Torso"
 	torso.Size = Vector3.new(2.4, 2.8, 1.4)
@@ -378,7 +498,7 @@ function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	torso.Color = theme.suit
 	torso.Parent = botModel
 
-	-- Suit Lapel / Vest
+	-- Suit Lapel
 	local lapel = Instance.new("Part")
 	lapel.Name = "Lapel"
 	lapel.Size = Vector3.new(1.2, 1.8, 0.2)
@@ -389,7 +509,7 @@ function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	lapel.Color = theme.trim
 	lapel.Parent = botModel
 
-	-- Stylized Head
+	-- Head
 	local head = Instance.new("Part")
 	head.Name = "Head"
 	head.Shape = Enum.PartType.Ball
@@ -401,7 +521,7 @@ function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	head.Color = theme.skin
 	head.Parent = botModel
 
-	-- Stylized Face SurfaceGui (Looking directly at table center)
+	-- Face Gui
 	local faceGui = Instance.new("SurfaceGui")
 	faceGui.Name = "FaceGui"
 	faceGui.Face = Enum.NormalId.Front
@@ -451,16 +571,37 @@ function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	legs.Parent = botModel
 
 	seatBillboards[seatIndex] = createOverheadBillboard(head, botName, true)
-
 	botDummies[seatIndex] = botModel
-	print("[TableBuilder] Spawned visible standing bot:", botName, "at seat", seatIndex)
+	print("[TableBuilder] Spawned standing bot:", botName, "at seat", seatIndex)
 end
 
 -- ============================================================================
--- 5. VISUAL POLISH & FEEDBACK (LOCOfficial Turn Glow, Scores & Emotes)
+-- 5. VISUAL POLISH & HIGHLIGHTS (Turn Glow, Scores & Emotes)
 -- ============================================================================
--- Highlight floor pod of active player with glowing golden ring
+-- Highlights the active player's name and floor pad when it's their turn
 function TableBuilder.HighlightTurn(activeSeatIndex: number?)
+	for seatIdx, bill in pairs(seatBillboards) do
+		local isActive = (activeSeatIndex ~= nil and seatIdx == activeSeatIndex)
+		local nameLabel = bill:FindFirstChild("NameLabel") :: TextLabel?
+		local turnArrow = bill:FindFirstChild("TurnArrow") :: TextLabel?
+
+		if nameLabel then
+			if isActive then
+				nameLabel.TextColor3 = Color3.fromRGB(255, 225, 75)
+				nameLabel.TextStrokeColor3 = Color3.fromRGB(70, 45, 0)
+				nameLabel.TextSize = 17
+			else
+				nameLabel.TextColor3 = Color3.fromRGB(245, 250, 255)
+				nameLabel.TextStrokeColor3 = Color3.fromRGB(15, 35, 65)
+				nameLabel.TextSize = 15
+			end
+		end
+
+		if turnArrow then
+			turnArrow.Visible = isActive
+		end
+	end
+
 	for seatIdx, pad in pairs(standPads) do
 		local isActive = (activeSeatIndex ~= nil and seatIdx == activeSeatIndex)
 		local highlight = pad:FindFirstChild("TurnGlow") :: Highlight?
@@ -468,10 +609,10 @@ function TableBuilder.HighlightTurn(activeSeatIndex: number?)
 			if not highlight then
 				highlight = Instance.new("Highlight")
 				highlight.Name = "TurnGlow"
-				highlight.FillColor = Color3.fromRGB(245, 195, 55)
-				highlight.FillTransparency = 0.5
-				highlight.OutlineColor = Color3.fromRGB(255, 220, 80)
-				highlight.OutlineTransparency = 0.1
+				highlight.FillColor = Color3.fromRGB(255, 215, 50)
+				highlight.FillTransparency = 0.4
+				highlight.OutlineColor = Color3.fromRGB(255, 235, 90)
+				highlight.OutlineTransparency = 0.05
 				highlight.Adornee = pad
 				highlight.Parent = pad
 			end
@@ -483,12 +624,11 @@ function TableBuilder.HighlightTurn(activeSeatIndex: number?)
 	end
 end
 
--- Update overhead billboard score gems (◆ ◆)
+-- Update overhead score gems (◆ ◆)
 function TableBuilder.UpdateScore(seatIndex: number, score: number)
 	local bill = seatBillboards[seatIndex]
 	if not bill then return end
-	local container = bill:FindFirstChild("Container") :: Frame?
-	local scoreRow = container and container:FindFirstChild("ScoreRow") :: Frame?
+	local scoreRow = bill:FindFirstChild("ScoreRow") :: Frame?
 	if not scoreRow then return end
 
 	for i = 1, 2 do
@@ -496,12 +636,23 @@ function TableBuilder.UpdateScore(seatIndex: number, score: number)
 		if gem then
 			local hasPoint = (score >= i)
 			gem.Text = hasPoint and "◆" or "◇"
-			gem.TextColor3 = hasPoint and Color3.fromRGB(255, 215, 60) or Color3.fromRGB(140, 120, 100)
+			gem.TextColor3 = hasPoint and Color3.fromRGB(255, 220, 60) or Color3.fromRGB(210, 230, 255)
 		end
 	end
 end
 
--- Change bot face emote (e.g. "😱" on skull, "🎉" on score, "🤠" normal)
+-- Update remaining card count badge [ 4 ]
+function TableBuilder.UpdateCardCount(seatIndex: number, count: number)
+	local bill = seatBillboards[seatIndex]
+	if not bill then return end
+	local badge = bill:FindFirstChild("CardCountBadge") :: Frame?
+	local num = badge and badge:FindFirstChild("CountNum") :: TextLabel?
+	if num then
+		num.Text = tostring(count)
+	end
+end
+
+-- Change bot face emote
 function TableBuilder.SetBotEmote(seatIndex: number, emote: string)
 	local bot = botDummies[seatIndex]
 	if not bot then return end
@@ -527,6 +678,10 @@ end
 
 function TableBuilder.GetStandingCFrame(seatIndex: number): CFrame?
 	return standingCFrames[seatIndex]
+end
+
+function TableBuilder.GetArenaMode(): string
+	return currentArenaMode
 end
 
 return TableBuilder

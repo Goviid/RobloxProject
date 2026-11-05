@@ -9,6 +9,9 @@ local Constants = {
 	DEFAULT_TEST_BOTS = 3, -- Creates 3 bots in solo test mode for a 4-player game
 	ENABLE_BOTS = true,
 
+	-- Arena / Visual Mode ("Void" for LOCOfficial Light Blue Void, "Table" for Classic Parlor Table)
+	DEFAULT_ARENA_MODE = "Void",
+
 	-- Gameplay Rules
 	POINTS_TO_WIN = 2,
 	CARDS_PER_PLAYER = 4,

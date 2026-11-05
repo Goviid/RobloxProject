@@ -30,6 +30,7 @@ local isWaitingForAction = false
 local function broadcastState()
 	for _, p in pairs(PlayerManager.GetAllPlayers()) do
 		TableBuilder.UpdateScore(p.seatIndex, p.score)
+		TableBuilder.UpdateCardCount(p.seatIndex, #p.hand)
 		if not p.isBot then
 			RoundManager.SendStateToPlayer(p.userId)
 		end

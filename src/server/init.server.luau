@@ -87,6 +87,34 @@ local function onPlayerAdded(player: Player)
 	else
 		RoundManager.SendStateToPlayer(player.UserId)
 	end
+
+	-- Allow live switching between "Void" and "Table" modes via chat ("/void" or "/table")
+	player.Chatted:Connect(function(msg: string)
+		local lower = string.lower(msg)
+		if lower == "/table" or lower == "/mode table" then
+			print("[Server] Switching arena mode to Table...")
+			TableBuilder.Build("Table")
+			for _, p in pairs(PlayerManager.GetAllPlayers()) do
+				if p.isBot then
+					TableBuilder.SpawnStandingBot(p.name, p.seatIndex)
+				else
+					local pl = Players:GetPlayerByUserId(p.userId)
+					if pl then TableBuilder.StandPlayer(pl, p.seatIndex) end
+				end
+			end
+		elseif lower == "/void" or lower == "/mode void" then
+			print("[Server] Switching arena mode to Void...")
+			TableBuilder.Build("Void")
+			for _, p in pairs(PlayerManager.GetAllPlayers()) do
+				if p.isBot then
+					TableBuilder.SpawnStandingBot(p.name, p.seatIndex)
+				else
+					local pl = Players:GetPlayerByUserId(p.userId)
+					if pl then TableBuilder.StandPlayer(pl, p.seatIndex) end
+				end
+			end
+		end
+	end)
 end
 
 local function onPlayerRemoving(player: Player)

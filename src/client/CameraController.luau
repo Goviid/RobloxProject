@@ -8,16 +8,24 @@ local TweenService = game:GetService("TweenService")
 
 local CameraController = {}
 
--- Camera Framing: Elevated behind Seat 1, framing your avatar in foreground and opponents across table
-local LOOK_TARGET = Vector3.new(0, 3.6, 0.8)
-local DEFAULT_CAMERA_POS = Vector3.new(0, 8.8, 16.2)
-local DEFAULT_FOV = 62
+local function getCameraConfig(): (Vector3, Vector3)
+	local isTable = (Workspace:GetAttribute("ArenaMode") == "Table")
+	if isTable then
+		return Vector3.new(0, 3.6, 0.8), Vector3.new(0, 8.8, 16.2)
+	else
+		-- LOCOfficial Void mode: Eye-level framing of ground cards and opponents
+		return Vector3.new(0, 1.9, 0.6), Vector3.new(0, 6.8, 14.8)
+	end
+end
 
-local currentTargetPos = DEFAULT_CAMERA_POS
-local currentTargetFOV = DEFAULT_FOV
+local DEFAULT_FOV = 62
 local isShakeActive = false
 local shakeOffset = Vector3.zero
 local isInitialized = false
+
+-- Dynamic target positions
+local currentTargetPos = Vector3.new(0, 6.8, 14.8)
+local currentTargetFOV = DEFAULT_FOV
 
 -- ============================================================================
 -- 1. SETUP & PER-FRAME CAMERA LOCK
@@ -34,7 +42,7 @@ function CameraController.Init()
 			cam.CameraType = Enum.CameraType.Scriptable
 		end
 
-		local lookTarget = LOOK_TARGET
+		local lookTarget, defaultCamPos = getCameraConfig()
 		local camPos = currentTargetPos + shakeOffset
 		cam.CFrame = CFrame.lookAt(camPos, lookTarget)
 		cam.FieldOfView = currentTargetFOV
@@ -50,8 +58,10 @@ end
 -- 2. DYNAMIC CAMERA EFFECTS (Turn Focus & Skull Shake)
 -- ============================================================================
 function CameraController.SetTurnFocus(isMyTurn: boolean)
-	local targetPos = isMyTurn and Vector3.new(0, 7.2, 14.8) or DEFAULT_CAMERA_POS
-	local targetFOV = isMyTurn and 60 or DEFAULT_FOV
+	local lookTarget, defaultCamPos = getCameraConfig()
+	local focusOffset = isMyTurn and Vector3.new(0, -1.0, -1.4) or Vector3.zero
+	local targetPos = defaultCamPos + focusOffset
+	local targetFOV = isMyTurn and 59 or DEFAULT_FOV
 
 	local tweenObj = Instance.new("NumberValue")
 	tweenObj.Value = 0
