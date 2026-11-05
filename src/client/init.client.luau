@@ -15,6 +15,8 @@ local TableView = require(script.UI.TableView)
 local HandBar = require(script.UI.HandBar)
 local ActionBar = require(script.UI.ActionBar)
 local CardRevealModal = require(script.UI.CardRevealModal)
+local CardAnimation = require(script.UI.CardAnimation)
+local CameraController = require(script.CameraController)
 
 local localPlayer = Players.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui") :: PlayerGui
@@ -22,42 +24,17 @@ local playerGui = localPlayer:WaitForChild("PlayerGui") :: PlayerGui
 print("[Skulls & Roses] Client UI initializing for " .. localPlayer.Name .. "...")
 
 -- ============================================================================
--- 1. SCREEN GUI SETUP
+-- 1. 2.5D CAMERA & SCREEN GUI SETUP (LOCOfficial style)
 -- ============================================================================
+-- Initialize the 2.5D fixed tabletop camera framing the 3D table & avatars
+CameraController.Init()
+
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "SkullsGui"
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.IgnoreGuiInset = true -- Fills whole screen nicely
 screenGui.Parent = playerGui
-
--- Background cantina table wash
-local bgWash = Instance.new("Frame")
-bgWash.Name = "BackgroundTable"
-bgWash.Size = UDim2.new(1, 0, 1, 0)
-bgWash.BackgroundColor3 = Theme.Colors.TableDark
-bgWash.BorderSizePixel = 0
-bgWash.ZIndex = 0
-bgWash.Parent = screenGui
-
--- Table felt center vignette
-local tableFelt = Instance.new("Frame")
-tableFelt.Name = "TableFelt"
-tableFelt.Size = UDim2.new(0.85, 0, 0.75, 0)
-tableFelt.Position = UDim2.new(0.075, 0, 0.1, 0)
-tableFelt.BackgroundColor3 = Theme.Colors.TableSurface
-tableFelt.BorderSizePixel = 0
-tableFelt.ZIndex = 0
-tableFelt.Parent = bgWash
-
-local feltCorner = Instance.new("UICorner")
-feltCorner.CornerRadius = UDim.new(0.4, 0)
-feltCorner.Parent = tableFelt
-
-local feltStroke = Instance.new("UIStroke")
-feltStroke.Color = Theme.Colors.TableBorder
-feltStroke.Thickness = 6
-feltStroke.Parent = tableFelt
 
 -- ============================================================================
 -- 2. INITIALIZE MODULAR UI COMPONENTS
@@ -85,6 +62,13 @@ ActionBar.Create(screenGui, function(action: string, data: any)
 		local selected = HandBar.GetSelectedCard()
 		if selected then
 			data.cardType = selected
+			-- Trigger LOCOfficial flying card animation
+			CardAnimation.PlayCardFly(
+				screenGui,
+				UDim2.new(0.5, 0, 1, -50),
+				UDim2.new(0.5, 0, 0.45, 0),
+				selected
+			)
 			onSubmitAction(action, data)
 		else
 			NotificationBanner.Show("Select a card from your hand first!", "warning")
@@ -123,6 +107,7 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 	local challengerData = payload.challengerId and payload.tableState.players[tostring(payload.challengerId)]
 
 	-- 1. Update Table View (seats, stack heights, score gems)
+	CameraController.SetTurnFocus(isMyTurn)
 	TableView.UpdateLayout(payload.tableState.players, payload.activePlayerId, payload.challengerId)
 	TableView.UpdateCenter(
 		payload.gameState,
@@ -178,6 +163,10 @@ Network.CardRevealed.OnClientEvent:Connect(function(data: any)
 
 	-- Trigger center screen flip animation popup
 	CardRevealModal.ShowCard(data.cardType, targetName, data.cardsFlipped, data.targetCards)
+
+	if isSkull then
+		CameraController.ShakeOnSkull()
+	end
 
 	local msg = isSkull and ("💀 " .. targetName .. "'s SKULL was revealed!") or ("🌹 Rose Revealed from " .. targetName .. " (" .. data.cardsFlipped .. "/" .. data.targetCards .. ")")
 	NotificationBanner.Show(msg, isSkull and "alert" or "info")

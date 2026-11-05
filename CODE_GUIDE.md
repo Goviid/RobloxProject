@@ -20,19 +20,22 @@ F:\RobloxProject\
 │   │
 │   ├── server/                    <-- ServerScriptService.Server (Runs strictly on the Roblox Server)
 │   │   ├── init.server.luau       <-- Server entry point & player join/leave hooks
+│   │   ├── TableBuilder.luau      <-- Builds 3D table arena, chairs, and coasters in Workspace
 │   │   ├── PlayerManager.luau     <-- Secret hands, played stacks, scores, seats, bot data
 │   │   ├── BotController.luau     <-- AI decision making (bluffing, bidding, revealing)
 │   │   └── RoundManager.luau      <-- State machine enforcing all Skull & Roses rules
 │   │
 │   └── client/                    <-- StarterPlayerScripts.Client (Runs on each player's computer)
 │       ├── init.client.luau       <-- Client bootstrapper & network listeners
+│       ├── CameraController.luau  <-- 2.5D fixed tabletop camera (LOCOfficial style)
 │       └── UI/                    <-- Modular 2D tabletop interface (Theme A: Calavera)
 │           ├── Theme.luau         <-- Color palette, typography, gold filigree styling
 │           ├── NotificationBanner.luau <-- Top announcement banner & 15s turn timer bar
-│           ├── HandBar.luau       <-- Bottom tray with 4 cards (Roses & Skull)
+│           ├── HandBar.luau       <-- Floating squircle cards at bottom with hover lift
 │           ├── ActionBar.luau     <-- Contextual buttons ([Place Card], [Bid], [Pass])
-│           ├── TableView.luau     <-- Circular 2-6 player table with stacks & score gems
-│           └── CardRevealModal.luau<-- Center animated card flip popup (Rose vs Skull)
+│           ├── TableView.luau     <-- Circular 2-6 player table with avatar heads & turn halos
+│           ├── CardRevealModal.luau<-- Center animated card flip popup (Rose vs Skull)
+│           └── CardAnimation.luau <-- Flying card trajectory animation (hand to table)
 ```
 
 ---
@@ -67,6 +70,10 @@ F:\RobloxProject\
 
 ### 2. Server Modules (`src/server/`)
 
+#### `TableBuilder.luau`
+* **Purpose:** Builds the 3D table arena in `Workspace`.
+* Generates a circular mahogany table, warm overhead lighting, 6 wooden chairs, and gold-trimmed coaster plates on the table surface. Automatically teleports and seats players when they join.
+
 #### `PlayerManager.luau`
 * **Purpose:** Handles all player state, seat assignments, scores, and **secret hands**.
 * **Anti-Cheat Isolation:** Hands and played stacks are stored only in memory on the server.
@@ -92,6 +99,10 @@ F:\RobloxProject\
 
 ### 3. Client Modules (`src/client/`)
 
+#### `CameraController.luau`
+* **Purpose:** Fixed 2.5D scriptable camera locked above the 3D table (LOCOfficial style).
+* Frames the circular table and seated avatars, smoothly zooms FOV on your turn for arcade focus, and shakes on a skull hit.
+
 #### `UI/Theme.luau`
 * **Purpose:** Theme A (Calavera / Day of the Dead) design tokens.
 * Defines the warm wood colors (`TableDark`, `TableSurface`), gold filigree accents (`Gold`, `GoldGlow`), crimson velvet (`RosePrimary`), and obsidian charcoal (`SkullPrimary`).
@@ -115,6 +126,10 @@ F:\RobloxProject\
 #### `UI/CardRevealModal.luau`
 * **Purpose:** Center-screen card flip popup.
 * Plays an animated card reveal popup whenever a card is flipped by the challenger, showing the card face (`🌹 Rose` or `💥 Skull!`), who owned it, and current bet progress.
+
+#### `UI/CardAnimation.luau`
+* **Purpose:** Flying card physics animation (LOCOfficial style).
+* Animates cards physically flying from the bottom floating hand dock onto the 3D table stack with an elastic bounce when played.
 
 #### `init.client.luau`
 * **Purpose:** Client entry point. Builds the `ScreenGui`, coordinates all UI components, and binds server events.

@@ -9,8 +9,12 @@ local Constants = require(ReplicatedStorage.Shared.Constants)
 local Network = require(ReplicatedStorage.Shared.Network)
 local PlayerManager = require(script.PlayerManager)
 local RoundManager = require(script.RoundManager)
+local TableBuilder = require(script.TableBuilder)
 
 print("[Skulls & Roses] Server initializing...")
+
+-- Build the 3D Table Arena in Workspace
+TableBuilder.Build()
 
 -- Action Dispatcher from Client
 Network.SubmitAction.OnServerInvoke = function(player: Player, action: string, data: any)
@@ -30,7 +34,10 @@ end
 -- Player Join / Leave
 local function onPlayerAdded(player: Player)
 	print("[Skulls & Roses] Player joined: " .. player.Name .. " (" .. player.UserId .. ")")
-	PlayerManager.AddPlayer(player)
+	local pData = PlayerManager.AddPlayer(player)
+	if pData then
+		TableBuilder.SeatPlayer(player, pData.seatIndex)
+	end
 
 	-- Solo / Test mode: Auto-populate bots if we don't have enough players
 	local active = PlayerManager.GetActivePlayers()

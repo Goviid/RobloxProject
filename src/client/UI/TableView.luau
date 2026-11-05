@@ -102,13 +102,13 @@ local function createPlayerPod(userId: number, name: string, isBot: boolean): Fr
 	countLabel.Text = "0"
 	countLabel.Parent = countBadge
 
-	-- Player Info Container (Name + Score)
+	-- Player Info Container (Avatar + Name + Score)
 	local infoCard = Instance.new("Frame")
 	infoCard.Name = "InfoCard"
-	infoCard.Size = UDim2.new(1, 0, 0, 52)
-	infoCard.Position = UDim2.new(0, 0, 0, 82)
+	infoCard.Size = UDim2.new(1, 0, 0, 74)
+	infoCard.Position = UDim2.new(0, 0, 0, 80)
 	infoCard.BackgroundColor3 = Theme.Colors.PanelBackground
-	infoCard.BackgroundTransparency = 0.2
+	infoCard.BackgroundTransparency = 0.25
 	infoCard.BorderSizePixel = 0
 	infoCard.Parent = pod
 
@@ -121,16 +121,59 @@ local function createPlayerPod(userId: number, name: string, isBot: boolean): Fr
 	infoStroke.Thickness = 1
 	infoStroke.Parent = infoCard
 
+	-- Circular Avatar Headshot (LOCOfficial style)
+	local avatarHead = Instance.new("ImageLabel")
+	avatarHead.Name = "AvatarHead"
+	avatarHead.Size = UDim2.new(0, 32, 0, 32)
+	avatarHead.Position = UDim2.new(0, 6, 0, 6)
+	avatarHead.BackgroundColor3 = Color3.fromRGB(35, 25, 20)
+	avatarHead.BorderSizePixel = 0
+	avatarHead.Parent = infoCard
+
+	local avatarCorner = Instance.new("UICorner")
+	avatarCorner.CornerRadius = Theme.CornerRadius.Circular
+	avatarCorner.Parent = avatarHead
+
+	local avatarRing = Instance.new("UIStroke")
+	avatarRing.Name = "AvatarRing"
+	avatarRing.Color = Theme.Colors.GoldMuted
+	avatarRing.Thickness = 2
+	avatarRing.Parent = avatarHead
+
+	local botEmoji = Instance.new("TextLabel")
+	botEmoji.Name = "BotEmoji"
+	botEmoji.Size = UDim2.new(1, 0, 1, 0)
+	botEmoji.BackgroundTransparency = 1
+	botEmoji.Font = Theme.Fonts.Title
+	botEmoji.TextSize = 18
+	botEmoji.Text = "👤"
+	botEmoji.Parent = avatarHead
+
+	if not isBot and userId > 0 then
+		task.spawn(function()
+			pcall(function()
+				local thumb = Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+				avatarHead.Image = thumb
+				botEmoji.Visible = false
+			end)
+		end)
+	else
+		local botIcons = { "🌹", "🤠", "🎩", "💀", "🎭", "🎲" }
+		local iconIdx = (math.abs(userId) % #botIcons) + 1
+		botEmoji.Text = botIcons[iconIdx]
+	end
+
 	-- Player Name Label
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "NameLabel"
-	nameLabel.Size = UDim2.new(1, -8, 0, 20)
-	nameLabel.Position = UDim2.new(0, 4, 0, 4)
+	nameLabel.Size = UDim2.new(1, -44, 0, 18)
+	nameLabel.Position = UDim2.new(0, 42, 0, 12)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Font = Theme.Fonts.Header
-	nameLabel.TextSize = 12
+	nameLabel.TextSize = 11
 	nameLabel.TextColor3 = Theme.Colors.TextPrimary
 	nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	nameLabel.Text = name
 	nameLabel.Parent = infoCard
 
@@ -138,6 +181,9 @@ local function createPlayerPod(userId: number, name: string, isBot: boolean): Fr
 	local scoreBox = Instance.new("Frame")
 	scoreBox.Name = "ScoreBox"
 	scoreBox.Size = UDim2.new(1, 0, 0, 20)
+	scoreBox.Position = UDim2.new(0, 0, 0, 46)
+	scoreBox.BackgroundTransparency = 1
+	scoreBox.Parent = infoCard
 	scoreBox.Position = UDim2.new(0, 0, 0, 26)
 	scoreBox.BackgroundTransparency = 1
 	scoreBox.Parent = infoCard
@@ -347,11 +393,18 @@ function TableView.UpdateLayout(playersData: { [string]: any }, activePlayerId: 
 			end
 		end
 
-		-- Update Turn Highlight Halo
+		-- Update Turn Highlight Halo & Avatar Ring (LOCOfficial style)
 		local isCurrentTurn = (activePlayerId == uid)
 		local halo = pod:FindFirstChild("TurnHalo") :: Frame?
 		if halo then
 			halo.BackgroundTransparency = isCurrentTurn and 0.4 or 1
+		end
+
+		local avatarHead = infoCard and infoCard:FindFirstChild("AvatarHead")
+		local avatarRing = avatarHead and avatarHead:FindFirstChild("AvatarRing") :: UIStroke?
+		if avatarRing then
+			avatarRing.Color = isCurrentTurn and Theme.Colors.GoldGlow or Theme.Colors.GoldMuted
+			avatarRing.Thickness = isCurrentTurn and 3.5 or 2
 		end
 
 		-- Elimination styling

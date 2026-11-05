@@ -164,3 +164,4 @@ function CardRevealModal.ShowCard(cardType: string, fromPlayerName: string, flip
 end
 
 return CardRevealModal
+
