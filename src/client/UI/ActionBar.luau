@@ -15,6 +15,7 @@ local bidStepperFrame: Frame? = nil
 local bidValueLabel: TextLabel? = nil
 
 local currentBidSelected = 1
+local currentActiveGameState = Enums.GameState.Placement
 local onActionCallback: ((action: string, data: any) -> ())? = nil
 
 -- ============================================================================
@@ -163,7 +164,8 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 
 	bidConfirmBtn.MouseButton1Click:Connect(function()
 		if onActionCallback then
-			onActionCallback(Enums.PlayerAction.RaiseBid, { bid = currentBidSelected })
+			local action = (currentActiveGameState == Enums.GameState.Placement) and Enums.PlayerAction.StartBid or Enums.PlayerAction.RaiseBid
+			onActionCallback(action, { bid = currentBidSelected })
 		end
 	end)
 
@@ -211,6 +213,7 @@ function ActionBar.UpdateState(
 	hasPlacedFirstCard: boolean
 )
 	if not containerFrame or not placeButton or not passButton or not bidButton then return end
+	currentActiveGameState = gameState
 
 	-- 1. Placement Phase
 	if gameState == Enums.GameState.Placement then
@@ -262,3 +265,4 @@ function ActionBar.UpdateState(
 end
 
 return ActionBar
+

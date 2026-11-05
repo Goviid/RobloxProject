@@ -304,6 +304,30 @@ function TableView.UpdateLayout(playersData: { [string]: any }, activePlayerId: 
 			end
 			-- Coaster appearance
 			stackBox.BackgroundTransparency = (p.stackCount and p.stackCount > 0) and 0 or 0.7
+
+			-- Challenger reveal target indicator
+			local myData = playersData[tostring(localUserId)]
+			local myStackCount = myData and myData.stackCount or 0
+			local isRevealing = (challengerId == localUserId and activePlayerId == localUserId)
+			local canClickThisStack = false
+			if isRevealing and (p.stackCount and p.stackCount > 0) then
+				if myStackCount > 0 then
+					canClickThisStack = (uid == localUserId)
+				else
+					canClickThisStack = (uid ~= localUserId)
+				end
+			end
+
+			local stackStroke = stackBox:FindFirstChild("StackStroke") :: UIStroke?
+			if stackStroke then
+				if canClickThisStack then
+					stackStroke.Color = Theme.Colors.GoldGlow
+					stackStroke.Thickness = 3.5
+				else
+					stackStroke.Color = Theme.Colors.GoldMuted
+					stackStroke.Thickness = 2
+				end
+			end
 		end
 
 		-- Update Score Petals (Gems)
@@ -383,3 +407,4 @@ function TableView.UpdateCenter(gameState: string, currentBid: number, challenge
 end
 
 return TableView
+

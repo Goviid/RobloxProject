@@ -14,6 +14,7 @@ local NotificationBanner = require(script.UI.NotificationBanner)
 local TableView = require(script.UI.TableView)
 local HandBar = require(script.UI.HandBar)
 local ActionBar = require(script.UI.ActionBar)
+local CardRevealModal = require(script.UI.CardRevealModal)
 
 local localPlayer = Players.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui") :: PlayerGui
@@ -93,6 +94,11 @@ ActionBar.Create(screenGui, function(action: string, data: any)
 	end
 end)
 
+-- 5. Center Card Reveal Popup
+CardRevealModal.Create(screenGui)
+
+local lastKnownPlayers: { [string]: any } = {}
+
 -- ============================================================================
 -- 3. ACTION DISPATCHER (Client -> Server)
 -- ============================================================================
@@ -109,6 +115,7 @@ end
 -- ============================================================================
 -- State Changed: Main game loop sync
 Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
+	lastKnownPlayers = payload.tableState and payload.tableState.players or {}
 	local isMyTurn = (payload.activePlayerId == localPlayer.UserId)
 	local myData = payload.tableState and payload.tableState.players[tostring(localPlayer.UserId)]
 	local myHand = myData and myData.hand or {}
@@ -141,6 +148,13 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 	-- 4. Turn Timer Reset
 	if payload.gameState == Enums.GameState.Placement or payload.gameState == Enums.GameState.Bidding or payload.gameState == Enums.GameState.Revealing then
 		NotificationBanner.StartTimer(Constants.TURN_TIMEOUT)
+		if isMyTurn and payload.gameState == Enums.GameState.Revealing then
+			if myStackCount > 0 then
+				NotificationBanner.Show("YOU ARE CHALLENGER: Click YOUR stack to flip your cards first!", "warning")
+			else
+				NotificationBanner.Show("YOUR STACK IS CLEAR: Click an OPPONENT'S stack to flip!", "warning")
+			end
+		end
 	else
 		NotificationBanner.StopTimer()
 	end
@@ -159,7 +173,13 @@ end)
 -- Card Revealed (Card flipped by Challenger)
 Network.CardRevealed.OnClientEvent:Connect(function(data: any)
 	local isSkull = (data.cardType == Enums.CardType.Skull)
-	local msg = isSkull and "💀 SKULL REVEALED!" or "🌹 Rose Revealed (" .. data.cardsFlipped .. "/" .. data.targetCards .. ")"
+	local targetP = lastKnownPlayers[tostring(data.targetUserId)]
+	local targetName = targetP and targetP.name or "Player"
+
+	-- Trigger center screen flip animation popup
+	CardRevealModal.ShowCard(data.cardType, targetName, data.cardsFlipped, data.targetCards)
+
+	local msg = isSkull and ("💀 " .. targetName .. "'s SKULL was revealed!") or ("🌹 Rose Revealed from " .. targetName .. " (" .. data.cardsFlipped .. "/" .. data.targetCards .. ")")
 	NotificationBanner.Show(msg, isSkull and "alert" or "info")
 end)
 

@@ -31,7 +31,8 @@ F:\RobloxProject\
 │           ├── NotificationBanner.luau <-- Top announcement banner & 15s turn timer bar
 │           ├── HandBar.luau       <-- Bottom tray with 4 cards (Roses & Skull)
 │           ├── ActionBar.luau     <-- Contextual buttons ([Place Card], [Bid], [Pass])
-│           └── TableView.luau     <-- Circular 2-6 player table with stacks & score gems
+│           ├── TableView.luau     <-- Circular 2-6 player table with stacks & score gems
+│           └── CardRevealModal.luau<-- Center animated card flip popup (Rose vs Skull)
 ```
 
 ---
@@ -110,6 +111,10 @@ F:\RobloxProject\
 #### `UI/TableView.luau`
 * **Purpose:** The 2D tabletop view supporting 2 to 6 players radially.
 * Displays player names, stack height (stacked coaster tokens), 2-point score gems, turn highlight glow rings, and clickable stacks for the challenger during the reveal phase.
+
+#### `UI/CardRevealModal.luau`
+* **Purpose:** Center-screen card flip popup.
+* Plays an animated card reveal popup whenever a card is flipped by the challenger, showing the card face (`🌹 Rose` or `💥 Skull!`), who owned it, and current bet progress.
 
 #### `init.client.luau`
 * **Purpose:** Client entry point. Builds the `ScreenGui`, coordinates all UI components, and binds server events.

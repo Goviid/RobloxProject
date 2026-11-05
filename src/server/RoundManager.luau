@@ -72,8 +72,11 @@ end
 
 local function cancelTurnTimer()
 	if turnTimerThread then
-		task.cancel(turnTimerThread)
+		local thread = turnTimerThread
 		turnTimerThread = nil
+		if coroutine.running() ~= thread then
+			pcall(task.cancel, thread)
+		end
 	end
 end
 
@@ -81,6 +84,7 @@ end
 local runCurrentTurn: () -> ()
 
 local function onTurnTimeout()
+	turnTimerThread = nil -- Timer already executed
 	local activeId = RoundManager.GetActivePlayerId()
 	if not activeId then return end
 	local p = PlayerManager.GetPlayer(activeId)
@@ -323,7 +327,7 @@ function RoundManager.HandlePlayerAction(userId: number, action: string, data: a
 				runCurrentTurn()
 				return true
 			end
-		elseif action == Enums.PlayerAction.StartBid then
+		elseif action == Enums.PlayerAction.StartBid or action == Enums.PlayerAction.RaiseBid then
 			-- Can only start a bid if all players have placed their mandatory 1st card
 			if not haveAllPlacedFirstCard() then
 				return false, "All players must place at least 1 card before bidding can start."

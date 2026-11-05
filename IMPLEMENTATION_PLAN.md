@@ -189,3 +189,4 @@ flowchart TD
   - Round transition overlays ("Player 1 Bid 3!", "Skull Hit!", "Round Won!").
   - Match end screen celebrating the 2-point winner.
   - SFX integration and visual polish.
+

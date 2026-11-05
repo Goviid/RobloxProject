@@ -281,3 +281,4 @@ function HandBar.UpdateHand(handCards: { string }, isMyTurn: boolean, canPlace: 
 end
 
 return HandBar
+

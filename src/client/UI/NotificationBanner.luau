@@ -137,3 +137,4 @@ function NotificationBanner.StopTimer()
 end
 
 return NotificationBanner
+
