@@ -44,7 +44,7 @@ function Card3DManager.PlaceCard3D(seatIndex: number, stackCount: number)
 
 	local folder = getCardsFolder()
 	local coasterPos = coasterCF.Position
-	local baseY = 3.96
+	local baseY = coasterPos.Y + 0.04
 	local stackY = baseY + 0.08 + (stackCount - 1) * 0.12
 	local randomJitterRot = math.rad(math.random(-14, 14))
 

@@ -44,9 +44,7 @@ local lastKnownPlayers: { [string]: any } = {}
 local function buildUI()
 	local existing = playerGui:FindFirstChild("SkullsGui") :: ScreenGui?
 	if existing then
-		screenGui = existing
-		print("[Skulls & Roses] Found existing SkullsGui in PlayerGui.")
-		return
+		existing:Destroy()
 	end
 
 	screenGui = Instance.new("ScreenGui")
@@ -91,7 +89,11 @@ local function buildUI()
 	-- 5. Center Card Reveal Popup
 	CardRevealModal.Create(screenGui)
 
-	print("[Skulls & Roses] ScreenGui built and parented successfully.")
+	-- 6. Pre-populate initial oversized hand & place button immediately on startup
+	HandBar.UpdateHand({ Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Skull }, true, true)
+	ActionBar.UpdateState(true, Enums.GameState.Placement, 0, 0, true, false)
+
+	print("[Skulls & Roses] Fresh SkullsGui built and parented successfully.")
 end
 
 -- Initialize UI immediately

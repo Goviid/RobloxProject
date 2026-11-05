@@ -39,25 +39,32 @@ function TableBuilder.Build()
 	-- ------------------------------------------------------------------------
 	-- A. Regular Bright Studio Lighting Setup
 	-- ------------------------------------------------------------------------
-	Lighting.Technology = Enum.Technology.ShadowMap
-	Lighting.Brightness = 2.0
-	Lighting.Ambient = Color3.fromRGB(150, 150, 150)
-	Lighting.OutdoorAmbient = Color3.fromRGB(130, 130, 130)
-	Lighting.ClockTime = 14.0 -- 2 PM clear daytime
-	Lighting.GlobalShadows = true
+	pcall(function()
+		Lighting.Brightness = 2.0
+		Lighting.Ambient = Color3.fromRGB(150, 150, 150)
+		Lighting.OutdoorAmbient = Color3.fromRGB(130, 130, 130)
+		Lighting.ClockTime = 14.0 -- 2 PM clear daytime
+		Lighting.GlobalShadows = true
 
-	local oldCC = Lighting:FindFirstChild("SkullsColorCorrection")
-	if oldCC then oldCC:Destroy() end
-	local oldBloom = Lighting:FindFirstChild("SkullsBloom")
-	if oldBloom then oldBloom:Destroy() end
+		local oldCC = Lighting:FindFirstChild("SkullsColorCorrection")
+		if oldCC then oldCC:Destroy() end
+		local oldBloom = Lighting:FindFirstChild("SkullsBloom")
+		if oldBloom then oldBloom:Destroy() end
+	end)
+
+	-- Hide the default baseplate so only the polished LOCOfficial arena floor is visible
+	local baseplate = Workspace:FindFirstChild("Baseplate")
+	if baseplate and baseplate:IsA("BasePart") then
+		baseplate.Transparency = 1
+	end
 
 	-- ------------------------------------------------------------------------
 	-- B. Open Studio Arena Floor (LOCOfficial Style)
 	-- ------------------------------------------------------------------------
 	local floor = Instance.new("Part")
 	floor.Name = "ArenaFloor"
-	floor.Size = Vector3.new(120, 2, 120)
-	floor.Position = Vector3.new(0, -1, 0)
+	floor.Size = Vector3.new(140, 2, 140)
+	floor.Position = Vector3.new(0, 0, 0) -- Elevated cleanly above baseplate
 	floor.Anchored = true
 	floor.CanCollide = true
 	floor.Material = Enum.Material.WoodPlanks
@@ -69,7 +76,7 @@ function TableBuilder.Build()
 	rug.Name = "TableRug"
 	rug.Shape = Enum.PartType.Cylinder
 	rug.Size = Vector3.new(0.05, 26, 26)
-	rug.CFrame = CFrame.new(0, 0.03, 0) * CFrame.Angles(0, 0, math.rad(90))
+	rug.CFrame = CFrame.new(0, 1.03, 0) * CFrame.Angles(0, 0, math.rad(90))
 	rug.Anchored = true
 	rug.CanCollide = false
 	rug.Material = Enum.Material.Fabric
@@ -160,8 +167,8 @@ function TableBuilder.Build()
 		local dirX = math.cos(angle)
 		local dirZ = math.sin(angle)
 
-		-- 3D Card Coaster on Table Surface (Y = 3.96) - Oversized 3.2 studs
-		local coasterPos = Vector3.new(TABLE_POSITION.X + dirX * COASTER_DISTANCE, 3.96, TABLE_POSITION.Z + dirZ * COASTER_DISTANCE)
+		-- 3D Card Coaster on Table Surface (Oversized 3.2 studs)
+		local coasterPos = Vector3.new(TABLE_POSITION.X + dirX * COASTER_DISTANCE, TABLE_POSITION.Y + 0.96, TABLE_POSITION.Z + dirZ * COASTER_DISTANCE)
 		local coaster = Instance.new("Part")
 		coaster.Name = "Coaster_" .. seatIdx
 		coaster.Shape = Enum.PartType.Cylinder
@@ -183,8 +190,8 @@ function TableBuilder.Build()
 		trim.Adornee = coaster
 		trim.Parent = coaster
 
-		-- Standing Floor Pad (Brass ring on floor)
-		local standPos = Vector3.new(TABLE_POSITION.X + dirX * STAND_DISTANCE, 0.05, TABLE_POSITION.Z + dirZ * STAND_DISTANCE)
+		-- Standing Floor Pad (Brass ring on floor resting on ArenaFloor Y=1.0)
+		local standPos = Vector3.new(TABLE_POSITION.X + dirX * STAND_DISTANCE, 1.05, TABLE_POSITION.Z + dirZ * STAND_DISTANCE)
 		local standPad = Instance.new("Part")
 		standPad.Name = "StandPad_" .. seatIdx
 		standPad.Shape = Enum.PartType.Cylinder
@@ -196,9 +203,9 @@ function TableBuilder.Build()
 		standPad.Color = Color3.fromRGB(75, 55, 38)
 		standPad.Parent = arena
 
-		-- Standing CFrame: Standing on the pad, facing directly at the table center
-		local lookTarget = Vector3.new(TABLE_POSITION.X, 3.2, TABLE_POSITION.Z)
-		local charStandPos = Vector3.new(standPos.X, 3.0, standPos.Z)
+		-- Standing CFrame: Standing on the pad (Y=4.0 for HumanoidRootPart), facing directly at table center
+		local lookTarget = Vector3.new(TABLE_POSITION.X, TABLE_POSITION.Y + 0.5, TABLE_POSITION.Z)
+		local charStandPos = Vector3.new(standPos.X, 4.0, standPos.Z)
 		standingCFrames[seatIdx] = CFrame.lookAt(charStandPos, lookTarget)
 
 		-- Seat 1 Default Spawn Location: Engine places the joining player right on Pad 1
@@ -206,7 +213,7 @@ function TableBuilder.Build()
 			local spawn = Instance.new("SpawnLocation")
 			spawn.Name = "Seat1_SpawnLocation"
 			spawn.Size = Vector3.new(3.0, 0.2, 3.0)
-			spawn.CFrame = CFrame.lookAt(Vector3.new(standPos.X, 0.2, standPos.Z), lookTarget)
+			spawn.CFrame = CFrame.lookAt(Vector3.new(standPos.X, 1.2, standPos.Z), lookTarget)
 			spawn.Anchored = true
 			spawn.CanCollide = true
 			spawn.Transparency = 1
@@ -298,10 +305,10 @@ end
 -- 3. POSITION HUMAN PLAYERS (STANDING AT POD, FACING TABLE)
 -- ============================================================================
 function TableBuilder.StandPlayer(player: Player, seatIndex: number)
-	local targetCF = standingCFrames[seatIndex]
-	if not targetCF then return end
-
 	local function setupPlayerCharacter(char: Model)
+		local targetCF = standingCFrames[seatIndex]
+		if not targetCF then return end
+
 		local hrp = char:WaitForChild("HumanoidRootPart", 10) :: Part?
 		local humanoid = char:WaitForChild("Humanoid", 10) :: Humanoid?
 		if not hrp or not humanoid then return end

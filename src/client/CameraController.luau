@@ -9,8 +9,8 @@ local TweenService = game:GetService("TweenService")
 local CameraController = {}
 
 -- Camera Framing: Elevated behind Seat 1, framing your avatar in foreground and opponents across table
-local LOOK_TARGET = Vector3.new(0, 3.2, 0.8)
-local DEFAULT_CAMERA_POS = Vector3.new(0, 7.6, 15.6)
+local LOOK_TARGET = Vector3.new(0, 3.6, 0.8)
+local DEFAULT_CAMERA_POS = Vector3.new(0, 8.8, 16.2)
 local DEFAULT_FOV = 62
 
 local currentTargetPos = DEFAULT_CAMERA_POS
