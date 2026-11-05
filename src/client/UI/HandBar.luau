@@ -214,7 +214,8 @@ function HandBar.UpdateHand(handCards: { string }, isMyTurn: boolean, canPlace: 
 	-- Rose update
 	local roseBtn = cardButtons[Enums.CardType.Rose]
 	if roseBtn then
-		local countNum = roseBtn:FindFirstChild("CountPill") and roseBtn.CountPill:FindFirstChild("CountNum") :: TextLabel?
+		local countPill = roseBtn:FindFirstChild("CountPill")
+		local countNum = if countPill then countPill:FindFirstChild("CountNum") :: TextLabel? else nil
 		if countNum then countNum.Text = tostring(roseCount) end
 		local isEnabled = (roseCount > 0)
 		roseBtn:SetAttribute("Disabled", not isEnabled)
@@ -228,7 +229,8 @@ function HandBar.UpdateHand(handCards: { string }, isMyTurn: boolean, canPlace: 
 	-- Skull update
 	local skullBtn = cardButtons[Enums.CardType.Skull]
 	if skullBtn then
-		local countNum = skullBtn:FindFirstChild("CountPill") and skullBtn.CountPill:FindFirstChild("CountNum") :: TextLabel?
+		local countPill = skullBtn:FindFirstChild("CountPill")
+		local countNum = if countPill then countPill:FindFirstChild("CountNum") :: TextLabel? else nil
 		if countNum then countNum.Text = tostring(skullCount) end
 		local isEnabled = (skullCount > 0)
 		skullBtn:SetAttribute("Disabled", not isEnabled)

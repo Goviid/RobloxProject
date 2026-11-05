@@ -44,6 +44,19 @@ local function spawnTestBots(neededCount: number)
 	end
 end
 
+-- Re-spawn any existing bots in Workspace if arena was re-created
+for _, p in pairs(PlayerManager.GetAllPlayers()) do
+	if p.isBot then
+		TableBuilder.SpawnStandingBot(p.name, p.seatIndex)
+	end
+end
+
+-- Pre-spawn default bots so the table is immediately populated with standing avatars
+local activeAtStartup = PlayerManager.GetActivePlayers()
+if Constants.ENABLE_BOTS and #activeAtStartup < Constants.DEFAULT_TEST_BOTS then
+	spawnTestBots(Constants.DEFAULT_TEST_BOTS - #activeAtStartup)
+end
+
 -- Player Join / Leave
 local function onPlayerAdded(player: Player)
 	print("[Skulls & Roses] Player joined: " .. player.Name .. " (" .. player.UserId .. ")")

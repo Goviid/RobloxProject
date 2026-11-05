@@ -111,10 +111,10 @@ F:\RobloxProject\
 ### 3. Client Modules (`src/client/`)
 
 #### `CameraController.luau`
-* **Purpose:** First-person tabletop camera locked at Seat 1 facing the table and opponents (LOCOfficial style).
-* **Per-Frame Override Lock:** Binds to `RunService.RenderStepped` above standard camera priority, fetching the live `Workspace.CurrentCamera` dynamically to prevent Roblox engine hijacking.
-* **Tabletop Framing:** Eye-level view from Seat 1 (`Vector3.new(0, 5.4, 8.6)`) looking directly across the table at opponent bot avatars, table coasters, and card stacks.
-* **Dynamic Polish:** Smooth FOV turn punch on active turn and dramatic screen shake on Skull hits.
+* **Purpose:** 3D tabletop over-the-shoulder camera elevated behind Seat 1 framing your avatar, the circular table, and opponent bots (LOCOfficial style).
+* **Per-Frame Override Lock:** Binds to `RunService.RenderStepped` above standard camera priority (`Enum.RenderPriority.Camera.Value + 20`), dynamically updating `Workspace.CurrentCamera` to prevent Roblox engine hijacking.
+* **Cinematic Framing:** Frames the local player's back/shoulders at Seat 1 in the foreground (`Vector3.new(0, 7.6, 15.6)`) looking directly across the table (`Vector3.new(0, 3.2, 0.8)`), keeping table coasters, 3D card stacks, and all standing opponent bots in crystal clear view.
+* **Dynamic Polish:** Smooth FOV turn punch on active turn and dramatic screen shake on Skull hits. Avatar remains 100% visible with overhead player billboard tag.
 
 #### `UI/Theme.luau`
 * **Purpose:** Theme A (Calavera / Day of the Dead) design tokens.

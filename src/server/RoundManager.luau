@@ -2,6 +2,7 @@
 -- RoundManager.luau
 -- Core state machine and rule arbiter for Skulls & Roses matches
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Enums = require(ReplicatedStorage.Shared.Enums)
 local Constants = require(ReplicatedStorage.Shared.Constants)
@@ -36,7 +37,7 @@ end
 function RoundManager.SendStateToPlayer(userId: number)
 	local p = PlayerManager.GetPlayer(userId)
 	if not p or p.isBot then return end
-	local playerObj = game.Players:GetPlayerByUserId(userId)
+	local playerObj = Players:GetPlayerByUserId(userId)
 	if not playerObj then return end
 
 	local payload = {

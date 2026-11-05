@@ -208,7 +208,7 @@ function TableBuilder.Build()
 			spawn.Size = Vector3.new(3.0, 0.2, 3.0)
 			spawn.CFrame = CFrame.lookAt(Vector3.new(standPos.X, 0.2, standPos.Z), lookTarget)
 			spawn.Anchored = true
-			spawn.CanCollide = false
+			spawn.CanCollide = true
 			spawn.Transparency = 1
 			spawn.Neutral = true
 			spawn.Duration = 0

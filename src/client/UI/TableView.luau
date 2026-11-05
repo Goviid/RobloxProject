@@ -80,12 +80,14 @@ local function createPlayerPill(userId: number, name: string, isBot: boolean): F
 
 	task.spawn(function()
 		if not isBot and userId > 0 then
-			local thumb, isReady = Players:GetUserThumbnailAsync(
-				userId,
-				Enum.ThumbnailType.HeadShot,
-				Enum.ThumbnailSize.Size100x100
-			)
-			if isReady and avatarImage.Parent then
+			local success, thumb, isReady = pcall(function()
+				return Players:GetUserThumbnailAsync(
+					userId,
+					Enum.ThumbnailType.HeadShot,
+					Enum.ThumbnailSize.Size100x100
+				)
+			end)
+			if success and isReady and avatarImage.Parent then
 				avatarImage.Image = thumb
 			end
 		else
@@ -271,31 +273,34 @@ end
 -- ============================================================================
 -- 3. UPDATE PLAYER STRIP (Scores, Stacks, Turn Highlights)
 -- ============================================================================
-function TableView.UpdateLayout(playersData: { [string]: any }, activePlayerId: number?, challengerId: number?)
+function TableView.UpdateLayout(playersData: { [string]: any }?, activePlayerId: number?, challengerId: number?)
 	if not playerStripFrame then return end
+	local pMap = playersData or {}
 
 	local localUserId = Players.LocalPlayer and Players.LocalPlayer.UserId or 0
 	local sortedPlayers = {}
 
-	for _, p in pairs(playersData) do
-		table.insert(sortedPlayers, p)
+	for _, p in pairs(pMap) do
+		if p and typeof(p) == "table" then
+			table.insert(sortedPlayers, p)
+		end
 	end
 
-	-- Order players by seat index
+	-- Order players by seat index safely
 	table.sort(sortedPlayers, function(a, b)
-		return a.seatIndex < b.seatIndex
+		return (a.seatIndex or 0) < (b.seatIndex or 0)
 	end)
 
 	for _, p in ipairs(sortedPlayers) do
 		local uid = p.userId
 		local pill = playerPills[uid]
 		if not pill then
-			pill = createPlayerPill(uid, p.name, p.isBot)
+			pill = createPlayerPill(uid, p.name or "Player", p.isBot or false)
 			pill.Parent = playerStripFrame
 			playerPills[uid] = pill
 		end
 
-		pill.LayoutOrder = p.seatIndex
+		pill.LayoutOrder = p.seatIndex or 1
 
 		-- Update Stack Count Badge
 		local stackBtn = pill:FindFirstChild("StackButton") :: TextButton?
@@ -303,7 +308,7 @@ function TableView.UpdateLayout(playersData: { [string]: any }, activePlayerId: 
 			stackBtn.Text = tostring(p.stackCount or 0)
 
 			-- Challenger reveal target glow
-			local myData = playersData[tostring(localUserId)]
+			local myData = pMap[tostring(localUserId)]
 			local myStackCount = myData and myData.stackCount or 0
 			local isRevealing = (challengerId == localUserId and activePlayerId == localUserId)
 			local canClickThisStack = false

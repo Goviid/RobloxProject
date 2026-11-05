@@ -35,15 +35,27 @@ local function createDefaultHand(): { string }
 	return hand
 end
 
--- Find next open seat 1..MAX_PLAYERS
-local function findOpenSeat(): number?
+-- Find next open seat 1..MAX_PLAYERS (Reserves Seat 1 for human players)
+local function findOpenSeat(isBot: boolean): number?
 	local taken = {}
 	for _, p in pairs(players) do
 		taken[p.seatIndex] = true
 	end
-	for i = 1, Constants.MAX_PLAYERS do
-		if not taken[i] then
-			return i
+	if isBot then
+		-- Bots start at seat 2 so seat 1 is reserved for the local human player
+		for i = 2, Constants.MAX_PLAYERS do
+			if not taken[i] then
+				return i
+			end
+		end
+		if not taken[1] then return 1 end
+	else
+		-- Humans prefer seat 1 for direct alignment with the over-the-shoulder camera
+		if not taken[1] then return 1 end
+		for i = 2, Constants.MAX_PLAYERS do
+			if not taken[i] then
+				return i
+			end
 		end
 	end
 	return nil
@@ -54,7 +66,7 @@ function PlayerManager.AddPlayer(player: Player): PlayerData?
 		return players[player.UserId]
 	end
 
-	local seat = findOpenSeat()
+	local seat = findOpenSeat(false)
 	if not seat then
 		return nil
 	end
@@ -77,7 +89,7 @@ function PlayerManager.AddPlayer(player: Player): PlayerData?
 end
 
 function PlayerManager.AddBot(name: string): PlayerData?
-	local seat = findOpenSeat()
+	local seat = findOpenSeat(true)
 	if not seat then
 		return nil
 	end

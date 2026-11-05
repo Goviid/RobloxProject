@@ -6,38 +6,47 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local FOLDER_NAME = "SkullsNetwork"
-local folder = ReplicatedStorage:FindFirstChild(FOLDER_NAME)
 
-if not folder and RunService:IsServer() then
-	folder = Instance.new("Folder")
-	folder.Name = FOLDER_NAME
-	folder.Parent = ReplicatedStorage
-elseif not folder then
-	folder = ReplicatedStorage:WaitForChild(FOLDER_NAME, 10) :: Folder
+local folder: Folder
+if RunService:IsServer() then
+	local existing = ReplicatedStorage:FindFirstChild(FOLDER_NAME) :: Folder?
+	if existing then
+		folder = existing
+	else
+		folder = Instance.new("Folder")
+		folder.Name = FOLDER_NAME
+		folder.Parent = ReplicatedStorage
+	end
+else
+	folder = ReplicatedStorage:WaitForChild(FOLDER_NAME) :: Folder
 end
 
 local function getOrCreateRemoteEvent(name: string): RemoteEvent
-	local event = folder:FindFirstChild(name) :: RemoteEvent?
-	if not event and RunService:IsServer() then
-		event = Instance.new("RemoteEvent")
-		event.Name = name
-		event.Parent = folder
-	elseif not event then
-		event = folder:WaitForChild(name, 10) :: RemoteEvent
+	if RunService:IsServer() then
+		local event = folder:FindFirstChild(name) :: RemoteEvent?
+		if not event then
+			event = Instance.new("RemoteEvent")
+			event.Name = name
+			event.Parent = folder
+		end
+		return event
+	else
+		return folder:WaitForChild(name) :: RemoteEvent
 	end
-	return event
 end
 
 local function getOrCreateRemoteFunction(name: string): RemoteFunction
-	local rf = folder:FindFirstChild(name) :: RemoteFunction?
-	if not rf and RunService:IsServer() then
-		rf = Instance.new("RemoteFunction")
-		rf.Name = name
-		rf.Parent = folder
-	elseif not rf then
-		rf = folder:WaitForChild(name, 10) :: RemoteFunction
+	if RunService:IsServer() then
+		local rf = folder:FindFirstChild(name) :: RemoteFunction?
+		if not rf then
+			rf = Instance.new("RemoteFunction")
+			rf.Name = name
+			rf.Parent = folder
+		end
+		return rf
+	else
+		return folder:WaitForChild(name) :: RemoteFunction
 	end
-	return rf
 end
 
 local Network = {
@@ -58,4 +67,3 @@ local Network = {
 }
 
 return Network
-

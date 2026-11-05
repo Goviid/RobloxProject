@@ -4,6 +4,12 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterGui = game:GetService("StarterGui")
+
+-- Prevent Roblox engine from destroying PlayerGui on character spawn
+pcall(function()
+	StarterGui.ResetPlayerGuisOnSpawn = false
+end)
 
 local Constants = require(ReplicatedStorage.Shared.Constants)
 local Enums = require(ReplicatedStorage.Shared.Enums)
@@ -24,61 +30,83 @@ local playerGui = localPlayer:WaitForChild("PlayerGui") :: PlayerGui
 print("[Skulls & Roses] Client UI initializing for " .. localPlayer.Name .. "...")
 
 -- ============================================================================
--- 1. 2.5D CAMERA & SCREEN GUI SETUP (LOCOfficial style)
+-- 1. CAMERA CONTROLLER SETUP (LOCOfficial Tabletop Over-the-Shoulder Style)
 -- ============================================================================
--- Initialize the 2.5D fixed tabletop camera framing the 3D table & avatars
 CameraController.Init()
 
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "SkullsGui"
-screenGui.ResetOnSpawn = false
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGui.IgnoreGuiInset = true -- Fills whole screen nicely
-screenGui.Parent = playerGui
-
 -- ============================================================================
--- 2. INITIALIZE MODULAR UI COMPONENTS
+-- 2. SCREEN GUI & MODULAR UI SETUP (Guaranteed persistence on spawn)
 -- ============================================================================
--- Forward declarations for callbacks
+local screenGui: ScreenGui
 local onSubmitAction: (action: string, data: any) -> ()
+local lastKnownPlayers: { [string]: any } = {}
 
--- 1. Top Banner & Timer
-NotificationBanner.Create(screenGui)
+local function buildUI()
+	local existing = playerGui:FindFirstChild("SkullsGui") :: ScreenGui?
+	if existing then
+		screenGui = existing
+		print("[Skulls & Roses] Found existing SkullsGui in PlayerGui.")
+		return
+	end
 
--- 2. Center Table & Radial Seats
-TableView.Create(screenGui, function(targetUserId: number)
-	-- When local player is challenger and clicks a stack during Revealing phase
-	onSubmitAction(Enums.PlayerAction.RevealCard, { targetUserId = targetUserId })
-end)
+	screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "SkullsGui"
+	screenGui.ResetOnSpawn = false
+	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	screenGui.IgnoreGuiInset = true
+	screenGui.Parent = playerGui
 
--- 3. Bottom Hand Tray
-HandBar.Create(screenGui, function(cardType: string)
-	print("[HandBar] Selected card: " .. cardType)
-	ActionBar.SetSelectedCard(cardType)
-end)
+	-- 1. Top Banner & Timer
+	NotificationBanner.Create(screenGui)
 
--- 4. Bottom-Right Action Buttons
-ActionBar.Create(screenGui, function(action: string, data: any)
-	if action == Enums.PlayerAction.PlaceCard then
-		local selected = HandBar.GetSelectedCard() or Enums.CardType.Rose
-		data.cardType = selected
-		-- Trigger LOCOfficial flying card animation towards player's 3D coaster
-		CardAnimation.PlayCardFly(
-			screenGui,
-			UDim2.new(0.5, 0, 0.85, 0),
-			UDim2.new(0.5, 0, 0.55, 0),
-			selected
-		)
-		onSubmitAction(action, data)
-	else
-		onSubmitAction(action, data)
+	-- 2. Center Table & Radial Seats
+	TableView.Create(screenGui, function(targetUserId: number)
+		onSubmitAction(Enums.PlayerAction.RevealCard, { targetUserId = targetUserId })
+	end)
+
+	-- 3. Bottom Hand Tray
+	HandBar.Create(screenGui, function(cardType: string)
+		print("[HandBar] Selected card: " .. cardType)
+		ActionBar.SetSelectedCard(cardType)
+	end)
+
+	-- 4. Bottom-Right Action Buttons
+	ActionBar.Create(screenGui, function(action: string, data: any)
+		if action == Enums.PlayerAction.PlaceCard then
+			local selected = HandBar.GetSelectedCard() or Enums.CardType.Rose
+			data.cardType = selected
+			-- Trigger flying card animation towards player's 3D coaster
+			CardAnimation.PlayCardFly(
+				screenGui,
+				UDim2.new(0.5, 0, 0.85, 0),
+				UDim2.new(0.5, 0, 0.55, 0),
+				selected
+			)
+			onSubmitAction(action, data)
+		else
+			onSubmitAction(action, data)
+		end
+	end)
+
+	-- 5. Center Card Reveal Popup
+	CardRevealModal.Create(screenGui)
+
+	print("[Skulls & Roses] ScreenGui built and parented successfully.")
+end
+
+-- Initialize UI immediately
+buildUI()
+
+-- Auto-heal UI if character respawns or PlayerGui resets
+localPlayer.CharacterAdded:Connect(function()
+	task.wait(0.2)
+	if not playerGui:FindFirstChild("SkullsGui") then
+		print("[Skulls & Roses] Rebuilding ScreenGui after character load...")
+		buildUI()
+		-- Re-sync state
+		Network.RequestState:FireServer()
 	end
 end)
-
--- 5. Center Card Reveal Popup
-CardRevealModal.Create(screenGui)
-
-local lastKnownPlayers: { [string]: any } = {}
 
 -- ============================================================================
 -- 3. ACTION DISPATCHER (Client -> Server)
@@ -96,56 +124,62 @@ end
 -- ============================================================================
 -- State Changed: Main game loop sync
 Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
-	lastKnownPlayers = payload.tableState and payload.tableState.players or {}
-	local isMyTurn = (payload.activePlayerId == localPlayer.UserId)
-	local myData = payload.tableState and payload.tableState.players[tostring(localPlayer.UserId)]
-	local myStackCount = myData and myData.stackCount or 0
-	local myHand = myData and myData.hand
-	if not myHand or #myHand == 0 then
-		if myStackCount == 0 then
-			myHand = { Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Skull }
-		else
-			myHand = {}
-		end
-	end
-	local challengerData = payload.challengerId and payload.tableState.players[tostring(payload.challengerId)]
-
-	-- 1. Update Table View (seats, stack heights, score gems)
-	CameraController.SetTurnFocus(isMyTurn)
-	TableView.UpdateLayout(payload.tableState.players, payload.activePlayerId, payload.challengerId)
-	TableView.UpdateCenter(
-		payload.gameState,
-		payload.highestBid,
-		challengerData and challengerData.name or nil,
-		payload.totalCardsOnTable
-	)
-
-	-- 2. Update Hand Tray
-	local canPlace = (payload.gameState == Enums.GameState.Placement)
-	HandBar.UpdateHand(myHand, isMyTurn, canPlace)
-
-	-- 3. Update Action Buttons
-	ActionBar.UpdateState(
-		isMyTurn,
-		payload.gameState,
-		payload.highestBid,
-		payload.totalCardsOnTable,
-		#myHand > 0,
-		myStackCount > 0
-	)
-
-	-- 4. Turn Timer Reset
-	if payload.gameState == Enums.GameState.Placement or payload.gameState == Enums.GameState.Bidding or payload.gameState == Enums.GameState.Revealing then
-		NotificationBanner.StartTimer(Constants.TURN_TIMEOUT)
-		if isMyTurn and payload.gameState == Enums.GameState.Revealing then
-			if myStackCount > 0 then
-				NotificationBanner.Show("YOU ARE CHALLENGER: Click YOUR stack to flip your cards first!", "warning")
+	local ok, err = pcall(function()
+		lastKnownPlayers = (payload.tableState and payload.tableState.players) or {}
+		local isMyTurn = (payload.activePlayerId == localPlayer.UserId)
+		local myData = lastKnownPlayers[tostring(localPlayer.UserId)]
+		local myStackCount = myData and myData.stackCount or 0
+		local myHand = myData and myData.hand
+		if not myHand or #myHand == 0 then
+			if myStackCount == 0 then
+				myHand = { Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Skull }
 			else
-				NotificationBanner.Show("YOUR STACK IS CLEAR: Click an OPPONENT'S stack to flip!", "warning")
+				myHand = {}
 			end
 		end
-	else
-		NotificationBanner.StopTimer()
+		local challengerData = payload.challengerId and lastKnownPlayers[tostring(payload.challengerId)]
+
+		-- 1. Update Table View (seats, stack heights, score gems)
+		CameraController.SetTurnFocus(isMyTurn)
+		TableView.UpdateLayout(lastKnownPlayers, payload.activePlayerId, payload.challengerId)
+		TableView.UpdateCenter(
+			payload.gameState,
+			payload.highestBid or 0,
+			challengerData and challengerData.name or nil,
+			payload.totalCardsOnTable or 0
+		)
+
+		-- 2. Update Hand Tray
+		local canPlace = (payload.gameState == Enums.GameState.Placement)
+		HandBar.UpdateHand(myHand, isMyTurn, canPlace)
+
+		-- 3. Update Action Buttons
+		ActionBar.UpdateState(
+			isMyTurn,
+			payload.gameState,
+			payload.highestBid or 0,
+			payload.totalCardsOnTable or 0,
+			#myHand > 0,
+			myStackCount > 0
+		)
+
+		-- 4. Turn Timer Reset
+		if payload.gameState == Enums.GameState.Placement or payload.gameState == Enums.GameState.Bidding or payload.gameState == Enums.GameState.Revealing then
+			NotificationBanner.StartTimer(Constants.TURN_TIMEOUT)
+			if isMyTurn and payload.gameState == Enums.GameState.Revealing then
+				if myStackCount > 0 then
+					NotificationBanner.Show("YOU ARE CHALLENGER: Click YOUR stack to flip your cards first!", "warning")
+				else
+					NotificationBanner.Show("YOUR STACK IS CLEAR: Click an OPPONENT'S stack to flip!", "warning")
+				end
+			end
+		else
+			NotificationBanner.StopTimer()
+		end
+	end)
+
+	if not ok then
+		warn("[Skulls & Roses] Error handling GameStateChanged: " .. tostring(err))
 	end
 end)
 
