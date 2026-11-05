@@ -1,7 +1,7 @@
 --!strict
 -- HandBar.luau
--- 2.5D Tactile Hand of Circular Cards (LOCOfficial style)
--- Features fanned angles, overlapping hand layout, 2.5D layered depth, drop shadows, and spring hover elevation
+-- Tactile 2.5D Hand of Oversized Circular Cards (LOCOfficial style)
+-- Raised height, rich textured medallions, spring hover elevation, and direct click placement
 
 local TweenService = game:GetService("TweenService")
 local Theme = require(script.Parent.Theme)
@@ -13,21 +13,23 @@ export type CardSelectCallback = (cardType: string, cardIndex: number) -> ()
 local onCardClickedCallback: CardSelectCallback? = nil
 
 local dockFrame: Frame? = nil
-local cardButtonContainers: { Frame } = {}
+local cardContainers: { Frame } = {}
 local currentHand: { string } = {}
 local canCurrentlyPlace = false
 local isPlayerTurn = false
 local selectedCard: string? = nil
 
--- 2.5D Card Physical Geometry
-local CARD_DIAMETER = 112
-local CARD_OVERLAP_SPACING = 88 -- Slight horizontal overlap like physical held cards
+-- Oversized 2.5D Card Geometry
+local CARD_DIAMETER = 144       -- Oversized substantial circular card
+local CARD_OVERLAP_SPACING = 114 -- Natural horizontal overlap in hand
+local RESTING_Y_OFFSET = -75    -- Raised height so full card is visible hovering above screen bottom
+local HOVER_LIFT_Y_OFFSET = -135 -- Elevated high into view when hovered
 
 -- Calculated fanned rotation angles (degrees) for natural hand curve
 local function getFannedAngle(index: number, totalCards: number): number
 	if totalCards <= 1 then return 0 end
 	local normalized = (index - 1) / (totalCards - 1) -- 0.0 to 1.0
-	local maxAngle = if totalCards == 4 then 7.0 elseif totalCards == 3 then 4.5 else 3.0
+	local maxAngle = if totalCards == 4 then 7.5 elseif totalCards == 3 then 5.0 else 3.0
 	return (normalized - 0.5) * (maxAngle * 2)
 end
 
@@ -35,11 +37,11 @@ end
 local function getArchYOffset(index: number, totalCards: number): number
 	if totalCards <= 1 then return 0 end
 	local centerDist = math.abs((index - 1) - (totalCards - 1) / 2)
-	return centerDist * 3.5
+	return centerDist * 4.5
 end
 
 -- ============================================================================
--- 1. CONSTRUCT A 2.5D CIRCULAR CARD
+-- 1. CONSTRUCT A RICH TEXTURED 2.5D CIRCULAR CARD
 -- ============================================================================
 local function create25DCard(
 	cardType: string,
@@ -51,10 +53,10 @@ local function create25DCard(
 	local isRose = (cardType == Enums.CardType.Rose)
 	local rotAngle = getFannedAngle(index, totalCards)
 	local archY = getArchYOffset(index, totalCards)
-	local restingPos = UDim2.new(0.5, xOffset, 1, -12 + archY)
+	local restingPos = UDim2.new(0.5, xOffset, 1, RESTING_Y_OFFSET + archY)
 	local baseZIndex = 20 + index
 
-	-- Outer Container (handles rotation & placement)
+	-- Outer Container (handles position, rotation & hover)
 	local container = Instance.new("Frame")
 	container.Name = "CardHolder_" .. index .. "_" .. cardType
 	container.Size = UDim2.new(0, CARD_DIAMETER, 0, CARD_DIAMETER)
@@ -64,13 +66,13 @@ local function create25DCard(
 	container.BackgroundTransparency = 1
 	container.ZIndex = baseZIndex
 
-	-- 1. 2.5D Dynamic Drop Shadow (Underneath card)
+	-- 1. Tactile 2.5D Drop Shadow
 	local shadow = Instance.new("Frame")
 	shadow.Name = "CardShadow"
 	shadow.Size = UDim2.new(1, 0, 1, 0)
-	shadow.Position = UDim2.new(0, 0, 0, 6)
-	shadow.BackgroundColor3 = Color3.fromRGB(10, 30, 55)
-	shadow.BackgroundTransparency = 0.65
+	shadow.Position = UDim2.new(0, 0, 0, 8)
+	shadow.BackgroundColor3 = Color3.fromRGB(10, 25, 45)
+	shadow.BackgroundTransparency = 0.60
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = baseZIndex
 	shadow.Parent = container
@@ -84,7 +86,7 @@ local function create25DCard(
 	btn.Name = "CardButton"
 	btn.Size = UDim2.new(1, 0, 1, 0)
 	btn.Position = UDim2.new(0, 0, 0, 0)
-	btn.BackgroundColor3 = isRose and Color3.fromRGB(175, 24, 42) or Color3.fromRGB(24, 20, 26)
+	btn.BackgroundColor3 = isRose and Color3.fromRGB(205, 30, 55) or Color3.fromRGB(36, 32, 42)
 	btn.BorderSizePixel = 0
 	btn.AutoButtonColor = false
 	btn.ZIndex = baseZIndex + 1
@@ -94,123 +96,159 @@ local function create25DCard(
 	btnCorner.CornerRadius = UDim.new(1, 0)
 	btnCorner.Parent = btn
 
-	-- 3. Outer Ornate Gold Rim (Tactile physical bevel)
+	-- 3. Rich Color Gradient Texture (Rose: Radiant Ruby; Skull: Obsidian Slate)
+	local gradient = Instance.new("UIGradient")
+	gradient.Rotation = 45
+	if isRose then
+		gradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0.0, Color3.fromRGB(240, 45, 75)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(195, 24, 48)),
+			ColorSequenceKeypoint.new(1.0, Color3.fromRGB(125, 12, 30)),
+		})
+	else
+		gradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0.0, Color3.fromRGB(55, 50, 65)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(32, 28, 38)),
+			ColorSequenceKeypoint.new(1.0, Color3.fromRGB(16, 14, 20)),
+		})
+	end
+	gradient.Parent = btn
+
+	-- 4. Outer Beveled Metallic Rim (Tactile 3D Bevel)
 	local stroke = Instance.new("UIStroke")
-	stroke.Name = "GoldBevelRim"
-	stroke.Color = isRose and Color3.fromRGB(245, 195, 60) or Color3.fromRGB(250, 180, 50)
-	stroke.Thickness = 3.6
+	stroke.Name = "OuterGoldRim"
+	stroke.Color = isRose and Color3.fromRGB(250, 205, 75) or Color3.fromRGB(245, 180, 60)
+	stroke.Thickness = 4.2
 	stroke.Parent = btn
 
-	-- 4. 2.5D Top-Light Bevel Accent Ring
-	local bevelRing = Instance.new("Frame")
-	bevelRing.Name = "BevelHighlightRing"
-	bevelRing.Size = UDim2.new(1, -12, 1, -12)
-	bevelRing.Position = UDim2.new(0, 6, 0, 6)
-	bevelRing.BackgroundTransparency = 1
-	bevelRing.ZIndex = baseZIndex + 2
-	bevelRing.Parent = btn
+	-- 5. Inner Concentric Filigree Ring
+	local innerRing = Instance.new("Frame")
+	innerRing.Name = "InnerRing"
+	innerRing.Size = UDim2.new(1, -16, 1, -16)
+	innerRing.Position = UDim2.new(0, 8, 0, 8)
+	innerRing.BackgroundTransparency = 1
+	innerRing.ZIndex = baseZIndex + 2
+	innerRing.Parent = btn
 
-	local ringCorner = Instance.new("UICorner")
-	ringCorner.CornerRadius = UDim.new(1, 0)
-	ringCorner.Parent = bevelRing
+	local innerCorner = Instance.new("UICorner")
+	innerCorner.CornerRadius = UDim.new(1, 0)
+	innerCorner.Parent = innerRing
 
-	local ringStroke = Instance.new("UIStroke")
-	ringStroke.Color = Color3.fromRGB(255, 245, 200)
-	ringStroke.Transparency = 0.45
-	ringStroke.Thickness = 1.4
-	ringStroke.Parent = bevelRing
+	local innerStroke = Instance.new("UIStroke")
+	innerStroke.Color = isRose and Color3.fromRGB(255, 235, 160) or Color3.fromRGB(230, 200, 140)
+	innerStroke.Transparency = 0.35
+	innerStroke.Thickness = 1.8
+	innerStroke.Parent = innerRing
 
-	-- 5. Center Embossed Icon (🌹 or 💀)
+	-- 6. Center Embossed Icon (🌹 or 💀)
 	local icon = Instance.new("TextLabel")
 	icon.Name = "CardIcon"
-	icon.Size = UDim2.new(1, 0, 0, 56)
-	icon.Position = UDim2.new(0, 0, 0, 16)
+	icon.Size = UDim2.new(1, 0, 0, 72)
+	icon.Position = UDim2.new(0, 0, 0, 22)
 	icon.BackgroundTransparency = 1
 	icon.Font = Theme.Fonts.Title
-	icon.TextSize = 52
+	icon.TextSize = 64
 	icon.Text = isRose and "🌹" or "💀"
 	icon.ZIndex = baseZIndex + 3
 	icon.Parent = btn
 
-	-- 6. Bottom Clean Curved Name ("ROSE" or "SKULL")
+	-- Icon Drop Shadow for embossed 2.5D appearance
+	local iconShadow = Instance.new("TextLabel")
+	iconShadow.Name = "IconShadow"
+	iconShadow.Size = UDim2.new(1, 0, 0, 72)
+	iconShadow.Position = UDim2.new(0, 2, 0, 24)
+	iconShadow.BackgroundTransparency = 1
+	iconShadow.Font = Theme.Fonts.Title
+	iconShadow.TextSize = 64
+	iconShadow.TextColor3 = Color3.fromRGB(0, 0, 0)
+	iconShadow.TextTransparency = 0.65
+	iconShadow.Text = isRose and "🌹" or "💀"
+	iconShadow.ZIndex = baseZIndex + 2
+	iconShadow.Parent = btn
+
+	-- 7. Bottom Clean Gold Ribbon Label ("ROSE" or "SKULL")
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "CardLabel"
-	nameLabel.Size = UDim2.new(1, 0, 0, 20)
-	nameLabel.Position = UDim2.new(0, 0, 1, -30)
+	nameLabel.Size = UDim2.new(1, 0, 0, 22)
+	nameLabel.Position = UDim2.new(0, 0, 1, -36)
 	nameLabel.BackgroundTransparency = 1
-	nameLabel.Font = Theme.Fonts.Title
-	nameLabel.TextSize = 12
-	nameLabel.TextColor3 = isRose and Color3.fromRGB(255, 245, 235) or Color3.fromRGB(255, 210, 130)
+	nameLabel.Font = Enum.Font.FredokaOne
+	nameLabel.TextSize = 13
+	nameLabel.TextColor3 = isRose and Color3.fromRGB(255, 245, 220) or Color3.fromRGB(255, 215, 120)
+	nameLabel.TextStrokeTransparency = 0.35
+	nameLabel.TextStrokeColor3 = Color3.fromRGB(20, 15, 25)
 	nameLabel.Text = isRose and "ROSE" or "SKULL"
 	nameLabel.ZIndex = baseZIndex + 3
 	nameLabel.Parent = btn
 
-	-- Disabled / Dimmed State
+	-- Dimmed state if not playable
 	if not isPlayable then
-		btn.BackgroundTransparency = 0.4
-		icon.TextTransparency = 0.4
-		nameLabel.TextTransparency = 0.4
-		stroke.Transparency = 0.4
+		btn.BackgroundTransparency = 0.45
+		icon.TextTransparency = 0.45
+		nameLabel.TextTransparency = 0.45
+		stroke.Transparency = 0.45
 		shadow.BackgroundTransparency = 0.85
 	end
 
 	-- ========================================================================
-	-- 2.5D TACTILE HOVER & ELEVATION (LOCOfficial Feeling)
+	-- 2.5D TACTILE HOVER & ELEVATION
 	-- ========================================================================
 	btn.MouseEnter:Connect(function()
 		if not isPlayerTurn or not canCurrentlyPlace then return end
 
 		-- Bring this card to the very front so it overlaps its neighbors
-		container.ZIndex = 50
-		shadow.ZIndex = 50
-		btn.ZIndex = 51
-		bevelRing.ZIndex = 52
-		icon.ZIndex = 53
-		nameLabel.ZIndex = 53
+		container.ZIndex = 60
+		shadow.ZIndex = 60
+		btn.ZIndex = 61
+		innerRing.ZIndex = 62
+		iconShadow.ZIndex = 62
+		icon.ZIndex = 63
+		nameLabel.ZIndex = 63
 
-		-- Lift up toward camera, straighten up (0 deg), and scale up slightly
-		TweenService:Create(container, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Position = UDim2.new(0.5, xOffset, 1, -44),
+		-- Lift up towards camera, straighten up (0 deg), and scale up slightly
+		TweenService:Create(container, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0.5, xOffset, 1, HOVER_LIFT_Y_OFFSET),
 			Rotation = 0,
-			Size = UDim2.new(0, CARD_DIAMETER + 8, 0, CARD_DIAMETER + 8),
+			Size = UDim2.new(0, CARD_DIAMETER + 12, 0, CARD_DIAMETER + 12),
 		}):Play()
 
 		-- Drop shadow deepens and moves downward
-		TweenService:Create(shadow, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Position = UDim2.new(0, 0, 0, 14),
-			BackgroundTransparency = 0.75,
+		TweenService:Create(shadow, TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0, 0, 0, 18),
+			BackgroundTransparency = 0.70,
 		}):Play()
 
 		-- Glow outline
 		TweenService:Create(stroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Color = Theme.Colors.GoldGlow,
-			Thickness = 4.4,
+			Color = Color3.fromRGB(255, 240, 120),
+			Thickness = 5.2,
 		}):Play()
 	end)
 
 	btn.MouseLeave:Connect(function()
-		-- Reset back to fanned resting position
+		-- Reset back to resting fanned position
 		container.ZIndex = baseZIndex
 		shadow.ZIndex = baseZIndex
 		btn.ZIndex = baseZIndex + 1
-		bevelRing.ZIndex = baseZIndex + 2
+		innerRing.ZIndex = baseZIndex + 2
+		iconShadow.ZIndex = baseZIndex + 2
 		icon.ZIndex = baseZIndex + 3
 		nameLabel.ZIndex = baseZIndex + 3
 
-		TweenService:Create(container, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		TweenService:Create(container, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			Position = restingPos,
 			Rotation = rotAngle,
 			Size = UDim2.new(0, CARD_DIAMETER, 0, CARD_DIAMETER),
 		}):Play()
 
-		TweenService:Create(shadow, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Position = UDim2.new(0, 0, 0, 6),
-			BackgroundTransparency = isPlayable and 0.65 or 0.85,
+		TweenService:Create(shadow, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0, 0, 0, 8),
+			BackgroundTransparency = isPlayable and 0.60 or 0.85,
 		}):Play()
 
 		TweenService:Create(stroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Color = isRose and Color3.fromRGB(245, 195, 60) or Color3.fromRGB(250, 180, 50),
-			Thickness = 3.6,
+			Color = isRose and Color3.fromRGB(250, 205, 75) or Color3.fromRGB(245, 180, 60),
+			Thickness = 4.2,
 		}):Play()
 	end)
 
@@ -232,14 +270,15 @@ end
 -- ============================================================================
 function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	onCardClickedCallback = onSelect
-	table.clear(cardButtonContainers)
+	table.clear(cardContainers)
 
 	local dock = Instance.new("Frame")
 	dock.Name = "FloatingHandDock"
 	dock.AnchorPoint = Vector2.new(0.5, 1)
-	dock.Size = UDim2.new(0, 580, 0, 150)
-	dock.Position = UDim2.new(0.5, 0, 1, -12)
-	dock.BackgroundTransparency = 1
+	dock.Size = UDim2.new(0, 640, 0, 190)
+	dock.Position = UDim2.new(0.5, 0, 1, 0)
+	dock.BackgroundTransparency = 1 -- Zero black box!
+	dock.BorderSizePixel = 0
 	dock.ZIndex = 20
 	dock.Parent = parent
 
@@ -248,57 +287,52 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 end
 
 -- ============================================================================
--- 3. RE-RENDER 2.5D FANNED CARDS IN HAND
+-- 3. RENDER / UPDATE HAND CARDS
 -- ============================================================================
-function HandBar.UpdateHand(handCards: { string }, isMyTurn: boolean, canPlace: boolean)
+function HandBar.UpdateHand(hand: { string }, isTurn: boolean, canPlace: boolean)
 	if not dockFrame then return end
 
-	currentHand = handCards
-	isPlayerTurn = isMyTurn
+	currentHand = hand
+	isPlayerTurn = isTurn
 	canCurrentlyPlace = canPlace
+	dockFrame.Visible = (#hand > 0)
 
-	-- Destroy old card containers
-	for _, cardHolder in ipairs(cardButtonContainers) do
-		cardHolder:Destroy()
+	-- Clear old cards
+	for _, c in ipairs(cardContainers) do
+		c:Destroy()
 	end
-	table.clear(cardButtonContainers)
+	table.clear(cardContainers)
 
-	local cardCount = #handCards
-	if cardCount == 0 then
-		dockFrame.Visible = false
-		return
-	end
+	local totalCards = #hand
+	if totalCards == 0 then return end
 
-	dockFrame.Visible = true
-	local isPlayable = isMyTurn and canPlace
+	-- Calculate horizontal spacing centered around middle
+	local totalWidth = (totalCards - 1) * CARD_OVERLAP_SPACING
+	local startX = -totalWidth / 2
 
-	-- Calculate horizontal spacing with subtle overlap
-	local totalSpan = (cardCount - 1) * CARD_OVERLAP_SPACING
-	local startXOffset = -totalSpan / 2
-
-	for i, cardType in ipairs(handCards) do
-		local xOffset = startXOffset + (i - 1) * CARD_OVERLAP_SPACING
-		local cardHolder = create25DCard(cardType, i, cardCount, xOffset, isPlayable)
+	for i, cardType in ipairs(hand) do
+		local xOffset = startX + (i - 1) * CARD_OVERLAP_SPACING
+		local cardHolder = create25DCard(cardType, i, totalCards, xOffset, canPlace and isTurn)
 		cardHolder.Parent = dockFrame
-		table.insert(cardButtonContainers, cardHolder)
+		table.insert(cardContainers, cardHolder)
 	end
 end
 
 -- ============================================================================
--- 4. ACCESSORS
+-- 4. UTILITY METHODS
 -- ============================================================================
-function HandBar.GetSelectedCard(): string?
-	return selectedCard or (currentHand[1] or nil)
-end
-
-function HandBar.SelectCard(cardType: string)
-	selectedCard = cardType
-end
-
 function HandBar.SetVisible(visible: boolean)
 	if dockFrame then
 		dockFrame.Visible = visible
 	end
+end
+
+function HandBar.GetSelectedCard(): string?
+	return selectedCard
+end
+
+function HandBar.GetRemainingCardsCount(): number
+	return #currentHand
 end
 
 return HandBar

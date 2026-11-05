@@ -36,7 +36,7 @@ function Card3DManager.SetActionHandler(handler: ActionHandler)
 end
 
 -- ============================================================================
--- 1. SPAWN OVERSIZED 3D CARD ON TABLE IN FRONT OF PLAYER
+-- 1. SPAWN CLEAN CIRCULAR 3D CARD IN PILE
 -- ============================================================================
 function Card3DManager.PlaceCard3D(seatIndex: number, stackCount: number)
 	local coasterCF = TableBuilder.GetCoasterCFrame(seatIndex)
@@ -44,69 +44,86 @@ function Card3DManager.PlaceCard3D(seatIndex: number, stackCount: number)
 
 	local folder = getCardsFolder()
 	local coasterPos = coasterCF.Position
-	local baseY = coasterPos.Y + 0.04
-	local stackY = baseY + 0.08 + (stackCount - 1) * 0.12
-	local randomJitterRot = math.rad(math.random(-14, 14))
+	local baseY = coasterPos.Y + 0.03
+	local stackY = baseY + 0.06 + (stackCount - 1) * 0.10
 
-	-- Target CFrame: cylinder flat circular face up (Z=90 deg) with slight Y-jitter
+	-- Target CFrame: Perfectly concentric clean circle (no random skewed jitter!)
 	local targetCF = CFrame.new(coasterPos.X, stackY, coasterPos.Z)
-		* CFrame.Angles(0, randomJitterRot, math.rad(90))
+		* CFrame.Angles(0, 0, math.rad(90))
 
 	-- Spawn slightly above the stack for a snappy physical drop animation
-	local spawnCF = targetCF + Vector3.new(0, 1.4, 0)
+	local spawnCF = targetCF + Vector3.new(0, 1.2, 0)
 
 	local cardPart = Instance.new("Part")
 	cardPart.Name = "Card3D_Seat" .. seatIndex .. "_Card" .. stackCount
 	cardPart.Shape = Enum.PartType.Cylinder
-	cardPart.Size = Vector3.new(0.10, 2.9, 2.9) -- Oversized 2.9-stud diameter
+	cardPart.Size = Vector3.new(0.08, 3.2, 3.2) -- Oversized 3.2-stud clean circular disc
 	cardPart.CFrame = spawnCF
 	cardPart.Anchored = true
 	cardPart.CanCollide = false
 	cardPart.Material = Enum.Material.SmoothPlastic
-	cardPart.Color = Color3.fromRGB(46, 28, 20)
+	cardPart.Color = Color3.fromRGB(32, 28, 38)
 	cardPart.Parent = folder
-
-	-- Ornate Gold Outer Rim Highlight
-	local stroke = Instance.new("Highlight")
-	stroke.Name = "GoldRim"
-	stroke.FillTransparency = 1
-	stroke.OutlineColor = Color3.fromRGB(240, 190, 50)
-	stroke.OutlineTransparency = 0.15
-	stroke.Adornee = cardPart
-	stroke.Parent = cardPart
 
 	-- SurfaceGui on the top circular face (Right face on Z-rotated cylinder)
 	local sg = Instance.new("SurfaceGui")
 	sg.Name = "FaceGui"
 	sg.Face = Enum.NormalId.Right
-	sg.CanvasSize = Vector2.new(220, 220)
+	sg.CanvasSize = Vector2.new(256, 256)
 	sg.AlwaysOnTop = false
 	sg.Adornee = cardPart
 	sg.Parent = cardPart
 
-	-- Coaster Filigree Center Pattern (Face-Down)
+	-- Clean Circular Card Back Face
 	local bg = Instance.new("Frame")
 	bg.Name = "CardBackFace"
 	bg.Size = UDim2.new(1, 0, 1, 0)
-	bg.BackgroundColor3 = Color3.fromRGB(38, 24, 18)
+	bg.BackgroundColor3 = Color3.fromRGB(28, 24, 34)
 	bg.BorderSizePixel = 0
 	bg.Parent = sg
+	Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
 
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(1, 0)
-	corner.Parent = bg
+	-- Outer Gold Concentric Ring (Clean Circle)
+	local outerBorder = Instance.new("Frame")
+	outerBorder.Name = "OuterBorder"
+	outerBorder.Size = UDim2.new(1, -10, 1, -10)
+	outerBorder.Position = UDim2.new(0, 5, 0, 5)
+	outerBorder.BackgroundTransparency = 1
+	outerBorder.Parent = bg
+	Instance.new("UICorner", outerBorder).CornerRadius = UDim.new(1, 0)
 
+	local borderStroke = Instance.new("UIStroke")
+	borderStroke.Color = Color3.fromRGB(245, 205, 75)
+	borderStroke.Thickness = 3.5
+	borderStroke.Parent = outerBorder
+
+	-- Inner Accent Ring
+	local innerRing = Instance.new("Frame")
+	innerRing.Name = "InnerRing"
+	innerRing.Size = UDim2.new(1, -26, 1, -26)
+	innerRing.Position = UDim2.new(0, 13, 0, 13)
+	innerRing.BackgroundTransparency = 1
+	innerRing.Parent = bg
+	Instance.new("UICorner", innerRing).CornerRadius = UDim.new(1, 0)
+
+	local innerStroke = Instance.new("UIStroke")
+	innerStroke.Color = Color3.fromRGB(255, 235, 150)
+	innerStroke.Transparency = 0.4
+	innerStroke.Thickness = 1.8
+	innerStroke.Parent = innerRing
+
+	-- Center Stylized Medallion Emblem
 	local patternIcon = Instance.new("TextLabel")
 	patternIcon.Name = "Icon"
 	patternIcon.Size = UDim2.new(1, 0, 1, 0)
 	patternIcon.BackgroundTransparency = 1
 	patternIcon.Font = Enum.Font.FredokaOne
-	patternIcon.TextSize = 82
-	patternIcon.TextColor3 = Color3.fromRGB(245, 195, 60)
-	patternIcon.Text = "✨"
+	patternIcon.TextSize = 78
+	patternIcon.TextColor3 = Color3.fromRGB(250, 215, 80)
+	patternIcon.Text = "✦"
 	patternIcon.Parent = bg
 
-	-- ClickDetector: Allows clicking 3D cards directly on the table
+	-- ClickDetector: Allows clicking 3D cards directly on the pile
 	local clicker = Instance.new("ClickDetector")
 	clicker.MaxActivationDistance = 45
 	clicker.Parent = cardPart
@@ -121,8 +138,8 @@ function Card3DManager.PlaceCard3D(seatIndex: number, stackCount: number)
 		end
 	end)
 
-	-- Smooth drop & settle tween
-	TweenService:Create(cardPart, TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+	-- Smooth drop & settle tween straight down
+	TweenService:Create(cardPart, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 		CFrame = targetCF,
 	}):Play()
 
@@ -130,7 +147,7 @@ function Card3DManager.PlaceCard3D(seatIndex: number, stackCount: number)
 end
 
 -- ============================================================================
--- 2. REVEAL OVERSIZED 3D CARD (PHYSICALLY FLIPS UP OFF TABLE)
+-- 2. REVEAL 3D CARD (FLIPS UP OFF PILE AS CLEAN CIRCLE)
 -- ============================================================================
 function Card3DManager.RevealCard3D(seatIndex: number, cardType: string)
 	local stack = seatStacks[seatIndex]
@@ -141,28 +158,28 @@ function Card3DManager.RevealCard3D(seatIndex: number, cardType: string)
 
 	local isSkull = (cardType == Enums.CardType.Skull)
 	local currentCF = cardPart.CFrame
-	local liftCF = currentCF + Vector3.new(0, 2.5, 0)
+	local liftCF = currentCF + Vector3.new(0, 3.0, 0)
 
 	-- Update SurfaceGui face artwork
 	local sg = cardPart:FindFirstChild("FaceGui") :: SurfaceGui?
 	if sg then
 		local bg = sg:FindFirstChild("CardBackFace") :: Frame?
 		if bg then
-			bg.BackgroundColor3 = isSkull and Color3.fromRGB(25, 20, 22) or Color3.fromRGB(155, 20, 32)
+			bg.BackgroundColor3 = isSkull and Color3.fromRGB(22, 18, 24) or Color3.fromRGB(165, 20, 38)
 			local icon = bg:FindFirstChild("Icon") :: TextLabel?
 			if icon then
 				icon.Text = isSkull and "💀" or "🌹"
-				icon.TextColor3 = isSkull and Color3.fromRGB(255, 65, 65) or Color3.fromRGB(255, 220, 225)
-				icon.TextSize = 92
+				icon.TextColor3 = isSkull and Color3.fromRGB(255, 75, 75) or Color3.fromRGB(255, 230, 235)
+				icon.TextSize = 100
 			end
 		end
 	end
 
-	cardPart.Color = isSkull and Color3.fromRGB(22, 18, 20) or Color3.fromRGB(165, 22, 35)
+	cardPart.Color = isSkull and Color3.fromRGB(18, 14, 20) or Color3.fromRGB(175, 22, 40)
 
-	local flipTween = TweenService:Create(cardPart, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+	local flipTween = TweenService:Create(cardPart, TweenInfo.new(0.48, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		CFrame = liftCF * CFrame.Angles(0, math.rad(180), 0),
-		Size = Vector3.new(0.10, 3.4, 3.4),
+		Size = Vector3.new(0.08, 3.6, 3.6),
 	})
 	flipTween:Play()
 end

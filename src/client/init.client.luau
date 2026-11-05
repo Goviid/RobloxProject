@@ -62,49 +62,28 @@ local function buildUI()
 	-- 1. Top Banner & Timer
 	NotificationBanner.Create(screenGui)
 
-	-- 2. Center Table & Radial Seats
+	-- 2. Center Match Announcements
 	TableView.Create(screenGui, function(targetUserId: number)
 		onSubmitAction(Enums.PlayerAction.RevealCard, { targetUserId = targetUserId })
 	end)
 
-	-- 3. Bottom Hand Tray
+	-- 3. Bottom Hand Tray (Oversized, raised 2.5D circular hand)
 	HandBar.Create(screenGui, function(cardType: string)
 		print("[HandBar] Selected card: " .. cardType)
 		AudioController.PlayButtonClick()
-		ActionBar.SetSelectedCard(cardType)
 
 		-- Immediate direct placement on card click if it's our turn during Placement phase!
 		if currentGameState == Enums.GameState.Placement and isCurrentPlayerTurn then
-			print("[HandBar] Directly placing card: " .. cardType)
+			print("[HandBar] Placing card directly on coaster: " .. cardType)
 			AudioController.PlayCardPlace()
-			CardAnimation.PlayCardFly(
-				screenGui,
-				UDim2.new(0.5, 0, 0.82, 0),
-				UDim2.new(0.5, 0, 0.52, 0),
-				cardType
-			)
 			onSubmitAction(Enums.PlayerAction.PlaceCard, { cardType = cardType })
 		end
 	end)
 
-	-- 4. Bottom-Right Action Buttons
+	-- 4. Clean Centered Bidding Controls
 	ActionBar.Create(screenGui, function(action: string, data: any)
 		AudioController.PlayButtonClick()
-		if action == Enums.PlayerAction.PlaceCard then
-			local selected = HandBar.GetSelectedCard() or Enums.CardType.Rose
-			data.cardType = selected
-			AudioController.PlayCardPlace()
-			-- Trigger flying card animation towards player's 3D coaster
-			CardAnimation.PlayCardFly(
-				screenGui,
-				UDim2.new(0.5, 0, 0.85, 0),
-				UDim2.new(0.5, 0, 0.55, 0),
-				selected
-			)
-			onSubmitAction(action, data)
-		else
-			onSubmitAction(action, data)
-		end
+		onSubmitAction(action, data)
 	end)
 
 	-- 5. Center Card Reveal Popup
@@ -187,6 +166,8 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 		HandBar.UpdateHand(myHand, isMyTurn, canPlace)
 		if payload.gameState == Enums.GameState.Bidding or payload.gameState == Enums.GameState.Revealing then
 			HandBar.SetVisible(false)
+		else
+			HandBar.SetVisible(#myHand > 0)
 		end
 
 		-- 3. Update Action Buttons
@@ -196,7 +177,8 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 			payload.highestBid or 0,
 			payload.totalCardsOnTable or 0,
 			#myHand > 0,
-			myStackCount > 0
+			myStackCount > 0,
+			payload.canStartBid
 		)
 
 		-- 4. Turn Timer Reset & Turn Prompt

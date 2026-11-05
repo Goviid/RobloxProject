@@ -134,27 +134,54 @@ function TableBuilder.Build(modeOverride: string?)
 			local dirX = math.cos(angle)
 			local dirZ = math.sin(angle)
 
-			-- Flat Ground Coaster Pad (where cards stack in front of player on the ground)
+			-- Clean Circular Coaster Pad (Clean Circle pile base on the ground)
 			local coasterPos = Vector3.new(dirX * COASTER_DIST, 0.22, dirZ * COASTER_DIST)
 			local coaster = Instance.new("Part")
 			coaster.Name = "Coaster_" .. seatIdx
 			coaster.Shape = Enum.PartType.Cylinder
-			coaster.Size = Vector3.new(0.04, 3.2, 3.2)
+			coaster.Size = Vector3.new(0.04, 3.4, 3.4)
 			coaster.CFrame = CFrame.new(coasterPos) * CFrame.Angles(0, 0, math.rad(90))
 			coaster.Anchored = true
 			coaster.CanCollide = false
 			coaster.Material = Enum.Material.SmoothPlastic
-			coaster.Color = Color3.fromRGB(95, 170, 235)
+			coaster.Color = Color3.fromRGB(90, 160, 225)
 			coaster.Parent = arena
 			coasterParts[seatIdx] = coaster
 
-			local trim = Instance.new("Highlight")
-			trim.Name = "CoasterTrim"
-			trim.FillTransparency = 1
-			trim.OutlineColor = Color3.fromRGB(245, 250, 255)
-			trim.OutlineTransparency = 0.35
-			trim.Adornee = coaster
-			trim.Parent = coaster
+			-- SurfaceGui on Coaster Top Face for a crisp circular concentric ring
+			local coasterSg = Instance.new("SurfaceGui")
+			coasterSg.Name = "CoasterRingGui"
+			coasterSg.Face = Enum.NormalId.Right
+			coasterSg.CanvasSize = Vector2.new(256, 256)
+			coasterSg.AlwaysOnTop = false
+			coasterSg.Adornee = coaster
+			coasterSg.Parent = coaster
+
+			local coasterBg = Instance.new("Frame")
+			coasterBg.Size = UDim2.new(1, 0, 1, 0)
+			coasterBg.BackgroundTransparency = 1
+			coasterBg.Parent = coasterSg
+
+			local outerRingFrame = Instance.new("Frame")
+			outerRingFrame.Size = UDim2.new(1, -8, 1, -8)
+			outerRingFrame.Position = UDim2.new(0, 4, 0, 4)
+			outerRingFrame.BackgroundTransparency = 1
+			outerRingFrame.Parent = coasterBg
+			Instance.new("UICorner", outerRingFrame).CornerRadius = UDim.new(1, 0)
+			local ringStroke = Instance.new("UIStroke")
+			ringStroke.Color = Color3.fromRGB(240, 250, 255)
+			ringStroke.Transparency = 0.25
+			ringStroke.Thickness = 3
+			ringStroke.Parent = outerRingFrame
+
+			local innerDot = Instance.new("Frame")
+			innerDot.Size = UDim2.new(0, 18, 0, 18)
+			innerDot.Position = UDim2.new(0.5, -9, 0.5, -9)
+			innerDot.BackgroundColor3 = Color3.fromRGB(240, 250, 255)
+			innerDot.BackgroundTransparency = 0.4
+			innerDot.BorderSizePixel = 0
+			innerDot.Parent = coasterBg
+			Instance.new("UICorner", innerDot).CornerRadius = UDim.new(1, 0)
 
 			-- Clean White Floor Standing Pad
 			local standPos = Vector3.new(dirX * STAND_DIST, 0.21, dirZ * STAND_DIST)

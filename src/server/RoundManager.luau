@@ -41,6 +41,16 @@ local function broadcastState()
 	TableBuilder.HighlightTurn(activePlayer and activePlayer.seatIndex or nil)
 end
 
+-- Check if everyone has played at least 1 card
+local function haveAllPlacedFirstCard(): boolean
+	for _, p in ipairs(PlayerManager.GetActivePlayers()) do
+		if #p.playedStack == 0 then
+			return false
+		end
+	end
+	return true
+end
+
 function RoundManager.SendStateToPlayer(userId: number)
 	local p = PlayerManager.GetPlayer(userId)
 	if not p or p.isBot then return end
@@ -56,6 +66,7 @@ function RoundManager.SendStateToPlayer(userId: number)
 		cardsFlipped = cardsFlippedThisRound,
 		targetCards = targetCardsToFlip,
 		totalCardsOnTable = PlayerManager.GetTotalCardsOnTable(),
+		canStartBid = haveAllPlacedFirstCard(),
 		tableState = PlayerManager.GetClientState(userId),
 	}
 	Network.GameStateChanged:FireClient(playerObj, payload)
@@ -224,16 +235,6 @@ function RoundManager.StartRound(leaderId: number?)
 	broadcastNotification("New Round Started! " .. (leader and leader.name or "Player") .. "'s turn to place.", "info")
 
 	runCurrentTurn()
-end
-
--- Check if everyone has played at least 1 card
-local function haveAllPlacedFirstCard(): boolean
-	for _, p in ipairs(PlayerManager.GetActivePlayers()) do
-		if #p.playedStack == 0 then
-			return false
-		end
-	end
-	return true
 end
 
 -- Check how many bidders remain active
