@@ -177,9 +177,13 @@ function TableView.SetAlertText(text: string)
 	end
 end
 
-function TableView.UpdateTurn(turnNumber: number, activePlayerName: string, isMyTurn: boolean)
+function TableView.UpdateTurn(turnNumber: number, activePlayerName: string, isMyTurn: boolean, pillOverrideText: string?)
 	if turnPillLabel then
-		turnPillLabel.Text = "TURN " .. turnNumber
+		if pillOverrideText then
+			turnPillLabel.Text = pillOverrideText
+		else
+			turnPillLabel.Text = "TURN " .. turnNumber
+		end
 	end
 	if activePlayerLabel and activePlayerStroke then
 		if isMyTurn then

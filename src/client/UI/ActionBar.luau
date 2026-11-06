@@ -91,11 +91,11 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	local root = Instance.new("Frame")
 	root.Name = "ActionBarRoot"
 	root.AnchorPoint = Vector2.new(0.5, 1)
-	root.Size = UDim2.new(0, 420, 0, 50)
-	root.Position = UDim2.new(0.5, 0, 1, -160) -- Floats cleanly above the resting cards
+	root.Size = UDim2.new(0, 420, 0, 48)
+	root.Position = UDim2.new(0.5, 0, 1, -195) -- Floats cleanly above the resting & hovered cards
 	root.BackgroundTransparency = 1
 	root.Active = false
-	root.ZIndex = 40
+	root.ZIndex = 35
 	root.Parent = parent
 	rootFrame = root
 
@@ -155,7 +155,7 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	modal.Name = "BidPickerModal"
 	modal.AnchorPoint = Vector2.new(0.5, 1)
 	modal.Size = UDim2.new(0, 260, 0, 142)
-	modal.Position = UDim2.new(0.5, 0, 1, -220)
+	modal.Position = UDim2.new(0.5, 0, 1, -250)
 	modal.BackgroundColor3 = Color3.fromRGB(18, 15, 25)
 	modal.BackgroundTransparency = 0.10
 	modal.BorderSizePixel = 0

@@ -79,6 +79,9 @@ local function buildUI()
 			print("[HandBar] Placing card directly on coaster: " .. cardType)
 			AudioController.PlayCardPlace()
 			onSubmitAction(Enums.PlayerAction.PlaceCard, { cardType = cardType })
+		else
+			print(string.format("[HandBar] Click ignored - GameState: %s, isCurrentPlayerTurn: %s",
+				tostring(currentGameState), tostring(isCurrentPlayerTurn)))
 		end
 	end)
 
@@ -130,11 +133,14 @@ onSubmitAction = function(action: string, data: any)
 	print("[Client] Submitting action: " .. action)
 	local success, err = Network.SubmitAction:InvokeServer(action, data)
 	if not success then
+		warn("[Client] Action '" .. action .. "' was rejected: " .. tostring(err))
 		if err then
 			NotificationBanner.Show(err, "warning")
 		end
 		-- Re-sync state with server if action was rejected
 		Network.RequestState:FireServer()
+	else
+		print("[Client] Action confirmed by server: " .. action)
 	end
 end
 
@@ -153,15 +159,27 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 		local myHand = if myData and myData.hand then table.clone(myData.hand) else {}
 		local challengerData = payload.challengerId and lastKnownPlayers[tostring(payload.challengerId)]
 
-		-- Calculate turn number: Turn 1 when 0 cards placed, Turn 2 when 1 card placed, etc.
-		local turnNumber = math.max(1, myStackCount + 1)
 		local activePlayerData = payload.activePlayerId and lastKnownPlayers[tostring(payload.activePlayerId)]
 		local activePlayerName = activePlayerData and activePlayerData.name or "Opponent"
+		local activeStackCount = activePlayerData and activePlayerData.stackCount or 0
+		-- Turn number is based on active player's stack count so it reflects the true current turn
+		local turnNumber = math.max(1, activeStackCount + 1)
+
+		print(string.format("[Client GameStateChanged] State: %s | Active: %s (isMyTurn: %s) | Hand: %d | Stack: %d",
+			tostring(payload.gameState), tostring(payload.activePlayerId), tostring(isMyTurn), #myHand, myStackCount))
+
+		-- Determine left pill override based on phase
+		local pillOverride = nil
+		if payload.gameState == Enums.GameState.Bidding then
+			pillOverride = "BID: " .. tostring(payload.highestBid or 1)
+		elseif payload.gameState == Enums.GameState.Revealing then
+			pillOverride = "FLIPS: " .. tostring(payload.cardsFlipped or 0) .. "/" .. tostring(payload.targetCards or 1)
+		end
 
 		-- 1. Update Table View (seats, stack heights, score gems)
 		CameraController.SetTurnFocus(isMyTurn)
 		TableView.UpdateLayout(lastKnownPlayers, payload.activePlayerId, payload.challengerId)
-		TableView.UpdateTurn(turnNumber, activePlayerName, isMyTurn)
+		TableView.UpdateTurn(turnNumber, activePlayerName, isMyTurn, pillOverride)
 		TableView.UpdateCenter(
 			payload.gameState,
 			payload.highestBid or 0,

@@ -109,6 +109,8 @@ local function createCircularToken(
 	btn.BackgroundColor3 = isRose and Color3.fromRGB(240, 226, 202) or Color3.fromRGB(28, 24, 32)
 	btn.BorderSizePixel = 0
 	btn.AutoButtonColor = false
+	btn.Active = true
+	btn.Selectable = true
 	btn.ZIndex = baseZIndex + 1
 	btn.Parent = container
 	Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
@@ -219,8 +221,22 @@ local function createCircularToken(
 		promptLabel.Text = ""
 	end)
 
-	btn.MouseButton1Click:Connect(function()
-		if not isPlayerTurn or not canCurrentlyPlace then return end
+	btn.Activated:Connect(function()
+		print(string.format("[HandBar] Card clicked: %s | isPlayerTurn: %s | canCurrentlyPlace: %s",
+			tostring(cardType), tostring(isPlayerTurn), tostring(canCurrentlyPlace)))
+
+		if not isPlayerTurn then
+			local NotificationBanner = require(script.Parent.NotificationBanner)
+			NotificationBanner.Show("⏳ Please wait for your turn to place a card!", "info")
+			return
+		end
+
+		if not canCurrentlyPlace then
+			local NotificationBanner = require(script.Parent.NotificationBanner)
+			NotificationBanner.Show("Cards cannot be placed during bidding/challenge!", "warning")
+			return
+		end
+
 		isPlayerTurn = false
 		selectedCard = cardType
 
@@ -314,7 +330,7 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	dock.Position = UDim2.new(0.5, 0, 1, 0)
 	dock.BackgroundTransparency = 1
 	dock.BorderSizePixel = 0
-	dock.ZIndex = 25
+	dock.ZIndex = 45
 	dock.Parent = parent
 
 	dockFrame = dock

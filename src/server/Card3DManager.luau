@@ -28,11 +28,27 @@ local seatStacks: { [number]: { Part } } = {
 	[1] = {}, [2] = {}, [3] = {}, [4] = {}, [5] = {}, [6] = {}
 }
 
+-- All revealed cards currently in animation or settled on table
+local revealedCards: { Part } = {}
+local isRevealingClickEnabled = false
+
 export type ActionHandler = (userId: number, action: string, data: any) -> (boolean, string?)
 local roundActionHandler: ActionHandler? = nil
 
 function Card3DManager.SetActionHandler(handler: ActionHandler)
 	roundActionHandler = handler
+end
+
+-- Toggle ClickDetectors on 3D cards: ONLY enabled during Revealing phase!
+function Card3DManager.SetRevealingEnabled(enabled: boolean)
+	isRevealingClickEnabled = enabled
+	local folder = getCardsFolder()
+	for _, child in ipairs(folder:GetChildren()) do
+		local clicker = child:FindFirstChildWhichIsA("ClickDetector")
+		if clicker then
+			clicker.MaxActivationDistance = enabled and 45 or 0
+		end
+	end
 end
 
 -- ============================================================================
@@ -135,12 +151,12 @@ function Card3DManager.PlaceCard3D(seatIndex: number, stackCount: number)
 	patternIcon.Text = "✦"
 	patternIcon.Parent = bg
 
-	-- ClickDetector: Allows clicking 3D cards directly on the pile
+	-- ClickDetector: Allows clicking 3D cards directly on the pile (ONLY during Revealing phase!)
 	local clicker = Instance.new("ClickDetector")
-	clicker.MaxActivationDistance = 45
+	clicker.MaxActivationDistance = isRevealingClickEnabled and 45 or 0
 	clicker.Parent = cardPart
 	clicker.MouseClick:Connect(function(clickingPlayer: Player)
-		if roundActionHandler then
+		if roundActionHandler and isRevealingClickEnabled then
 			local targetPlayer = PlayerManager.GetPlayerBySeat(seatIndex)
 			if targetPlayer then
 				roundActionHandler(clickingPlayer.UserId, Enums.PlayerAction.RevealCard, {
@@ -159,7 +175,7 @@ function Card3DManager.PlaceCard3D(seatIndex: number, stackCount: number)
 end
 
 -- ============================================================================
--- 2. REVEAL 3D CARD (FLIPS UP OFF PILE AS CLEAN CIRCLE)
+-- 2. REVEAL 3D CARD (FLIPS UP SNAPPY & SETTLES FLAT, NEVER HOVERING IN AIR)
 -- ============================================================================
 function Card3DManager.RevealCard3D(seatIndex: number, cardType: string)
 	local stack = seatStacks[seatIndex]
@@ -167,10 +183,15 @@ function Card3DManager.RevealCard3D(seatIndex: number, cardType: string)
 
 	local cardPart = table.remove(stack)
 	if not cardPart or not cardPart.Parent then return end
+	table.insert(revealedCards, cardPart)
+
+	-- Disable ClickDetector once card is revealed
+	local clicker = cardPart:FindFirstChildWhichIsA("ClickDetector")
+	if clicker then clicker.MaxActivationDistance = 0 end
 
 	local isSkull = (cardType == Enums.CardType.Skull)
 	local currentCF = cardPart.CFrame
-	local liftCF = currentCF + Vector3.new(0, 3.0, 0)
+	local liftCF = currentCF + Vector3.new(0, 1.2, 0)
 
 	-- Update SurfaceGui face artwork
 	local sg = cardPart:FindFirstChild("FaceGui") :: SurfaceGui?
@@ -189,35 +210,50 @@ function Card3DManager.RevealCard3D(seatIndex: number, cardType: string)
 
 	cardPart.Color = isSkull and Color3.fromRGB(18, 14, 20) or Color3.fromRGB(175, 22, 40)
 
-	local flipTween = TweenService:Create(cardPart, TweenInfo.new(0.48, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+	-- Snappy flip reveal
+	local flipTween = TweenService:Create(cardPart, TweenInfo.new(0.40, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		CFrame = liftCF * CFrame.Angles(0, math.rad(180), 0),
-		Size = Vector3.new(0.08, 3.6, 3.6),
+		Size = Vector3.new(0.06, 2.5, 2.5),
 	})
 	flipTween:Play()
+
+	-- Settle smoothly down flat so it NEVER hovers in mid-air
+	task.delay(1.0, function()
+		if cardPart and cardPart.Parent then
+			local settleCF = CFrame.new(currentCF.Position.X, 3.06, currentCF.Position.Z)
+				* CFrame.Angles(0, 0, math.rad(90))
+			TweenService:Create(cardPart, TweenInfo.new(0.30, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				CFrame = settleCF,
+				Size = Vector3.new(0.06, 2.2, 2.2),
+			}):Play()
+		end
+	end)
 end
 
 -- ============================================================================
--- 3. RESET ALL 3D CARDS (ROUND END CLEANUP)
+-- 3. RESET ALL 3D CARDS (ROUND END CLEANUP - GUARANTEED ZERO FLOATING CARDS)
 -- ============================================================================
 function Card3DManager.ClearAllCards()
-	for seatIdx = 1, 6 do
-		local stack = seatStacks[seatIdx]
-		if stack then
-			for _, cardPart in ipairs(stack) do
-				task.spawn(function()
-					local tween = TweenService:Create(cardPart, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-						Size = Vector3.new(0, 0, 0),
-						Transparency = 1,
-					})
-					tween:Play()
-					tween.Completed:Connect(function()
-						cardPart:Destroy()
-					end)
+	isRevealingClickEnabled = false
+	local folder = getCardsFolder()
+	for _, child in ipairs(folder:GetChildren()) do
+		if child:IsA("BasePart") then
+			task.spawn(function()
+				local tween = TweenService:Create(child, TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+					Size = Vector3.new(0, 0, 0),
+					Transparency = 1,
+				})
+				tween:Play()
+				tween.Completed:Connect(function()
+					child:Destroy()
 				end)
-			end
-			table.clear(stack)
+			end)
 		end
 	end
+	for seatIdx = 1, 6 do
+		table.clear(seatStacks[seatIdx])
+	end
+	table.clear(revealedCards)
 end
 
 return Card3DManager

@@ -199,6 +199,7 @@ function RoundManager.StartRound(leaderId: number?)
 	cancelTurnTimer()
 	PlayerManager.ResetRoundState()
 	Card3DManager.ClearAllCards()
+	Card3DManager.SetRevealingEnabled(false)
 
 	challengerId = nil
 	highestBid = 0
@@ -258,6 +259,7 @@ end
 -- Resolve Round Success (Challenger flipped target roses)
 local function onChallengerSuccess()
 	cancelTurnTimer()
+	Card3DManager.SetRevealingEnabled(false)
 	currentGameState = Enums.GameState.RoundEnd
 
 	if not challengerId then return end
@@ -298,6 +300,7 @@ end
 -- Resolve Round Failure (Challenger hit a skull)
 local function onChallengerFailed(skullOwnerId: number)
 	cancelTurnTimer()
+	Card3DManager.SetRevealingEnabled(false)
 	currentGameState = Enums.GameState.RoundEnd
 
 	if not challengerId then return end
@@ -345,11 +348,17 @@ end
 -- Central Action Handler
 function RoundManager.HandlePlayerAction(userId: number, action: string, data: any): (boolean, string?)
 	local activeId = RoundManager.GetActivePlayerId()
+	local p = PlayerManager.GetPlayer(userId)
+
+	print(string.format("[Server RoundManager] Action '%s' from %s (%d) | Active: %s | State: %s",
+		tostring(action), p and p.name or "Unknown", userId, tostring(activeId), currentGameState))
+
 	if userId ~= activeId then
+		warn(string.format("[Server RoundManager] Rejected '%s' from %d: Not your turn (active: %s)",
+			action, userId, tostring(activeId)))
 		return false, "Not your turn."
 	end
 
-	local p = PlayerManager.GetPlayer(userId)
 	if not p or p.isEliminated then
 		return false, "Invalid player."
 	end
@@ -399,6 +408,7 @@ function RoundManager.HandlePlayerAction(userId: number, action: string, data: a
 				targetCardsToFlip = highestBid
 				cardsFlippedThisRound = 0
 				currentGameState = Enums.GameState.Revealing
+				Card3DManager.SetRevealingEnabled(true)
 				broadcastNotification(p.name .. " bid the MAXIMUM (" .. highestBid .. ") and is the CHALLENGER!", "warning")
 				runCurrentTurn()
 				return true
@@ -430,6 +440,7 @@ function RoundManager.HandlePlayerAction(userId: number, action: string, data: a
 				targetCardsToFlip = highestBid
 				cardsFlippedThisRound = 0
 				currentGameState = Enums.GameState.Revealing
+				Card3DManager.SetRevealingEnabled(true)
 				broadcastNotification(p.name .. " bid the MAXIMUM and is the CHALLENGER!", "warning")
 				runCurrentTurn()
 				return true
@@ -462,6 +473,7 @@ function RoundManager.HandlePlayerAction(userId: number, action: string, data: a
 				targetCardsToFlip = highestBid
 				cardsFlippedThisRound = 0
 				currentGameState = Enums.GameState.Revealing
+				Card3DManager.SetRevealingEnabled(true)
 
 				local chal = PlayerManager.GetPlayer(challengerId or 0)
 				broadcastNotification("Bidding closed! " .. (chal and chal.name or "Player") .. " is the CHALLENGER (" .. targetCardsToFlip .. " cards)!", "warning")
