@@ -74,18 +74,18 @@ local function createCircularToken(
 	container:SetAttribute("RestingRot", rotAngle)
 	container:SetAttribute("BaseZIndex", baseZIndex)
 
-	-- Floating Prompt Label above token (Only shown on hover)
+	-- Floating Prompt Label above token ("PLACE CARD" matching reference mockup)
 	local promptLabel = Instance.new("TextLabel")
 	promptLabel.Name = "PromptLabel"
 	promptLabel.Size = UDim2.new(1, 0, 0, 16)
 	promptLabel.Position = UDim2.new(0, 0, 0, 2)
 	promptLabel.BackgroundTransparency = 1
 	promptLabel.Font = Enum.Font.FredokaOne
-	promptLabel.TextSize = 12
-	promptLabel.TextColor3 = isRose and Color3.fromRGB(255, 235, 150) or Color3.fromRGB(255, 100, 120)
+	promptLabel.TextSize = 11
+	promptLabel.TextColor3 = isRose and Color3.fromRGB(255, 235, 160) or Color3.fromRGB(255, 120, 135)
 	promptLabel.TextStrokeTransparency = 0.35
 	promptLabel.TextStrokeColor3 = Color3.fromRGB(15, 15, 20)
-	promptLabel.Text = ""
+	promptLabel.Text = "PLACE CARD"
 	promptLabel.ZIndex = baseZIndex + 4
 	promptLabel.Parent = container
 
@@ -218,18 +218,12 @@ local function createCircularToken(
 			Color = isRose and Color3.fromRGB(255, 215, 75) or Color3.fromRGB(255, 45, 65),
 		}):Play()
 
-		promptLabel.Text = ""
+		promptLabel.Text = "PLACE CARD"
 	end)
 
 	btn.Activated:Connect(function()
-		print(string.format("[HandBar] Card clicked: %s | isPlayerTurn: %s | canCurrentlyPlace: %s",
-			tostring(cardType), tostring(isPlayerTurn), tostring(canCurrentlyPlace)))
-
-		if not isPlayerTurn then
-			local NotificationBanner = require(script.Parent.NotificationBanner)
-			NotificationBanner.Show("⏳ Please wait for your turn to place a card!", "info")
-			return
-		end
+		print(string.format("[HandBar] Card clicked: %s | canCurrentlyPlace: %s",
+			tostring(cardType), tostring(canCurrentlyPlace)))
 
 		if not canCurrentlyPlace then
 			local NotificationBanner = require(script.Parent.NotificationBanner)
@@ -329,6 +323,60 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	dock.BorderSizePixel = 0
 	dock.ZIndex = 45
 	dock.Parent = parent
+
+	-- Stylized Blocky Roblox Arm holding cards at bottom center (Matching reference mockup)
+	local armHolder = Instance.new("Frame")
+	armHolder.Name = "RobloxArmHolder"
+	armHolder.AnchorPoint = Vector2.new(0.5, 1)
+	armHolder.Size = UDim2.new(0, 130, 0, 150)
+	armHolder.Position = UDim2.new(0.5, 75, 1, 38)
+	armHolder.Rotation = -16
+	armHolder.BackgroundTransparency = 1
+	armHolder.ZIndex = 25
+	armHolder.Parent = dock
+
+	-- 1. Dark Suit Sleeve
+	local sleeve = Instance.new("Frame")
+	sleeve.Name = "Sleeve"
+	sleeve.Size = UDim2.new(0, 68, 0, 100)
+	sleeve.Position = UDim2.new(0.5, -34, 1, -90)
+	sleeve.BackgroundColor3 = Color3.fromRGB(20, 18, 26)
+	sleeve.BorderSizePixel = 0
+	sleeve.ZIndex = 26
+	sleeve.Parent = armHolder
+	Instance.new("UICorner", sleeve).CornerRadius = UDim.new(0, 4)
+
+	local sleeveStroke = Instance.new("UIStroke")
+	sleeveStroke.Color = Color3.fromRGB(35, 30, 45)
+	sleeveStroke.Thickness = 1.5
+	sleeveStroke.Parent = sleeve
+
+	-- 2. Crisp White Shirt Cuff
+	local cuff = Instance.new("Frame")
+	cuff.Name = "Cuff"
+	cuff.Size = UDim2.new(1, 0, 0, 14)
+	cuff.Position = UDim2.new(0, 0, 0, -12)
+	cuff.BackgroundColor3 = Color3.fromRGB(242, 242, 250)
+	cuff.BorderSizePixel = 0
+	cuff.ZIndex = 27
+	cuff.Parent = sleeve
+	Instance.new("UICorner", cuff).CornerRadius = UDim.new(0, 3)
+
+	-- 3. Blocky Classic Roblox Yellow Hand
+	local hand = Instance.new("Frame")
+	hand.Name = "BlockyHand"
+	hand.Size = UDim2.new(0, 58, 0, 40)
+	hand.Position = UDim2.new(0.5, -29, 0, -48)
+	hand.BackgroundColor3 = Color3.fromRGB(245, 205, 55)
+	hand.BorderSizePixel = 0
+	hand.ZIndex = 28
+	hand.Parent = sleeve
+	Instance.new("UICorner", hand).CornerRadius = UDim.new(0, 6)
+
+	local handStroke = Instance.new("UIStroke")
+	handStroke.Color = Color3.fromRGB(195, 155, 35)
+	handStroke.Thickness = 1.6
+	handStroke.Parent = hand
 
 	dockFrame = dock
 	return dock

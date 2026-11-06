@@ -73,19 +73,20 @@ local function buildUI()
 		print("[HandBar] Selected card: " .. cardType .. " at idx " .. tostring(cardIndex))
 		AudioController.PlayButtonClick()
 
-		-- Immediate direct placement on card click if it's our turn during Placement phase!
-		if currentGameState == Enums.GameState.Placement and isCurrentPlayerTurn then
-			print("[HandBar] Placing card directly on coaster: " .. cardType)
-			AudioController.PlayCardPlace()
+		-- Immediate direct placement on card click during Placement phase!
+		if currentGameState == Enums.GameState.Placement then
+			print("[HandBar] Submitting card placement: " .. cardType)
 			task.spawn(function()
-				local success, _ = onSubmitAction(Enums.PlayerAction.PlaceCard, { cardType = cardType })
+				local success, err = onSubmitAction(Enums.PlayerAction.PlaceCard, { cardType = cardType })
 				if success then
+					AudioController.PlayCardPlace()
 					HandBar.ConsumeCard(cardIndex)
+				else
+					NotificationBanner.Show(err or "Not your turn to place a card!", "warning")
 				end
 			end)
 		else
-			print(string.format("[HandBar] Click ignored - GameState: %s, isCurrentPlayerTurn: %s",
-				tostring(currentGameState), tostring(isCurrentPlayerTurn)))
+			NotificationBanner.Show("Cards can only be placed during Placement Phase!", "warning")
 		end
 	end)
 

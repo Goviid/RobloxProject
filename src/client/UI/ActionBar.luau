@@ -26,6 +26,8 @@ local currentBid = 1
 local minBid = 1
 local maxBid = 1
 local isBidUnlocked = false
+local currentPhase: string = ""
+local isMyTurnCached = false
 
 local onActionCallback: ((action: string, data: any) -> ())? = nil
 
@@ -279,7 +281,6 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	-- Click Handlers
 	bidButton.MouseButton1Click:Connect(function()
 		if not isBidUnlocked then
-			-- Show informational feedback if clicked on Turn 1
 			local NotificationBanner = require(script.Parent.NotificationBanner)
 			NotificationBanner.Show("👉 Place your 1st card before starting a bid!", "info")
 			return
@@ -288,12 +289,30 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	end)
 
 	raiseBidButton.MouseButton1Click:Connect(function()
-		modal.Visible = not modal.Visible
+		local inBidding = (currentPhase == Enums.GameState.Bidding)
+		if inBidding and isMyTurnCached then
+			modal.Visible = not modal.Visible
+		elseif not inBidding then
+			local NotificationBanner = require(script.Parent.NotificationBanner)
+			NotificationBanner.Show("⚡ Challenge/Raise can only be called during betting phase!", "info")
+		else
+			local NotificationBanner = require(script.Parent.NotificationBanner)
+			NotificationBanner.Show("⏳ Please wait for your turn to raise or challenge!", "info")
+		end
 	end)
 
 	passButton.MouseButton1Click:Connect(function()
-		if onActionCallback then
-			onActionCallback(Enums.PlayerAction.Pass, {})
+		local inBidding = (currentPhase == Enums.GameState.Bidding)
+		if inBidding and isMyTurnCached then
+			if onActionCallback then
+				onActionCallback(Enums.PlayerAction.Pass, {})
+			end
+		elseif not inBidding then
+			local NotificationBanner = require(script.Parent.NotificationBanner)
+			NotificationBanner.Show("✕ You cannot pass during placement phase!", "info")
+		else
+			local NotificationBanner = require(script.Parent.NotificationBanner)
+			NotificationBanner.Show("⏳ Please wait for your turn to pass!", "info")
 		end
 	end)
 
@@ -326,43 +345,89 @@ function ActionBar.UpdateState(
 		bidSubtitleLabel.Text = "Total Cards on Table: " .. totalCards
 	end
 
+	currentPhase = gameState
+	isMyTurnCached = isMyTurn
+
 	local inPlacement = (gameState == Enums.GameState.Placement)
 	local inBidding = (gameState == Enums.GameState.Bidding)
 
-	if inPlacement then
-		-- In Placement Phase: BID button is ALWAYS visible so player sees the option!
-		bidButton.Visible = true
-		raiseBidButton.Visible = false
-		passButton.Visible = false
+	-- All 3 action pills are permanently present in bottom-right matching reference mockup
+	bidButton.Visible = true
+	raiseBidButton.Visible = true
+	passButton.Visible = true
 
+	local bStroke = bidButton:FindFirstChildWhichIsA("UIStroke")
+	local rStroke = raiseBidButton:FindFirstChildWhichIsA("UIStroke")
+	local pStroke = passButton:FindFirstChildWhichIsA("UIStroke")
+
+	if inPlacement then
 		local canBidNow = (canStartBid == true or totalCards >= 4)
 		isBidUnlocked = canBidNow and isMyTurn
 
-		local stroke = bidButton:FindFirstChildWhichIsA("UIStroke")
-		if isBidUnlocked then
-			bidButton.Text = "BET"
-			bidButton.TextColor3 = Color3.fromRGB(255, 215, 65)
-			if stroke then stroke.Color = Color3.fromRGB(255, 215, 65) end
-		else
-			-- Clearly visible but indicates turn requirement
-			bidButton.Text = (totalCards >= 4) and "BET (Turn)" or "BET (Turn 2+)"
-			bidButton.TextColor3 = Color3.fromRGB(170, 160, 130)
-			if stroke then stroke.Color = Color3.fromRGB(110, 100, 70) end
+		bidButton.Text = isBidUnlocked and "BET" or (totalCards >= 4 and "BET (Turn)" or "BET (Turn 2+)")
+		bidButton.TextColor3 = isBidUnlocked and Color3.fromRGB(255, 215, 65) or Color3.fromRGB(160, 150, 110)
+		bidButton.TextTransparency = isBidUnlocked and 0 or 0.35
+		if bStroke then
+			bStroke.Color = isBidUnlocked and Color3.fromRGB(255, 215, 65) or Color3.fromRGB(120, 110, 60)
+			bStroke.Transparency = isBidUnlocked and 0 or 0.4
 		end
+
+		-- Dim CHALLENGE & PASS during placement
+		raiseBidButton.Text = "CHALLENGE"
+		raiseBidButton.TextColor3 = Color3.fromRGB(255, 115, 130)
+		raiseBidButton.TextTransparency = 0.55
+		if rStroke then
+			rStroke.Color = Color3.fromRGB(160, 65, 75)
+			rStroke.Transparency = 0.60
+		end
+
+		passButton.Text = "PASS"
+		passButton.TextColor3 = Color3.fromRGB(78, 204, 163)
+		passButton.TextTransparency = 0.55
+		if pStroke then
+			pStroke.Color = Color3.fromRGB(45, 120, 95)
+			pStroke.Transparency = 0.60
+		end
+
 	elseif inBidding then
-		bidButton.Visible = false
-		if isMyTurn then
-			raiseBidButton.Visible = (highestBid < totalCards)
-			raiseBidButton.Text = (highestBid + 1 >= totalCards) and "CHALLENGE" or "RAISE BID"
-			passButton.Visible = true
-		else
-			raiseBidButton.Visible = false
-			passButton.Visible = false
+		-- Dim BET or switch to RAISE
+		isBidUnlocked = false
+		bidButton.Text = "BET"
+		bidButton.TextColor3 = Color3.fromRGB(160, 150, 110)
+		bidButton.TextTransparency = 0.55
+		if bStroke then
+			bStroke.Color = Color3.fromRGB(110, 100, 60)
+			bStroke.Transparency = 0.60
 		end
+
+		-- Active CHALLENGE / RAISE BID
+		local canChallenge = isMyTurn and (highestBid < totalCards)
+		raiseBidButton.Text = (highestBid + 1 >= totalCards) and "CHALLENGE" or "RAISE BID"
+		raiseBidButton.TextColor3 = Color3.fromRGB(255, 115, 130)
+		raiseBidButton.TextTransparency = canChallenge and 0 or 0.45
+		if rStroke then
+			rStroke.Color = canChallenge and Color3.fromRGB(255, 115, 130) or Color3.fromRGB(160, 65, 75)
+			rStroke.Transparency = canChallenge and 0 or 0.50
+		end
+
+		-- Active PASS
+		passButton.Text = "PASS"
+		passButton.TextColor3 = Color3.fromRGB(78, 204, 163)
+		passButton.TextTransparency = isMyTurn and 0 or 0.45
+		if pStroke then
+			pStroke.Color = isMyTurn and Color3.fromRGB(78, 204, 163) or Color3.fromRGB(45, 120, 95)
+			pStroke.Transparency = isMyTurn and 0 or 0.50
+		end
+
 	else
-		bidButton.Visible = false
-		raiseBidButton.Visible = false
-		passButton.Visible = false
+		-- Other phases (Revealing, RoundEnd): keep stacked layout intact in quiet mode
+		isBidUnlocked = false
+		bidButton.TextTransparency = 0.6
+		raiseBidButton.TextTransparency = 0.6
+		passButton.TextTransparency = 0.6
+		if bStroke then bStroke.Transparency = 0.6 end
+		if rStroke then rStroke.Transparency = 0.6 end
+		if pStroke then pStroke.Transparency = 0.6 end
 	end
 
 	if not isMyTurn and bidModal then

@@ -37,11 +37,13 @@ function TableView.Create(parent: GuiObject, _onRevealClick: (targetUserId: numb
 	container.Parent = parent
 
 	-- ========================================================================
-	-- TOP ROW: [ TURN 1 ]  [ ROUND 1: PLACEMENT PHASE ]  [ ⏱️ 15s ]  [ YOUR TURN ]
+	-- ========================================================================
+	-- TOP ROW: [ 1 TURN ]    [ ROUND 1: PLACEMENT PHASE ]    [ TURN 2 / ⏱️ 15s ]
+	-- (Exact 3-pill arcade header matching reference mockup)
 	-- ========================================================================
 	local topRow = Instance.new("Frame")
 	topRow.Name = "HeaderRow"
-	topRow.Size = UDim2.new(1, 0, 0, 44)
+	topRow.Size = UDim2.new(1, 0, 0, 46)
 	topRow.Position = UDim2.new(0, 0, 0, 0)
 	topRow.BackgroundTransparency = 1
 	topRow.Parent = container
@@ -51,14 +53,14 @@ function TableView.Create(parent: GuiObject, _onRevealClick: (targetUserId: numb
 	rowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	rowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 	rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	rowLayout.Padding = UDim.new(0, 10)
+	rowLayout.Padding = UDim.new(0, 16)
 	rowLayout.Parent = topRow
 
-	-- 1. LEFT PILL: Current Turn Number ("TURN 1")
+	-- 1. LEFT PILL: [ 1 TURN ] (Cyan neon rim with player avatar icon matching mockup)
 	local turnPill = Instance.new("Frame")
 	turnPill.Name = "TurnPill"
-	turnPill.Size = UDim2.new(0, 120, 0, 40)
-	turnPill.BackgroundColor3 = Color3.fromRGB(16, 14, 22)
+	turnPill.Size = UDim2.new(0, 135, 0, 42)
+	turnPill.BackgroundColor3 = Color3.fromRGB(14, 12, 20)
 	turnPill.BackgroundTransparency = 0.20
 	turnPill.BorderSizePixel = 0
 	turnPill.LayoutOrder = 1
@@ -68,26 +70,38 @@ function TableView.Create(parent: GuiObject, _onRevealClick: (targetUserId: numb
 	local tStroke = Instance.new("UIStroke")
 	tStroke.Name = "TurnStroke"
 	tStroke.Color = Color3.fromRGB(80, 225, 245)
-	tStroke.Thickness = 2.2
+	tStroke.Thickness = 2.4
 	tStroke.Parent = turnPill
 	turnPillStroke = tStroke
 
+	local tIcon = Instance.new("TextLabel")
+	tIcon.Size = UDim2.new(0, 26, 0, 26)
+	tIcon.Position = UDim2.new(0, 10, 0.5, -13)
+	tIcon.BackgroundTransparency = 1
+	tIcon.Font = Enum.Font.FredokaOne
+	tIcon.TextSize = 16
+	tIcon.TextColor3 = Color3.fromRGB(80, 225, 245)
+	tIcon.Text = "👤"
+	tIcon.Parent = turnPill
+
 	local tText = Instance.new("TextLabel")
 	tText.Name = "TurnText"
-	tText.Size = UDim2.new(1, 0, 1, 0)
+	tText.Size = UDim2.new(1, -44, 1, 0)
+	tText.Position = UDim2.new(0, 38, 0, 0)
 	tText.BackgroundTransparency = 1
 	tText.Font = Enum.Font.FredokaOne
 	tText.TextSize = 16
 	tText.TextColor3 = Color3.fromRGB(240, 250, 255)
-	tText.Text = "TURN 1"
+	tText.TextXAlignment = Enum.TextXAlignment.Left
+	tText.Text = "1 TURN"
 	tText.Parent = turnPill
 	turnPillLabel = tText
 
-	-- 2. CENTER PILL: "ROUND 1: PLACEMENT PHASE"
+	-- 2. CENTER PILL: [ ROUND 1: PLACEMENT PHASE ] (Large gold neon banner)
 	local centerPill = Instance.new("Frame")
 	centerPill.Name = "CenterPhasePill"
-	centerPill.Size = UDim2.new(0, 310, 0, 44)
-	centerPill.BackgroundColor3 = Color3.fromRGB(18, 14, 24)
+	centerPill.Size = UDim2.new(0, 360, 0, 46)
+	centerPill.BackgroundColor3 = Color3.fromRGB(16, 13, 22)
 	centerPill.BackgroundTransparency = 0.15
 	centerPill.BorderSizePixel = 0
 	centerPill.LayoutOrder = 2
@@ -96,7 +110,7 @@ function TableView.Create(parent: GuiObject, _onRevealClick: (targetUserId: numb
 
 	local centerStroke = Instance.new("UIStroke")
 	centerStroke.Color = Color3.fromRGB(255, 215, 65)
-	centerStroke.Thickness = 2.6
+	centerStroke.Thickness = 2.8
 	centerStroke.Parent = centerPill
 
 	local strokeGrad = Instance.new("UIGradient")
@@ -119,75 +133,61 @@ function TableView.Create(parent: GuiObject, _onRevealClick: (targetUserId: numb
 	centerLabel.Parent = centerPill
 	centerTitleLabel = centerLabel
 
-	-- 3. DEDICATED TURN TIMER PILL: [ ⏱️ 15s ]
-	local tPill = Instance.new("Frame")
-	tPill.Name = "TurnTimerPill"
-	tPill.Size = UDim2.new(0, 110, 0, 40)
-	tPill.BackgroundColor3 = Color3.fromRGB(16, 14, 22)
-	tPill.BackgroundTransparency = 0.20
-	tPill.BorderSizePixel = 0
-	tPill.LayoutOrder = 3
-	tPill.Parent = topRow
-	Instance.new("UICorner", tPill).CornerRadius = UDim.new(1, 0)
-
-	local tmStroke = Instance.new("UIStroke")
-	tmStroke.Name = "TimerStroke"
-	tmStroke.Color = Color3.fromRGB(80, 225, 245)
-	tmStroke.Thickness = 2.2
-	tmStroke.Parent = tPill
-	timerStroke = tmStroke
-
-	local tmText = Instance.new("TextLabel")
-	tmText.Name = "TimerText"
-	tmText.Size = UDim2.new(1, 0, 1, 0)
-	tmText.BackgroundTransparency = 1
-	tmText.Font = Enum.Font.FredokaOne
-	tmText.TextSize = 16
-	tmText.TextColor3 = Color3.fromRGB(240, 250, 255)
-	tmText.Text = "⏱️ 15s"
-	tmText.Parent = tPill
-	timerLabel = tmText
-
-	local fillTrack = Instance.new("Frame")
-	fillTrack.Name = "FillTrack"
-	fillTrack.AnchorPoint = Vector2.new(0.5, 1)
-	fillTrack.Size = UDim2.new(0.75, 0, 0, 3)
-	fillTrack.Position = UDim2.new(0.5, 0, 1, -4)
-	fillTrack.BackgroundColor3 = Color3.fromRGB(80, 225, 245)
-	fillTrack.BorderSizePixel = 0
-	fillTrack.Parent = tPill
-	Instance.new("UICorner", fillTrack).CornerRadius = UDim.new(1, 0)
-	timerFillBar = fillTrack
-	timerPill = tPill
-
-	-- 4. RIGHT PILL: Active Player Badge ("YOUR TURN" / "BLUFFER_99'S TURN")
+	-- 3. RIGHT PILL: [ TURN 2 / ⏱️ 15s ] (Crimson neon rim with countdown underline)
 	local activePill = Instance.new("Frame")
 	activePill.Name = "ActivePlayerPill"
-	activePill.Size = UDim2.new(0, 160, 0, 40)
-	activePill.BackgroundColor3 = Color3.fromRGB(16, 14, 22)
+	activePill.Size = UDim2.new(0, 165, 0, 42)
+	activePill.BackgroundColor3 = Color3.fromRGB(14, 12, 20)
 	activePill.BackgroundTransparency = 0.20
 	activePill.BorderSizePixel = 0
-	activePill.LayoutOrder = 4
+	activePill.LayoutOrder = 3
 	activePill.Parent = topRow
 	Instance.new("UICorner", activePill).CornerRadius = UDim.new(1, 0)
 
 	local aStroke = Instance.new("UIStroke")
 	aStroke.Name = "ActiveStroke"
-	aStroke.Color = Color3.fromRGB(255, 215, 65)
+	aStroke.Color = Color3.fromRGB(255, 65, 85)
 	aStroke.Thickness = 2.4
 	aStroke.Parent = activePill
 	activePlayerStroke = aStroke
+	timerStroke = aStroke
+
+	local aIcon = Instance.new("TextLabel")
+	aIcon.Size = UDim2.new(0, 26, 0, 26)
+	aIcon.Position = UDim2.new(0, 10, 0.5, -13)
+	aIcon.BackgroundTransparency = 1
+	aIcon.Font = Enum.Font.FredokaOne
+	aIcon.TextSize = 15
+	aIcon.TextColor3 = Color3.fromRGB(255, 85, 105)
+	aIcon.Text = "⏱️"
+	aIcon.Parent = activePill
 
 	local aText = Instance.new("TextLabel")
 	aText.Name = "ActivePlayerText"
-	aText.Size = UDim2.new(1, 0, 1, 0)
+	aText.Size = UDim2.new(1, -44, 1, 0)
+	aText.Position = UDim2.new(0, 38, 0, 0)
 	aText.BackgroundTransparency = 1
 	aText.Font = Enum.Font.FredokaOne
 	aText.TextSize = 15
-	aText.TextColor3 = Color3.fromRGB(255, 225, 80)
-	aText.Text = "👤 YOUR TURN"
+	aText.TextColor3 = Color3.fromRGB(255, 225, 85)
+	aText.TextXAlignment = Enum.TextXAlignment.Left
+	aText.Text = "TURN 1 (15s)"
 	aText.Parent = activePill
 	activePlayerLabel = aText
+	timerLabel = aText
+
+	-- Real-time countdown progress underline
+	local fillTrack = Instance.new("Frame")
+	fillTrack.Name = "FillTrack"
+	fillTrack.AnchorPoint = Vector2.new(0.5, 1)
+	fillTrack.Size = UDim2.new(0.82, 0, 0, 3)
+	fillTrack.Position = UDim2.new(0.5, 0, 1, -4)
+	fillTrack.BackgroundColor3 = Color3.fromRGB(255, 65, 85)
+	fillTrack.BorderSizePixel = 0
+	fillTrack.Parent = activePill
+	Instance.new("UICorner", fillTrack).CornerRadius = UDim.new(1, 0)
+	timerFillBar = fillTrack
+	timerPill = activePill
 
 	-- ========================================================================
 	-- BOTTOM ROW: Non-overlapping Alert Announcement Line

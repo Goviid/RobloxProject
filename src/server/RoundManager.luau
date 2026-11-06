@@ -93,7 +93,27 @@ end
 local function advanceToNextActivePlayer()
 	local active = PlayerManager.GetActivePlayers()
 	if #active == 0 then return end
-	activePlayerIndex = (activePlayerIndex % #active) + 1
+
+	local curId = RoundManager.GetActivePlayerId()
+	local curIdx = 1
+	if curId then
+		for idx, p in ipairs(active) do
+			if p.userId == curId then
+				curIdx = idx
+				break
+			end
+		end
+	else
+		curIdx = activePlayerIndex
+	end
+
+	local oldIdx = curIdx
+	activePlayerIndex = (curIdx % #active) + 1
+	local nextP = active[activePlayerIndex]
+	print(string.format("[Server RoundManager] Advanced turn from index %d (%s) to index %d (%s) [Total active: %d]",
+		oldIdx, curId and tostring(curId) or "nil",
+		activePlayerIndex, nextP and nextP.name or "nil",
+		#active))
 end
 
 local function cancelTurnTimer()

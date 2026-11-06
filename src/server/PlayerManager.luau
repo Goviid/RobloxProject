@@ -92,11 +92,20 @@ function PlayerManager.AddPlayer(player: Player): PlayerData?
 	}
 
 	players[player.UserId] = data
-	table.insert(seatOrder, player.UserId)
+	if not table.find(seatOrder, player.UserId) then
+		table.insert(seatOrder, player.UserId)
+	end
 	return data
 end
 
 function PlayerManager.AddBot(name: string): PlayerData?
+	-- Reuse existing bot if already created (prevents phantom duplicate bots)
+	for _, p in pairs(players) do
+		if p.isBot and p.name == name then
+			return p
+		end
+	end
+
 	local seat = findOpenSeat(true)
 	if not seat then
 		return nil
@@ -118,7 +127,9 @@ function PlayerManager.AddBot(name: string): PlayerData?
 	}
 
 	players[botId] = data
-	table.insert(seatOrder, botId)
+	if not table.find(seatOrder, botId) then
+		table.insert(seatOrder, botId)
+	end
 	return data
 end
 
