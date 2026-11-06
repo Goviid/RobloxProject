@@ -1,7 +1,8 @@
 --!strict
 -- HandBar.luau
--- Tactile 2.5D Fan of Circular Cards (LOCOfficial style)
--- Features a radiant handheld fan formation, dynamic re-centering adjustment upon consumption, and spring hover elevation
+-- LOCOfficial-Style Handheld Fan of Vertical Playing Cards (Uno-Style)
+-- Features authentic vertical rounded playing cards, vibrant pop colors, corner pips,
+-- center oval emblems, natural fan geometry, dynamic consumption re-centering, and spring hover elevation
 
 local TweenService = game:GetService("TweenService")
 local Theme = require(script.Parent.Theme)
@@ -19,29 +20,30 @@ local canCurrentlyPlace = false
 local isPlayerTurn = false
 local selectedCard: string? = nil
 
--- Fan Formation Geometry
-local CARD_DIAMETER = 144        -- Substantial circular card diameter
-local CARD_OVERLAP_SPACING = 110 -- Horizontal spacing in the fan
-local RESTING_Y_OFFSET = -70     -- Base height above screen bottom
-local HOVER_LIFT_Y_OFFSET = -140  -- Raised high into view when hovered
+-- Authentic Playing Card Dimensions (LOCOfficial Uno Ratio ~1:1.45)
+local CARD_WIDTH = 110            -- Width of vertical card
+local CARD_HEIGHT = 160           -- Height of vertical card
+local CARD_OVERLAP_SPACING = 82   -- Horizontal overlap in hand fan
+local RESTING_Y_OFFSET = -30      -- Resting bottom offset above screen edge
+local HOVER_LIFT_Y_OFFSET = -95   -- Elevated 65px straight up on hover
 
--- Calculated distinct fan angles (degrees) for natural card fan curve
+-- Natural hand fan angles (degrees)
 local function getFannedAngle(index: number, totalCards: number): number
 	if totalCards <= 1 then return 0 end
 	local normalized = (index - 1) / (totalCards - 1) -- 0.0 to 1.0
-	local maxAngle = if totalCards >= 4 then 15.0 elseif totalCards == 3 then 10.0 else 6.0
+	local maxAngle = if totalCards >= 4 then 10.5 elseif totalCards == 3 then 7.0 else 4.0
 	return (normalized - 0.5) * (maxAngle * 2)
 end
 
--- Natural vertical arch: outer cards rest lower in the palm, center cards arch higher
+-- Natural vertical arch: outer cards rest slightly lower in the palm
 local function getArchYOffset(index: number, totalCards: number): number
 	if totalCards <= 1 then return 0 end
 	local centerDist = math.abs((index - 1) - (totalCards - 1) / 2)
-	return centerDist * 9.0 -- Noticeable, natural fan arc
+	return centerDist * 5.0
 end
 
 -- ============================================================================
--- 1. CONSTRUCT A RICH TEXTURED 2.5D FAN CARD
+-- 1. CONSTRUCT A VERTICAL ROUNDED PLAYING CARD (LOCOfficial Style)
 -- ============================================================================
 local function create25DCard(
 	cardType: string,
@@ -60,14 +62,14 @@ local function create25DCard(
 	-- Outer Container (handles fan position, rotation & hover)
 	local container = Instance.new("Frame")
 	container.Name = "CardHolder_" .. index .. "_" .. cardType
-	container.Size = UDim2.new(0, CARD_DIAMETER, 0, CARD_DIAMETER)
+	container.Size = UDim2.new(0, CARD_WIDTH, 0, CARD_HEIGHT)
 	container.AnchorPoint = Vector2.new(0.5, 1)
 	container.Position = restingPos
 	container.Rotation = rotAngle
 	container.BackgroundTransparency = 1
 	container.ZIndex = baseZIndex
 
-	-- Store dynamic resting state on container attributes so adjustments update hover targets!
+	-- Store dynamic resting state on container attributes so adjustments update hover targets
 	container:SetAttribute("RestingX", xOffset)
 	container:SetAttribute("RestingY", restingY)
 	container:SetAttribute("RestingRot", rotAngle)
@@ -77,127 +79,155 @@ local function create25DCard(
 	local shadow = Instance.new("Frame")
 	shadow.Name = "CardShadow"
 	shadow.Size = UDim2.new(1, 0, 1, 0)
-	shadow.Position = UDim2.new(0, 0, 0, 8)
-	shadow.BackgroundColor3 = Color3.fromRGB(10, 25, 45)
-	shadow.BackgroundTransparency = 0.60
+	shadow.Position = UDim2.new(0, 0, 0, 7)
+	shadow.BackgroundColor3 = Color3.fromRGB(15, 20, 30)
+	shadow.BackgroundTransparency = 0.65
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = baseZIndex
 	shadow.Parent = container
 
 	local shadowCorner = Instance.new("UICorner")
-	shadowCorner.CornerRadius = UDim.new(1, 0)
+	shadowCorner.CornerRadius = UDim.new(0, 14)
 	shadowCorner.Parent = shadow
 
-	-- 2. Interactive Circular Card Button
+	-- 2. Interactive Vertical Playing Card Body
 	local btn = Instance.new("ImageButton")
 	btn.Name = "CardButton"
 	btn.Size = UDim2.new(1, 0, 1, 0)
 	btn.Position = UDim2.new(0, 0, 0, 0)
-	btn.BackgroundColor3 = isRose and Color3.fromRGB(205, 30, 55) or Color3.fromRGB(36, 32, 42)
+	btn.BackgroundColor3 = isRose and Color3.fromRGB(235, 42, 75) or Color3.fromRGB(26, 26, 32)
 	btn.BorderSizePixel = 0
 	btn.AutoButtonColor = false
 	btn.ZIndex = baseZIndex + 1
 	btn.Parent = container
 
 	local btnCorner = Instance.new("UICorner")
-	btnCorner.CornerRadius = UDim.new(1, 0)
+	btnCorner.CornerRadius = UDim.new(0, 14)
 	btnCorner.Parent = btn
 
-	-- 3. Rich Color Gradient Texture (Rose: Radiant Ruby; Skull: Obsidian Slate)
+	-- 3. Thick Crisp White Playing Card Border (Signature LOCOfficial outline)
+	local cardStroke = Instance.new("UIStroke")
+	cardStroke.Name = "CardWhiteBorder"
+	cardStroke.Color = Color3.fromRGB(255, 255, 255)
+	cardStroke.Thickness = 3.5
+	cardStroke.Parent = btn
+
+	-- 4. Subtle Rich Vertical Gradient
 	local gradient = Instance.new("UIGradient")
-	gradient.Rotation = 45
+	gradient.Rotation = 90
 	if isRose then
 		gradient.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0.0, Color3.fromRGB(240, 45, 75)),
-			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(195, 24, 48)),
-			ColorSequenceKeypoint.new(1.0, Color3.fromRGB(125, 12, 30)),
+			ColorSequenceKeypoint.new(0.0, Color3.fromRGB(252, 60, 95)),
+			ColorSequenceKeypoint.new(1.0, Color3.fromRGB(205, 28, 58)),
 		})
 	else
 		gradient.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0.0, Color3.fromRGB(55, 50, 65)),
-			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(32, 28, 38)),
-			ColorSequenceKeypoint.new(1.0, Color3.fromRGB(16, 14, 20)),
+			ColorSequenceKeypoint.new(0.0, Color3.fromRGB(48, 48, 58)),
+			ColorSequenceKeypoint.new(1.0, Color3.fromRGB(18, 18, 22)),
 		})
 	end
 	gradient.Parent = btn
 
-	-- 4. Outer Beveled Metallic Rim (Tactile 3D Bevel)
-	local stroke = Instance.new("UIStroke")
-	stroke.Name = "OuterGoldRim"
-	stroke.Color = isRose and Color3.fromRGB(250, 205, 75) or Color3.fromRGB(245, 180, 60)
-	stroke.Thickness = 4.2
-	stroke.Parent = btn
+	-- 5. Top-Left Corner Pip (White Pill with mini symbol)
+	local topLeftPip = Instance.new("Frame")
+	topLeftPip.Name = "TopLeftPip"
+	topLeftPip.Size = UDim2.new(0, 24, 0, 26)
+	topLeftPip.Position = UDim2.new(0, 7, 0, 7)
+	topLeftPip.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	topLeftPip.BorderSizePixel = 0
+	topLeftPip.ZIndex = baseZIndex + 2
+	topLeftPip.Parent = btn
+	Instance.new("UICorner", topLeftPip).CornerRadius = UDim.new(0, 6)
 
-	-- 5. Inner Concentric Filigree Ring
-	local innerRing = Instance.new("Frame")
-	innerRing.Name = "InnerRing"
-	innerRing.Size = UDim2.new(1, -16, 1, -16)
-	innerRing.Position = UDim2.new(0, 8, 0, 8)
-	innerRing.BackgroundTransparency = 1
-	innerRing.ZIndex = baseZIndex + 2
-	innerRing.Parent = btn
+	local tlIcon = Instance.new("TextLabel")
+	tlIcon.Size = UDim2.new(1, 0, 1, 0)
+	tlIcon.BackgroundTransparency = 1
+	tlIcon.Font = Theme.Fonts.Title
+	tlIcon.TextSize = 14
+	tlIcon.Text = isRose and "🌹" or "💀"
+	tlIcon.ZIndex = baseZIndex + 3
+	tlIcon.Parent = topLeftPip
 
-	local innerCorner = Instance.new("UICorner")
-	innerCorner.CornerRadius = UDim.new(1, 0)
-	innerCorner.Parent = innerRing
+	-- 6. Bottom-Right Corner Pip (White Pill with mini symbol)
+	local bottomRightPip = Instance.new("Frame")
+	bottomRightPip.Name = "BottomRightPip"
+	bottomRightPip.Size = UDim2.new(0, 24, 0, 26)
+	bottomRightPip.Position = UDim2.new(1, -31, 1, -33)
+	bottomRightPip.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	bottomRightPip.BorderSizePixel = 0
+	bottomRightPip.ZIndex = baseZIndex + 2
+	bottomRightPip.Parent = btn
+	Instance.new("UICorner", bottomRightPip).CornerRadius = UDim.new(0, 6)
 
-	local innerStroke = Instance.new("UIStroke")
-	innerStroke.Color = isRose and Color3.fromRGB(255, 235, 160) or Color3.fromRGB(230, 200, 140)
-	innerStroke.Transparency = 0.35
-	innerStroke.Thickness = 1.8
-	innerStroke.Parent = innerRing
+	local brIcon = Instance.new("TextLabel")
+	brIcon.Size = UDim2.new(1, 0, 1, 0)
+	brIcon.BackgroundTransparency = 1
+	brIcon.Font = Theme.Fonts.Title
+	brIcon.TextSize = 14
+	brIcon.Text = isRose and "🌹" or "💀"
+	brIcon.ZIndex = baseZIndex + 3
+	brIcon.Parent = bottomRightPip
 
-	-- 6. Center Embossed Icon (🌹 or 💀)
-	local icon = Instance.new("TextLabel")
-	icon.Name = "CardIcon"
-	icon.Size = UDim2.new(1, 0, 0, 72)
-	icon.Position = UDim2.new(0, 0, 0, 22)
-	icon.BackgroundTransparency = 1
-	icon.Font = Theme.Fonts.Title
-	icon.TextSize = 64
-	icon.Text = isRose and "🌹" or "💀"
-	icon.ZIndex = baseZIndex + 3
-	icon.Parent = btn
+	-- 7. Center White Oval Emblem (Signature LOCOfficial Graphic Badge)
+	local centerOval = Instance.new("Frame")
+	centerOval.Name = "CenterOval"
+	centerOval.Size = UDim2.new(0, 74, 0, 84)
+	centerOval.Position = UDim2.new(0.5, -37, 0.5, -42)
+	centerOval.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	centerOval.BorderSizePixel = 0
+	centerOval.ZIndex = baseZIndex + 2
+	centerOval.Parent = btn
 
-	local iconShadow = Instance.new("TextLabel")
-	iconShadow.Name = "IconShadow"
-	iconShadow.Size = UDim2.new(1, 0, 0, 72)
-	iconShadow.Position = UDim2.new(0, 2, 0, 24)
-	iconShadow.BackgroundTransparency = 1
-	iconShadow.Font = Theme.Fonts.Title
-	iconShadow.TextSize = 64
-	iconShadow.TextColor3 = Color3.fromRGB(0, 0, 0)
-	iconShadow.TextTransparency = 0.65
-	iconShadow.Text = isRose and "🌹" or "💀"
-	iconShadow.ZIndex = baseZIndex + 2
-	iconShadow.Parent = btn
+	local ovalCorner = Instance.new("UICorner")
+	ovalCorner.CornerRadius = UDim.new(0, 20)
+	ovalCorner.Parent = centerOval
 
-	-- 7. Bottom Clean Gold Ribbon Label ("ROSE" or "SKULL")
+	local ovalStroke = Instance.new("UIStroke")
+	ovalStroke.Color = isRose and Color3.fromRGB(255, 220, 228) or Color3.fromRGB(220, 220, 230)
+	ovalStroke.Thickness = 1.5
+	ovalStroke.Parent = centerOval
+
+	-- 8. Large Centered Icon inside Oval (🌹 or 💀)
+	local centerIcon = Instance.new("TextLabel")
+	centerIcon.Name = "CenterIcon"
+	centerIcon.Size = UDim2.new(1, 0, 0, 48)
+	centerIcon.Position = UDim2.new(0, 0, 0, 8)
+	centerIcon.BackgroundTransparency = 1
+	centerIcon.Font = Theme.Fonts.Title
+	centerIcon.TextSize = 46
+	centerIcon.Text = isRose and "🌹" or "💀"
+	centerIcon.ZIndex = baseZIndex + 3
+	centerIcon.Parent = centerOval
+
+	-- 9. Crisp Card Name Label inside Oval
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "CardLabel"
-	nameLabel.Size = UDim2.new(1, 0, 0, 22)
-	nameLabel.Position = UDim2.new(0, 0, 1, -36)
+	nameLabel.Size = UDim2.new(1, 0, 0, 18)
+	nameLabel.Position = UDim2.new(0, 0, 1, -24)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Font = Enum.Font.FredokaOne
-	nameLabel.TextSize = 13
-	nameLabel.TextColor3 = isRose and Color3.fromRGB(255, 245, 220) or Color3.fromRGB(255, 215, 120)
-	nameLabel.TextStrokeTransparency = 0.35
-	nameLabel.TextStrokeColor3 = Color3.fromRGB(20, 15, 25)
+	nameLabel.TextSize = 12
+	nameLabel.TextColor3 = isRose and Color3.fromRGB(205, 30, 55) or Color3.fromRGB(24, 24, 30)
 	nameLabel.Text = isRose and "ROSE" or "SKULL"
 	nameLabel.ZIndex = baseZIndex + 3
-	nameLabel.Parent = btn
+	nameLabel.Parent = centerOval
 
 	-- Dimmed state if not playable
 	if not isPlayable then
 		btn.BackgroundTransparency = 0.45
-		icon.TextTransparency = 0.45
+		cardStroke.Transparency = 0.45
+		centerOval.BackgroundTransparency = 0.45
+		centerIcon.TextTransparency = 0.45
 		nameLabel.TextTransparency = 0.45
-		stroke.Transparency = 0.45
+		topLeftPip.BackgroundTransparency = 0.45
+		bottomRightPip.BackgroundTransparency = 0.45
+		tlIcon.TextTransparency = 0.45
+		brIcon.TextTransparency = 0.45
 		shadow.BackgroundTransparency = 0.85
 	end
 
 	-- ========================================================================
-	-- 2.5D TACTILE HOVER & ELEVATION
+	-- 2.5D TACTILE HOVER & ELEVATION (Pops UP smoothly into focus)
 	-- ========================================================================
 	btn.MouseEnter:Connect(function()
 		if not isPlayerTurn or not canCurrentlyPlace then return end
@@ -206,28 +236,31 @@ local function create25DCard(
 		container.ZIndex = 60
 		shadow.ZIndex = 60
 		btn.ZIndex = 61
-		innerRing.ZIndex = 62
-		iconShadow.ZIndex = 62
-		icon.ZIndex = 63
+		topLeftPip.ZIndex = 62
+		bottomRightPip.ZIndex = 62
+		tlIcon.ZIndex = 63
+		brIcon.ZIndex = 63
+		centerOval.ZIndex = 62
+		centerIcon.ZIndex = 63
 		nameLabel.ZIndex = 63
 
 		local curX = container:GetAttribute("RestingX") or xOffset
 
-		-- Lift up towards camera, straighten up (0 deg), and scale up slightly
-		TweenService:Create(container, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		-- Lift up towards player, straighten rotation to 0, and expand slightly
+		TweenService:Create(container, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 			Position = UDim2.new(0.5, curX, 1, HOVER_LIFT_Y_OFFSET),
 			Rotation = 0,
-			Size = UDim2.new(0, CARD_DIAMETER + 12, 0, CARD_DIAMETER + 12),
+			Size = UDim2.new(0, CARD_WIDTH + 6, 0, CARD_HEIGHT + 8),
 		}):Play()
 
-		TweenService:Create(shadow, TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Position = UDim2.new(0, 0, 0, 18),
+		TweenService:Create(shadow, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0, 0, 0, 16),
 			BackgroundTransparency = 0.70,
 		}):Play()
 
-		TweenService:Create(stroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Color = Color3.fromRGB(255, 240, 120),
-			Thickness = 5.2,
+		TweenService:Create(cardStroke, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Color = Color3.fromRGB(255, 250, 180),
+			Thickness = 4.5,
 		}):Play()
 	end)
 
@@ -241,25 +274,28 @@ local function create25DCard(
 		container.ZIndex = curZIndex
 		shadow.ZIndex = curZIndex
 		btn.ZIndex = curZIndex + 1
-		innerRing.ZIndex = curZIndex + 2
-		iconShadow.ZIndex = curZIndex + 2
-		icon.ZIndex = curZIndex + 3
+		topLeftPip.ZIndex = curZIndex + 2
+		bottomRightPip.ZIndex = curZIndex + 2
+		tlIcon.ZIndex = curZIndex + 3
+		brIcon.ZIndex = curZIndex + 3
+		centerOval.ZIndex = curZIndex + 2
+		centerIcon.ZIndex = curZIndex + 3
 		nameLabel.ZIndex = curZIndex + 3
 
-		TweenService:Create(container, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		TweenService:Create(container, TweenInfo.new(0.20, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			Position = UDim2.new(0.5, curX, 1, curY),
 			Rotation = curRot,
-			Size = UDim2.new(0, CARD_DIAMETER, 0, CARD_DIAMETER),
+			Size = UDim2.new(0, CARD_WIDTH, 0, CARD_HEIGHT),
 		}):Play()
 
-		TweenService:Create(shadow, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Position = UDim2.new(0, 0, 0, 8),
-			BackgroundTransparency = isPlayable and 0.60 or 0.85,
+		TweenService:Create(shadow, TweenInfo.new(0.20, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0, 0, 0, 7),
+			BackgroundTransparency = isPlayable and 0.65 or 0.85,
 		}):Play()
 
-		TweenService:Create(stroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Color = isRose and Color3.fromRGB(250, 205, 75) or Color3.fromRGB(245, 180, 60),
-			Thickness = 4.2,
+		TweenService:Create(cardStroke, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Color = Color3.fromRGB(255, 255, 255),
+			Thickness = 3.5,
 		}):Play()
 	end)
 
@@ -331,27 +367,39 @@ function HandBar.ConsumeCard(cardIndex: number)
 		local b = container:FindFirstChild("CardButton") :: ImageButton?
 		if b then
 			b.ZIndex = newZIndex + 1
-			local r = b:FindFirstChild("InnerRing") :: Frame?
-			if r then r.ZIndex = newZIndex + 2 end
-			local is = b:FindFirstChild("IconShadow") :: TextLabel?
-			if is then is.ZIndex = newZIndex + 2 end
-			local ic = b:FindFirstChild("CardIcon") :: TextLabel?
-			if ic then ic.ZIndex = newZIndex + 3 end
-			local nl = b:FindFirstChild("CardLabel") :: TextLabel?
-			if nl then nl.ZIndex = newZIndex + 3 end
+			local tl = b:FindFirstChild("TopLeftPip") :: Frame?
+			if tl then
+				tl.ZIndex = newZIndex + 2
+				local ic = tl:FindFirstChildWhichIsA("TextLabel")
+				if ic then ic.ZIndex = newZIndex + 3 end
+			end
+			local br = b:FindFirstChild("BottomRightPip") :: Frame?
+			if br then
+				br.ZIndex = newZIndex + 2
+				local ic = br:FindFirstChildWhichIsA("TextLabel")
+				if ic then ic.ZIndex = newZIndex + 3 end
+			end
+			local co = b:FindFirstChild("CenterOval") :: Frame?
+			if co then
+				co.ZIndex = newZIndex + 2
+				local ci = co:FindFirstChild("CenterIcon") :: TextLabel?
+				if ci then ci.ZIndex = newZIndex + 3 end
+				local cl = co:FindFirstChild("CardLabel") :: TextLabel?
+				if cl then cl.ZIndex = newZIndex + 3 end
+			end
 		end
 
 		-- Smoothly glide into adjusted fan position and angle
 		TweenService:Create(container, TweenInfo.new(0.30, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 			Position = UDim2.new(0.5, xOffset, 1, newY),
 			Rotation = rotAngle,
-			Size = UDim2.new(0, CARD_DIAMETER, 0, CARD_DIAMETER),
+			Size = UDim2.new(0, CARD_WIDTH, 0, CARD_HEIGHT),
 		}):Play()
 	end
 end
 
 -- ============================================================================
--- 3. SETUP FLOATING 2.5D HAND DOCK (Bottom Center)
+-- 3. SETUP FLOATING HAND DOCK (Bottom Center)
 -- ============================================================================
 function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	onCardClickedCallback = onSelect
@@ -360,7 +408,7 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	local dock = Instance.new("Frame")
 	dock.Name = "FloatingHandDock"
 	dock.AnchorPoint = Vector2.new(0.5, 1)
-	dock.Size = UDim2.new(0, 640, 0, 220)
+	dock.Size = UDim2.new(0, 640, 0, 240)
 	dock.Position = UDim2.new(0.5, 0, 1, 0)
 	dock.BackgroundTransparency = 1 -- Zero black box!
 	dock.BorderSizePixel = 0
@@ -402,6 +450,25 @@ function HandBar.UpdateHand(hand: { string }, isTurn: boolean, canPlace: boolean
 		table.insert(cardContainers, cardHolder)
 	end
 end
+
+-- ============================================================================
+-- 5. UTILITY METHODS
+-- ============================================================================
+function HandBar.SetVisible(visible: boolean)
+	if dockFrame then
+		dockFrame.Visible = visible
+	end
+end
+
+function HandBar.GetSelectedCard(): string?
+	return selectedCard
+end
+
+function HandBar.GetRemainingCardsCount(): number
+	return #currentHand
+end
+
+return HandBar
 
 -- ============================================================================
 -- 5. UTILITY METHODS

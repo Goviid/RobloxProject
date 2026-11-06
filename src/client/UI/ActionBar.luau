@@ -46,7 +46,7 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	pill.Name = "StartBidPill"
 	pill.AnchorPoint = Vector2.new(0.5, 1)
 	pill.Size = UDim2.new(0, 190, 0, 42)
-	pill.Position = UDim2.new(0.5, 0, 1, -215) -- Pinned cleanly above the raised hand
+	pill.Position = UDim2.new(0.5, 0, 1, -270) -- Pinned cleanly above the hand fan
 	pill.BackgroundColor3 = Color3.fromRGB(225, 140, 25)
 	pill.BorderSizePixel = 0
 	pill.AutoButtonColor = false

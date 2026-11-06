@@ -54,25 +54,32 @@ function TableBuilder.Build(modeOverride: string?)
 	end
 
 	-- ========================================================================
-	-- MODE A: LOCOFFICIAL LIGHT BLUE VOID (No Table, Cards on Ground)
+	-- MODE A: LOCOFFICIAL VIBRANT ORANGE VOID (No Table, Cards on Ground)
+	-- Matches LOCOfficial warm amber/orange void arena atmosphere
 	-- ========================================================================
 	if mode == Enums.ArenaMode.Void then
-		-- 1. Lighting: Soft, even studio ambient without jagged shadows or flicker
+		-- 1. Lighting: Soft, even warm studio ambient without harsh shadows or flicker
 		pcall(function()
 			Lighting.GlobalShadows = false -- Eliminates harsh shadows and light bugs
-			Lighting.Brightness = 1.6
-			Lighting.Ambient = Color3.fromRGB(185, 218, 255)
-			Lighting.OutdoorAmbient = Color3.fromRGB(175, 212, 250)
+			Lighting.Brightness = 1.7
+			Lighting.Ambient = Color3.fromRGB(255, 218, 175)
+			Lighting.OutdoorAmbient = Color3.fromRGB(245, 195, 150)
 			Lighting.ClockTime = 14.0
-			Lighting.FogColor = Color3.fromRGB(98, 172, 246)
-			Lighting.FogStart = 110
-			Lighting.FogEnd = 380
+			Lighting.FogColor = Color3.fromRGB(235, 142, 28) -- Warm saturated orange void
+			Lighting.FogStart = 90
+			Lighting.FogEnd = 340
+
+			-- Clear any skybox/atmosphere so fog creates a seamless, uniform warm orange horizon
+			local sky = Lighting:FindFirstChildOfClass("Sky")
+			if sky then sky:Destroy() end
+			local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+			if atmosphere then atmosphere:Destroy() end
 
 			local oldCC = Lighting:FindFirstChild("SkullsColorCorrection")
 			if oldCC then oldCC:Destroy() end
 		end)
 
-		-- 2. Void Arena Floor Platform (Elevated smooth cerulean blue circle)
+		-- 2. Void Arena Floor Platform (Elevated smooth vibrant orange circle)
 		local floor = Instance.new("Part")
 		floor.Name = "VoidArenaFloor"
 		floor.Shape = Enum.PartType.Cylinder
@@ -81,7 +88,7 @@ function TableBuilder.Build(modeOverride: string?)
 		floor.Anchored = true
 		floor.CanCollide = true
 		floor.Material = Enum.Material.SmoothPlastic
-		floor.Color = Color3.fromRGB(88, 166, 240)
+		floor.Color = Color3.fromRGB(235, 138, 22) -- Vibrant warm amber orange
 		floor.CastShadow = false
 		floor.Parent = arena
 
@@ -94,7 +101,7 @@ function TableBuilder.Build(modeOverride: string?)
 		centerRing.Anchored = true
 		centerRing.CanCollide = false
 		centerRing.Material = Enum.Material.SmoothPlastic
-		centerRing.Color = Color3.fromRGB(240, 250, 255)
+		centerRing.Color = Color3.fromRGB(255, 235, 190)
 		centerRing.Transparency = 0.55
 		centerRing.CastShadow = false
 		centerRing.Parent = arena
@@ -126,7 +133,7 @@ function TableBuilder.Build(modeOverride: string?)
 		outerRing.Anchored = true
 		outerRing.CanCollide = false
 		outerRing.Material = Enum.Material.Neon
-		outerRing.Color = Color3.fromRGB(225, 245, 255)
+		outerRing.Color = Color3.fromRGB(255, 225, 150)
 		outerRing.Transparency = 0.5
 		outerRing.CastShadow = false
 		outerRing.Parent = arena
@@ -140,7 +147,7 @@ function TableBuilder.Build(modeOverride: string?)
 			local dirX = math.cos(angle)
 			local dirZ = math.sin(angle)
 
-			-- Clean Circular Coaster Pad (Clean Circle pile base on the ground)
+			-- Clean Circular Coaster Pad (Warm Amber pile base on the ground)
 			local coasterPos = Vector3.new(dirX * COASTER_DIST, 0.42, dirZ * COASTER_DIST)
 			local coaster = Instance.new("Part")
 			coaster.Name = "Coaster_" .. seatIdx
@@ -150,7 +157,7 @@ function TableBuilder.Build(modeOverride: string?)
 			coaster.Anchored = true
 			coaster.CanCollide = false
 			coaster.Material = Enum.Material.SmoothPlastic
-			coaster.Color = Color3.fromRGB(65, 142, 218)
+			coaster.Color = Color3.fromRGB(205, 112, 18) -- Rich warm amber
 			coaster.CastShadow = false
 			coaster.Parent = arena
 			coasterParts[seatIdx] = coaster
@@ -176,7 +183,7 @@ function TableBuilder.Build(modeOverride: string?)
 			outerRingFrame.Parent = coasterBg
 			Instance.new("UICorner", outerRingFrame).CornerRadius = UDim.new(1, 0)
 			local ringStroke = Instance.new("UIStroke")
-			ringStroke.Color = Color3.fromRGB(240, 250, 255)
+			ringStroke.Color = Color3.fromRGB(255, 235, 190)
 			ringStroke.Transparency = 0.25
 			ringStroke.Thickness = 3
 			ringStroke.Parent = outerRingFrame
@@ -184,13 +191,13 @@ function TableBuilder.Build(modeOverride: string?)
 			local innerDot = Instance.new("Frame")
 			innerDot.Size = UDim2.new(0, 18, 0, 18)
 			innerDot.Position = UDim2.new(0.5, -9, 0.5, -9)
-			innerDot.BackgroundColor3 = Color3.fromRGB(240, 250, 255)
+			innerDot.BackgroundColor3 = Color3.fromRGB(255, 235, 190)
 			innerDot.BackgroundTransparency = 0.4
 			innerDot.BorderSizePixel = 0
 			innerDot.Parent = coasterBg
 			Instance.new("UICorner", innerDot).CornerRadius = UDim.new(1, 0)
 
-			-- Clean White Floor Standing Pad
+			-- Clean Warm Floor Standing Pad
 			local standPos = Vector3.new(dirX * STAND_DIST, 0.41, dirZ * STAND_DIST)
 			local standPad = Instance.new("Part")
 			standPad.Name = "StandPad_" .. seatIdx
@@ -200,8 +207,8 @@ function TableBuilder.Build(modeOverride: string?)
 			standPad.Anchored = true
 			standPad.CanCollide = false
 			standPad.Material = Enum.Material.Neon
-			standPad.Color = Color3.fromRGB(245, 250, 255)
-			standPad.Transparency = 0.35
+			standPad.Color = Color3.fromRGB(255, 235, 190)
+			standPad.Transparency = 0.40
 			standPad.CastShadow = false
 			standPad.Parent = arena
 			standPads[seatIdx] = standPad
