@@ -79,7 +79,39 @@ function TableBuilder.Build(modeOverride: string?)
 			if oldCC then oldCC:Destroy() end
 		end)
 
-		-- 2. Void Arena Floor Platform (Elevated smooth vibrant orange circle)
+		-- 2. Complete 6-Sided Seamless Orange Void Enclosure (100% blocks skybox, clouds, and horizon)
+		local ENCLOSURE_SIZE = 140
+		local ENCLOSURE_HEIGHT = 65
+		local voidColor = Color3.fromRGB(235, 138, 22)
+
+		local enclosureFolder = Instance.new("Folder")
+		enclosureFolder.Name = "VoidEnclosure"
+		enclosureFolder.Parent = arena
+
+		local function createVoidWall(name: string, size: Vector3, cf: CFrame)
+			local wall = Instance.new("Part")
+			wall.Name = name
+			wall.Size = size
+			wall.CFrame = cf
+			wall.Anchored = true
+			wall.CanCollide = false
+			wall.CastShadow = false
+			wall.Material = Enum.Material.SmoothPlastic
+			wall.Color = voidColor
+			wall.Parent = enclosureFolder
+		end
+
+		-- Floor & Ceiling Enclosure
+		createVoidWall("VoidBox_Floor", Vector3.new(ENCLOSURE_SIZE, 2, ENCLOSURE_SIZE), CFrame.new(0, -1, 0))
+		createVoidWall("VoidBox_Ceiling", Vector3.new(ENCLOSURE_SIZE, 2, ENCLOSURE_SIZE), CFrame.new(0, ENCLOSURE_HEIGHT, 0))
+
+		-- 4 Enclosing Walls (Guarantees zero skybox visible from any camera angle)
+		createVoidWall("VoidBox_North", Vector3.new(ENCLOSURE_SIZE, ENCLOSURE_HEIGHT, 2), CFrame.new(0, ENCLOSURE_HEIGHT / 2, -ENCLOSURE_SIZE / 2))
+		createVoidWall("VoidBox_South", Vector3.new(ENCLOSURE_SIZE, ENCLOSURE_HEIGHT, 2), CFrame.new(0, ENCLOSURE_HEIGHT / 2, ENCLOSURE_SIZE / 2))
+		createVoidWall("VoidBox_East", Vector3.new(2, ENCLOSURE_HEIGHT, ENCLOSURE_SIZE), CFrame.new(ENCLOSURE_SIZE / 2, ENCLOSURE_HEIGHT / 2, 0))
+		createVoidWall("VoidBox_West", Vector3.new(2, ENCLOSURE_HEIGHT, ENCLOSURE_SIZE), CFrame.new(-ENCLOSURE_SIZE / 2, ENCLOSURE_HEIGHT / 2, 0))
+
+		-- 3. Void Arena Floor Platform (Elevated smooth vibrant orange circle)
 		local floor = Instance.new("Part")
 		floor.Name = "VoidArenaFloor"
 		floor.Shape = Enum.PartType.Cylinder
@@ -547,19 +579,19 @@ local function populateCardFaceGui(sg: SurfaceGui)
 	icon.Size = UDim2.new(1, 0, 1, 0)
 	icon.BackgroundTransparency = 1
 	icon.Font = Enum.Font.FredokaOne
-	icon.TextSize = 38
+	icon.TextSize = 34
 	icon.TextColor3 = Color3.fromRGB(245, 205, 75)
-	icon.Text = "💀"
+	icon.Text = "✦"
 	icon.Parent = centerCircle
 
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, 0, 0, 20)
-	label.Position = UDim2.new(0, 0, 1, -30)
+	label.Position = UDim2.new(0, 0, 1, -28)
 	label.BackgroundTransparency = 1
 	label.Font = Enum.Font.FredokaOne
-	label.TextSize = 13
-	label.TextColor3 = Color3.fromRGB(245, 245, 250)
-	label.Text = "SKULLS"
+	label.TextSize = 11
+	label.TextColor3 = Color3.fromRGB(245, 215, 120)
+	label.Text = "SKULL & ROSES"
 	label.Parent = bg
 end
 

@@ -7,6 +7,7 @@ local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local ContextActionService = game:GetService("ContextActionService")
 
 local CameraController = {}
 
@@ -19,11 +20,11 @@ local function getCameraConfig(): (Vector3, Vector3)
 		return Vector3.new(0, 3.4, 0.0), Vector3.new(0, 5.2, 9.4)
 	else
 		-- LOCOfficial elevated void perspective (frames full circular table, all opponents, and center pile)
-		return Vector3.new(0, 1.0, 0.5), Vector3.new(0, 7.2, 14.8)
+		return Vector3.new(0, 1.2, 0.0), Vector3.new(0, 8.5, 15.5)
 	end
 end
 
-local DEFAULT_FOV = 65
+local DEFAULT_FOV = 62
 local isShakeActive = false
 local shakeOffset = Vector3.zero
 local isInitialized = false
@@ -39,7 +40,24 @@ function CameraController.Init()
 	if isInitialized then return end
 	isInitialized = true
 
-	-- Per-frame camera lock
+	-- Sink mouse panning, wheel zooming, and movement controls so camera is 100% rigidly fixed
+	pcall(function()
+		ContextActionService:BindActionAtPriority(
+			"FreezeCameraAndMovement",
+			function() return Enum.ContextActionResult.Sink end,
+			false,
+			Enum.ContextActionPriority.High.Value + 2000,
+			Enum.PlayerActions.CharacterForward,
+			Enum.PlayerActions.CharacterBackward,
+			Enum.PlayerActions.CharacterLeft,
+			Enum.PlayerActions.CharacterRight,
+			Enum.PlayerActions.CharacterJump,
+			Enum.UserInputType.MouseWheel,
+			Enum.UserInputType.MouseButton2
+		)
+	end)
+
+	-- Per-frame camera lock (Runs at Last priority so Roblox scripts cannot override it)
 	local function lockCamera()
 		local cam = Workspace.CurrentCamera
 		if not cam then return end
@@ -54,37 +72,46 @@ function CameraController.Init()
 		cam.FieldOfView = currentTargetFOV
 	end
 
-	-- Per-frame local character transparency (Hides model for YOU, friends still see you!)
+	-- Per-frame local character transparency + subterranean relocation
 	local function hideLocalCharacter()
 		local char = localPlayer.Character
 		if not char then return end
 
-		for _, item in ipairs(char:GetDescendants()) do
-			if item:IsA("BasePart") then
-				item.LocalTransparencyModifier = 1
-				item.CastShadow = false
-			elseif item:IsA("Decal") then
-				item.LocalTransparencyModifier = 1
-			elseif item:IsA("ParticleEmitter") or item:IsA("Trail") then
-				item.Enabled = false
-			end
+		-- Physically relocate the local character underground locally so it can NEVER obstruct the camera
+		local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if hrp and hrp.Position.Y > -100 then
+			char:PivotTo(CFrame.new(0, -400, 0))
+			hrp.Anchored = true
 		end
 
-		-- Also hide your own overhead nametag so it doesn't float in front of your eyes
-		local head = char:FindFirstChild("Head")
-		if head then
-			local tag = head:FindFirstChild("PlayerInfoTag") :: BillboardGui?
-			if tag then
-				tag.Enabled = false
+		for _, item in ipairs(char:GetDescendants()) do
+			if item:IsA("BasePart") then
+				item.Transparency = 1
+				item.LocalTransparencyModifier = 1
+				item.CastShadow = false
+				item.CanCollide = false
+			elseif item:IsA("Decal") then
+				item.Transparency = 1
+				item.LocalTransparencyModifier = 1
+			elseif item:IsA("ParticleEmitter") or item:IsA("Trail") or item:IsA("Beam") then
+				item.Enabled = false
+			elseif item:IsA("BillboardGui") then
+				item.Enabled = false
 			end
 		end
 	end
 
-	-- Run hideLocalCharacter before Camera, and lockCamera at Camera priority
+	-- Run on RenderStep every single frame
 	RunService:BindToRenderStep("HideLocalCharacter", Enum.RenderPriority.Camera.Value - 1, hideLocalCharacter)
-	RunService:BindToRenderStep("TabletopCameraLock", Enum.RenderPriority.Camera.Value + 20, lockCamera)
+	RunService:BindToRenderStep("TabletopCameraLock", Enum.RenderPriority.Last.Value, lockCamera)
 
-	print("[CameraController] First-person LOCOfficial camera initialized. Local character hidden from self.")
+	-- Handle character respawn
+	localPlayer.CharacterAdded:Connect(function(char)
+		task.wait(0.1)
+		hideLocalCharacter()
+	end)
+
+	print("[CameraController] 100% Fixed elevated camera initialized. Local player completely invisible.")
 end
 
 -- ============================================================================
