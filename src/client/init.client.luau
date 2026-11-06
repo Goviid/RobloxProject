@@ -69,16 +69,20 @@ local function buildUI()
 	end)
 
 	-- 3. Bottom Hand Tray (Oversized, raised 2.5D circular hand)
-	HandBar.Create(screenGui, function(cardType: string)
-		print("[HandBar] Selected card: " .. cardType)
+	HandBar.Create(screenGui, function(cardType: string, cardIndex: number)
+		print("[HandBar] Selected card: " .. cardType .. " at idx " .. tostring(cardIndex))
 		AudioController.PlayButtonClick()
 
 		-- Immediate direct placement on card click if it's our turn during Placement phase!
 		if currentGameState == Enums.GameState.Placement and isCurrentPlayerTurn then
-			isCurrentPlayerTurn = false
 			print("[HandBar] Placing card directly on coaster: " .. cardType)
 			AudioController.PlayCardPlace()
-			onSubmitAction(Enums.PlayerAction.PlaceCard, { cardType = cardType })
+			task.spawn(function()
+				local success, _ = onSubmitAction(Enums.PlayerAction.PlaceCard, { cardType = cardType })
+				if success then
+					HandBar.ConsumeCard(cardIndex)
+				end
+			end)
 		else
 			print(string.format("[HandBar] Click ignored - GameState: %s, isCurrentPlayerTurn: %s",
 				tostring(currentGameState), tostring(isCurrentPlayerTurn)))
@@ -129,7 +133,7 @@ end)
 -- ============================================================================
 -- 3. ACTION DISPATCHER (Client -> Server)
 -- ============================================================================
-onSubmitAction = function(action: string, data: any)
+onSubmitAction = function(action: string, data: any): (boolean, any)
 	print("[Client] Submitting action: " .. action)
 	local success, err = Network.SubmitAction:InvokeServer(action, data)
 	if not success then
@@ -142,6 +146,7 @@ onSubmitAction = function(action: string, data: any)
 	else
 		print("[Client] Action confirmed by server: " .. action)
 	end
+	return success, err
 end
 
 -- ============================================================================
@@ -152,9 +157,9 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 	local ok, err = pcall(function()
 		lastKnownPlayers = (payload.tableState and payload.tableState.players) or {}
 		currentGameState = payload.gameState
-		isCurrentPlayerTurn = (payload.activePlayerId == localPlayer.UserId)
+		isCurrentPlayerTurn = (tonumber(payload.activePlayerId) ~= nil and tonumber(payload.activePlayerId) == tonumber(localPlayer.UserId))
 		local isMyTurn = isCurrentPlayerTurn
-		local myData = lastKnownPlayers[tostring(localPlayer.UserId)]
+		local myData = lastKnownPlayers[tostring(localPlayer.UserId)] or lastKnownPlayers[localPlayer.UserId]
 		local myStackCount = myData and myData.stackCount or 0
 		local myHand = if myData and myData.hand then table.clone(myData.hand) else {}
 		local challengerData = payload.challengerId and lastKnownPlayers[tostring(payload.challengerId)]
@@ -205,6 +210,7 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 
 		-- 4. Turn Timer Reset & Turn Prompt
 		if payload.gameState == Enums.GameState.Placement or payload.gameState == Enums.GameState.Bidding or payload.gameState == Enums.GameState.Revealing then
+			TableView.StartTurnTimer(Constants.TURN_TIMEOUT)
 			NotificationBanner.StartTimer(Constants.TURN_TIMEOUT)
 			if isMyTurn then
 				if payload.gameState == Enums.GameState.Placement then
@@ -220,6 +226,7 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 				end
 			end
 		else
+			TableView.StopTurnTimer()
 			NotificationBanner.StopTimer()
 		end
 	end)

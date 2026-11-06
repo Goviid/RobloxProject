@@ -82,80 +82,80 @@ local function makeActionPill(
 end
 
 -- ============================================================================
--- 1. SETUP ACTION BAR
+-- 1. SETUP ACTION BAR (Bottom-Right stacked pills matching reference mockup)
 -- ============================================================================
 function ActionBar.Create(parent: GuiObject, callback: (action: string, data: any) -> ()): Frame
 	onActionCallback = callback
 
-	-- Root container strictly bounded directly above cards (never covers the hand!)
+	-- Root container strictly anchored in the bottom-right corner (never touches cards or center table!)
 	local root = Instance.new("Frame")
 	root.Name = "ActionBarRoot"
-	root.AnchorPoint = Vector2.new(0.5, 1)
-	root.Size = UDim2.new(0, 420, 0, 48)
-	root.Position = UDim2.new(0.5, 0, 1, -195) -- Floats cleanly above the resting & hovered cards
+	root.AnchorPoint = Vector2.new(1, 1)
+	root.Size = UDim2.new(0, 150, 0, 150)
+	root.Position = UDim2.new(1, -25, 1, -25)
 	root.BackgroundTransparency = 1
 	root.Active = false
 	root.ZIndex = 35
 	root.Parent = parent
 	rootFrame = root
 
-	local row = Instance.new("Frame")
-	row.Name = "ActionRow"
-	row.Size = UDim2.new(1, 0, 1, 0)
-	row.BackgroundTransparency = 1
-	row.Active = false
-	row.Parent = root
-	actionRow = row
+	local col = Instance.new("Frame")
+	col.Name = "ActionColumn"
+	col.Size = UDim2.new(1, 0, 1, 0)
+	col.BackgroundTransparency = 1
+	col.Active = false
+	col.Parent = root
+	actionRow = col
 
 	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.FillDirection = Enum.FillDirection.Vertical
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, 12)
-	layout.Parent = row
+	layout.Padding = UDim.new(0, 8)
+	layout.Parent = col
 
-	-- 1. Prominent BID Button (Always visible in placement phase!)
+	-- 1. Prominent BET Button (Gold/Amber)
 	bidButton = makeActionPill(
 		"BidBtn",
-		"⚡ START BID",
+		"BET",
 		Color3.fromRGB(255, 215, 65),
-		UDim2.new(0, 190, 0, 44),
-		row
+		UDim2.new(1, 0, 0, 42),
+		col
 	)
 	bidButton.LayoutOrder = 1
 	bidButton.Visible = true
 
-	-- 2. RAISE BID Button (Bidding Phase)
+	-- 2. RAISE BID / CHALLENGE Button (Coral/Salmon Pink)
 	raiseBidButton = makeActionPill(
 		"RaiseBidBtn",
-		"⚡ RAISE BID",
-		Color3.fromRGB(255, 215, 65),
-		UDim2.new(0, 170, 0, 44),
-		row
+		"CHALLENGE",
+		Color3.fromRGB(255, 115, 130),
+		UDim2.new(1, 0, 0, 42),
+		col
 	)
 	raiseBidButton.LayoutOrder = 2
 	raiseBidButton.Visible = false
 
-	-- 3. PASS Button (Bidding Phase)
+	-- 3. PASS Button (Mint Green)
 	passButton = makeActionPill(
 		"PassBtn",
-		"✕ PASS",
-		Color3.fromRGB(255, 95, 115),
-		UDim2.new(0, 120, 0, 44),
-		row
+		"PASS",
+		Color3.fromRGB(78, 204, 163),
+		UDim2.new(1, 0, 0, 42),
+		col
 	)
 	passButton.LayoutOrder = 3
 	passButton.Visible = false
 
 	-- ========================================================================
-	-- 2. BID NUMBER PICKER POPUP MODAL (Floats cleanly above the action bar)
+	-- 2. BID NUMBER PICKER POPUP MODAL (Floats neatly to the left of the action buttons)
 	-- ========================================================================
 	local modal = Instance.new("Frame")
 	modal.Name = "BidPickerModal"
-	modal.AnchorPoint = Vector2.new(0.5, 1)
+	modal.AnchorPoint = Vector2.new(1, 1)
 	modal.Size = UDim2.new(0, 260, 0, 142)
-	modal.Position = UDim2.new(0.5, 0, 1, -250)
+	modal.Position = UDim2.new(1, -185, 1, -25)
 	modal.BackgroundColor3 = Color3.fromRGB(18, 15, 25)
 	modal.BackgroundTransparency = 0.10
 	modal.BorderSizePixel = 0
@@ -340,12 +340,12 @@ function ActionBar.UpdateState(
 
 		local stroke = bidButton:FindFirstChildWhichIsA("UIStroke")
 		if isBidUnlocked then
-			bidButton.Text = "⚡ START BID"
+			bidButton.Text = "BET"
 			bidButton.TextColor3 = Color3.fromRGB(255, 215, 65)
 			if stroke then stroke.Color = Color3.fromRGB(255, 215, 65) end
 		else
 			-- Clearly visible but indicates turn requirement
-			bidButton.Text = (totalCards >= 4) and "⚡ BID (Wait for turn)" or "⚡ BID (Turn 2+)"
+			bidButton.Text = (totalCards >= 4) and "BET (Turn)" or "BET (Turn 2+)"
 			bidButton.TextColor3 = Color3.fromRGB(170, 160, 130)
 			if stroke then stroke.Color = Color3.fromRGB(110, 100, 70) end
 		end
@@ -353,6 +353,7 @@ function ActionBar.UpdateState(
 		bidButton.Visible = false
 		if isMyTurn then
 			raiseBidButton.Visible = (highestBid < totalCards)
+			raiseBidButton.Text = (highestBid + 1 >= totalCards) and "CHALLENGE" or "RAISE BID"
 			passButton.Visible = true
 		else
 			raiseBidButton.Visible = false

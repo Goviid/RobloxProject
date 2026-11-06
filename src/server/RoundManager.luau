@@ -152,8 +152,8 @@ local function checkBotTurn()
 	local p = PlayerManager.GetPlayer(activeId)
 	if not p or not p.isBot then return end
 
-	-- Add natural human-like reaction delay
-	task.delay(math.random(10, 18) / 10, function()
+	-- Fast, snappy bot reaction delay (0.4 to 0.7s) to maintain responsive game pacing
+	task.delay(math.random(4, 7) / 10, function()
 		if RoundManager.GetActivePlayerId() ~= activeId then return end
 
 		if currentGameState == Enums.GameState.Placement then

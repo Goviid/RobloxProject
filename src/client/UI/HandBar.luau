@@ -237,11 +237,8 @@ local function createCircularToken(
 			return
 		end
 
-		isPlayerTurn = false
 		selectedCard = cardType
-
 		local clickedIdx = table.find(cardContainers, container) or index
-		HandBar.ConsumeCard(clickedIdx)
 
 		if onCardClickedCallback then
 			onCardClickedCallback(cardType, clickedIdx)

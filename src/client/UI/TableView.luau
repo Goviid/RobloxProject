@@ -18,6 +18,11 @@ local turnPillStroke: UIStroke? = nil
 local centerTitleLabel: TextLabel? = nil
 local activePlayerLabel: TextLabel? = nil
 local activePlayerStroke: UIStroke? = nil
+local timerPill: Frame? = nil
+local timerStroke: UIStroke? = nil
+local timerLabel: TextLabel? = nil
+local timerFillBar: Frame? = nil
+local currentTimerThread: thread? = nil
 local matchAlertLabel: TextLabel? = nil
 local currentRoundNumber = 1
 
@@ -25,14 +30,14 @@ function TableView.Create(parent: GuiObject, _onRevealClick: (targetUserId: numb
 	local container = Instance.new("Frame")
 	container.Name = "TopHudContainer"
 	container.AnchorPoint = Vector2.new(0.5, 0)
-	container.Size = UDim2.new(0, 720, 0, 85)
+	container.Size = UDim2.new(0, 780, 0, 85)
 	container.Position = UDim2.new(0.5, 0, 0, 10)
 	container.BackgroundTransparency = 1
 	container.ZIndex = 20
 	container.Parent = parent
 
 	-- ========================================================================
-	-- TOP ROW: [ TURN 1 ]  [ ROUND 1: PLACEMENT PHASE ]  [ YOUR TURN ]
+	-- TOP ROW: [ TURN 1 ]  [ ROUND 1: PLACEMENT PHASE ]  [ ⏱️ 15s ]  [ YOUR TURN ]
 	-- ========================================================================
 	local topRow = Instance.new("Frame")
 	topRow.Name = "HeaderRow"
@@ -46,13 +51,13 @@ function TableView.Create(parent: GuiObject, _onRevealClick: (targetUserId: numb
 	rowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	rowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 	rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	rowLayout.Padding = UDim.new(0, 12)
+	rowLayout.Padding = UDim.new(0, 10)
 	rowLayout.Parent = topRow
 
 	-- 1. LEFT PILL: Current Turn Number ("TURN 1")
 	local turnPill = Instance.new("Frame")
 	turnPill.Name = "TurnPill"
-	turnPill.Size = UDim2.new(0, 130, 0, 40)
+	turnPill.Size = UDim2.new(0, 120, 0, 40)
 	turnPill.BackgroundColor3 = Color3.fromRGB(16, 14, 22)
 	turnPill.BackgroundTransparency = 0.20
 	turnPill.BorderSizePixel = 0
@@ -81,7 +86,7 @@ function TableView.Create(parent: GuiObject, _onRevealClick: (targetUserId: numb
 	-- 2. CENTER PILL: "ROUND 1: PLACEMENT PHASE"
 	local centerPill = Instance.new("Frame")
 	centerPill.Name = "CenterPhasePill"
-	centerPill.Size = UDim2.new(0, 340, 0, 44)
+	centerPill.Size = UDim2.new(0, 310, 0, 44)
 	centerPill.BackgroundColor3 = Color3.fromRGB(18, 14, 24)
 	centerPill.BackgroundTransparency = 0.15
 	centerPill.BorderSizePixel = 0
@@ -107,21 +112,62 @@ function TableView.Create(parent: GuiObject, _onRevealClick: (targetUserId: numb
 	centerLabel.Size = UDim2.new(1, 0, 1, 0)
 	centerLabel.BackgroundTransparency = 1
 	centerLabel.Font = Enum.Font.FredokaOne
-	centerLabel.TextSize = 18
+	centerLabel.TextSize = 17
 	centerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	centerLabel.RichText = true
 	centerLabel.Text = `ROUND {currentRoundNumber}: <font color="#4ECCA3">PLACEMENT PHASE</font>`
 	centerLabel.Parent = centerPill
 	centerTitleLabel = centerLabel
 
-	-- 3. RIGHT PILL: Active Player Badge ("YOUR TURN" / "BLUFFER_99'S TURN")
+	-- 3. DEDICATED TURN TIMER PILL: [ ⏱️ 15s ]
+	local tPill = Instance.new("Frame")
+	tPill.Name = "TurnTimerPill"
+	tPill.Size = UDim2.new(0, 110, 0, 40)
+	tPill.BackgroundColor3 = Color3.fromRGB(16, 14, 22)
+	tPill.BackgroundTransparency = 0.20
+	tPill.BorderSizePixel = 0
+	tPill.LayoutOrder = 3
+	tPill.Parent = topRow
+	Instance.new("UICorner", tPill).CornerRadius = UDim.new(1, 0)
+
+	local tmStroke = Instance.new("UIStroke")
+	tmStroke.Name = "TimerStroke"
+	tmStroke.Color = Color3.fromRGB(80, 225, 245)
+	tmStroke.Thickness = 2.2
+	tmStroke.Parent = tPill
+	timerStroke = tmStroke
+
+	local tmText = Instance.new("TextLabel")
+	tmText.Name = "TimerText"
+	tmText.Size = UDim2.new(1, 0, 1, 0)
+	tmText.BackgroundTransparency = 1
+	tmText.Font = Enum.Font.FredokaOne
+	tmText.TextSize = 16
+	tmText.TextColor3 = Color3.fromRGB(240, 250, 255)
+	tmText.Text = "⏱️ 15s"
+	tmText.Parent = tPill
+	timerLabel = tmText
+
+	local fillTrack = Instance.new("Frame")
+	fillTrack.Name = "FillTrack"
+	fillTrack.AnchorPoint = Vector2.new(0.5, 1)
+	fillTrack.Size = UDim2.new(0.75, 0, 0, 3)
+	fillTrack.Position = UDim2.new(0.5, 0, 1, -4)
+	fillTrack.BackgroundColor3 = Color3.fromRGB(80, 225, 245)
+	fillTrack.BorderSizePixel = 0
+	fillTrack.Parent = tPill
+	Instance.new("UICorner", fillTrack).CornerRadius = UDim.new(1, 0)
+	timerFillBar = fillTrack
+	timerPill = tPill
+
+	-- 4. RIGHT PILL: Active Player Badge ("YOUR TURN" / "BLUFFER_99'S TURN")
 	local activePill = Instance.new("Frame")
 	activePill.Name = "ActivePlayerPill"
 	activePill.Size = UDim2.new(0, 160, 0, 40)
 	activePill.BackgroundColor3 = Color3.fromRGB(16, 14, 22)
 	activePill.BackgroundTransparency = 0.20
 	activePill.BorderSizePixel = 0
-	activePill.LayoutOrder = 3
+	activePill.LayoutOrder = 4
 	activePill.Parent = topRow
 	Instance.new("UICorner", activePill).CornerRadius = UDim.new(1, 0)
 
@@ -212,6 +258,77 @@ function TableView.UpdateCenter(gameState: string, highestBid: number, challenge
 
 	local pInfo = phaseNames[gameState] or { name = string.upper(gameState), color = "#FFD23F" }
 	centerTitleLabel.Text = `ROUND {currentRoundNumber}: <font color="{pInfo.color}">{pInfo.name}</font>`
+end
+
+function TableView.StartTurnTimer(durationSeconds: number)
+	if currentTimerThread then
+		task.cancel(currentTimerThread)
+		currentTimerThread = nil
+	end
+
+	if not timerLabel or not timerStroke or not timerFillBar or not timerPill then
+		return
+	end
+
+	timerPill.Visible = true
+	local timeLeft = durationSeconds
+	timerLabel.Text = string.format("⏱️ %ds", math.ceil(timeLeft))
+	timerLabel.TextColor3 = Color3.fromRGB(240, 250, 255)
+	timerStroke.Color = Color3.fromRGB(80, 225, 245)
+	timerFillBar.Size = UDim2.new(0.75, 0, 0, 3)
+	timerFillBar.BackgroundColor3 = Color3.fromRGB(80, 225, 245)
+
+	currentTimerThread = task.spawn(function()
+		local startTime = os.clock()
+		while true do
+			local elapsed = os.clock() - startTime
+			local rem = math.max(0, durationSeconds - elapsed)
+			local ceilRem = math.ceil(rem)
+
+			if timerLabel then
+				timerLabel.Text = string.format("⏱️ %ds", ceilRem)
+			end
+
+			local alpha = math.clamp(rem / durationSeconds, 0, 1)
+			if timerFillBar then
+				timerFillBar.Size = UDim2.new(0.75 * alpha, 0, 0, 3)
+			end
+
+			if rem <= 5 then
+				-- Urgency glow (Coral Red)
+				if timerStroke then
+					timerStroke.Color = Color3.fromRGB(255, 65, 85)
+				end
+				if timerLabel then
+					timerLabel.TextColor3 = Color3.fromRGB(255, 95, 115)
+				end
+				if timerFillBar then
+					timerFillBar.BackgroundColor3 = Color3.fromRGB(255, 65, 85)
+				end
+			end
+
+			if rem <= 0 then
+				break
+			end
+			task.wait(0.1)
+		end
+	end)
+end
+
+function TableView.StopTurnTimer()
+	if currentTimerThread then
+		task.cancel(currentTimerThread)
+		currentTimerThread = nil
+	end
+	if timerLabel then
+		timerLabel.Text = "⏱️ --"
+	end
+	if timerStroke then
+		timerStroke.Color = Color3.fromRGB(80, 225, 245)
+	end
+	if timerFillBar then
+		timerFillBar.Size = UDim2.new(0, 0, 0, 3)
+	end
 end
 
 function TableView.UpdateLayout(_players: any, _activeId: number?, _challengerId: number?)
