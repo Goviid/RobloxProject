@@ -159,14 +159,10 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 			payload.totalCardsOnTable or 0
 		)
 
-		-- 2. Update Hand Tray
+		-- 2. Update Hand Tray (Remains visible across all phases matching reference)
 		local canPlace = (payload.gameState == Enums.GameState.Placement)
 		HandBar.UpdateHand(myHand, isMyTurn, canPlace)
-		if payload.gameState == Enums.GameState.Bidding or payload.gameState == Enums.GameState.Revealing then
-			HandBar.SetVisible(false)
-		else
-			HandBar.SetVisible(#myHand > 0)
-		end
+		HandBar.SetVisible(#myHand > 0)
 
 		-- 3. Update Action Buttons
 		ActionBar.UpdateState(

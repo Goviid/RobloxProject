@@ -14,17 +14,13 @@ local CameraController = {}
 local localPlayer = Players.LocalPlayer
 
 local function getCameraConfig(): (Vector3, Vector3)
-	local isTable = (Workspace:GetAttribute("ArenaMode") == "Table")
-	if isTable then
-		-- Classic Parlor Table eye-level framing
-		return Vector3.new(0, 3.4, 0.0), Vector3.new(0, 5.2, 9.4)
-	else
-		-- LOCOfficial elevated void perspective (frames full circular table, all opponents, and center pile)
-		return Vector3.new(0, 1.2, 0.0), Vector3.new(0, 8.5, 15.5)
-	end
+	-- Exact tactical first-person table perspective matching concept reference
+	local lookTarget = Vector3.new(0, 2.7, -1.8)
+	local camPos = Vector3.new(0, 5.2, 7.6)
+	return lookTarget, camPos
 end
 
-local DEFAULT_FOV = 62
+local DEFAULT_FOV = 60
 local isShakeActive = false
 local shakeOffset = Vector3.zero
 local isInitialized = false
@@ -72,17 +68,10 @@ function CameraController.Init()
 		cam.FieldOfView = currentTargetFOV
 	end
 
-	-- Per-frame local character transparency + subterranean relocation
+	-- Per-frame local character transparency (Locofficial style - completely invisible locally)
 	local function hideLocalCharacter()
 		local char = localPlayer.Character
 		if not char then return end
-
-		-- Physically relocate the local character underground locally so it can NEVER obstruct the camera
-		local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if hrp and hrp.Position.Y > -100 then
-			char:PivotTo(CFrame.new(0, -400, 0))
-			hrp.Anchored = true
-		end
 
 		for _, item in ipairs(char:GetDescendants()) do
 			if item:IsA("BasePart") then

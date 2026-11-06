@@ -31,11 +31,11 @@ Network.RequestState.OnServerEvent:Connect(function(player: Player)
 	end
 end)
 
--- Bot Spawner Helper
+-- Bot Spawner Helper (Matching exact bots in concept mockup: BLUFFER_99, BLUFFE_99, ROSE_KING)
 local function spawnTestBots(neededCount: number)
-	local botNames = { "Doña Flor", "El Bandido", "Don Diego", "La Catrina", "Señor Hueso" }
+	local botNames = { "BLUFFER_99", "BLUFFE_99", "ROSE_KING" }
 	for i = 1, neededCount do
-		local name = botNames[i] or ("Bot " .. i)
+		local name = botNames[i] or ("Player_" .. i)
 		local botData = PlayerManager.AddBot(name)
 		if botData then
 			TableBuilder.SpawnStandingBot(name, botData.seatIndex)

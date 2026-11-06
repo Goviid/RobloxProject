@@ -23,7 +23,7 @@ function NotificationBanner.Create(parent: GuiObject): Frame
 	container.Name = "NotificationBanner"
 	container.AnchorPoint = Vector2.new(0.5, 0)
 	container.Size = UDim2.new(0, 580, 0, 48)
-	container.Position = UDim2.new(0.5, 0, 0, 20)
+	container.Position = UDim2.new(0.5, 0, 0, 75)
 	container.BackgroundTransparency = 1 -- Zero black box!
 	container.BorderSizePixel = 0
 	container.ZIndex = 30

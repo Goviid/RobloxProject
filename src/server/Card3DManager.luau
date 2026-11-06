@@ -57,12 +57,12 @@ function Card3DManager.PlaceCard3D(seatIndex: number, stackCount: number)
 	local cardPart = Instance.new("Part")
 	cardPart.Name = "Card3D_Seat" .. seatIndex .. "_Card" .. stackCount
 	cardPart.Shape = Enum.PartType.Cylinder
-	cardPart.Size = Vector3.new(0.08, 3.2, 3.2) -- Oversized 3.2-stud clean circular disc
+	cardPart.Size = Vector3.new(0.06, 2.2, 2.2) -- Perfectly sized 2.2-stud circular token
 	cardPart.CFrame = spawnCF
 	cardPart.Anchored = true
 	cardPart.CanCollide = false
 	cardPart.Material = Enum.Material.SmoothPlastic
-	cardPart.Color = Color3.fromRGB(32, 28, 38)
+	cardPart.Color = Color3.fromRGB(26, 22, 30)
 	cardPart.Parent = folder
 
 	-- SurfaceGui on the top circular face (Right face on Z-rotated cylinder)
