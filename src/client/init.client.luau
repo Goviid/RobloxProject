@@ -20,6 +20,7 @@ local NotificationBanner = require(script.UI.NotificationBanner)
 local TableView = require(script.UI.TableView)
 local HandBar = require(script.UI.HandBar)
 local ActionBar = require(script.UI.ActionBar)
+local ChatBox = require(script.UI.ChatBox)
 local CardRevealModal = require(script.UI.CardRevealModal)
 local VictoryModal = require(script.UI.VictoryModal)
 local CardAnimation = require(script.UI.CardAnimation)
@@ -81,16 +82,19 @@ local function buildUI()
 		end
 	end)
 
-	-- 4. Clean Centered Bidding Controls
+	-- 4. Clean Large Bidding Controls
 	ActionBar.Create(screenGui, function(action: string, data: any)
 		AudioController.PlayButtonClick()
 		onSubmitAction(action, data)
 	end)
 
-	-- 5. Center Card Reveal Popup
+	-- 5. Translucent Roblox-style 2D Chat Box (Top-Left)
+	ChatBox.Create(screenGui)
+
+	-- 6. Center Card Reveal Popup
 	CardRevealModal.Create(screenGui)
 
-	-- 6. Match Victory Overlay
+	-- 7. Match Victory Overlay
 	VictoryModal.Create(screenGui)
 
 	-- 7. Pre-populate initial circular hand & bid controls on startup
@@ -201,17 +205,31 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 	end
 end)
 
--- Banner Notifications
+-- Banner & Top HUD Notifications
 Network.Notification.OnClientEvent:Connect(function(data: { text: string, style: string? })
 	NotificationBanner.Show(data.text, data.style)
+	TableView.SetAlertText(data.text)
+	ChatBox.AddMessage("SYSTEM", data.text, "#FFD23F")
 	if data.style == "success" or string.find(data.text, "Point scored") then
 		AudioController.PlayPointScored()
 	end
 end)
 
+-- Live Bid Updates (e.g. "BLUFFER_99 raised the bid to 3!")
+Network.BidUpdated.OnClientEvent:Connect(function(bidderId: number, bid: number)
+	local p = lastKnownPlayers[tostring(bidderId)]
+	local pName = p and p.name or ("Player " .. bidderId)
+	local msg = pName .. " raised the bid to " .. bid .. "!"
+	TableView.SetAlertText(msg)
+	ChatBox.AddMessage(pName, "raised the bid to " .. bid .. "!", "#FFD23F")
+end)
+
 -- Card Played SFX / Alert
 Network.CardPlayed.OnClientEvent:Connect(function(playerId: number, stackCount: number)
 	AudioController.PlayCardPlace()
+	local p = lastKnownPlayers[tostring(playerId)]
+	local pName = p and p.name or ("Player " .. playerId)
+	ChatBox.AddMessage(pName, "placed a card face-down.", "#4ECCA3")
 end)
 
 -- Card Revealed (Card flipped by Challenger)

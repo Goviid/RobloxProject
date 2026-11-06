@@ -26,7 +26,7 @@ local maxBid = 1
 
 local onActionCallback: ((action: string, data: any) -> ())? = nil
 
--- Helper to construct a neon pill button
+-- Helper to construct a large neon pill button
 local function makeActionPill(
 	name: string,
 	text: string,
@@ -36,12 +36,12 @@ local function makeActionPill(
 ): TextButton
 	local btn = Instance.new("TextButton")
 	btn.Name = name
-	btn.Size = UDim2.new(0, 145, 0, 42)
-	btn.BackgroundColor3 = Color3.fromRGB(20, 18, 24)
+	btn.Size = UDim2.new(0, 168, 0, 50) -- Large rounded button
+	btn.BackgroundColor3 = Color3.fromRGB(20, 16, 26)
 	btn.BorderSizePixel = 0
 	btn.AutoButtonColor = false
 	btn.Font = Enum.Font.FredokaOne
-	btn.TextSize = 19
+	btn.TextSize = 22 -- Large, highly legible
 	btn.TextColor3 = neonColor
 	btn.Text = text
 	btn.LayoutOrder = order
@@ -51,27 +51,27 @@ local function makeActionPill(
 	local stroke = Instance.new("UIStroke")
 	stroke.Name = "NeonBorder"
 	stroke.Color = neonColor
-	stroke.Thickness = 2.4
+	stroke.Thickness = 3.0 -- Glowing outline
 	stroke.Parent = btn
 
 	-- Hover animation
 	btn.MouseEnter:Connect(function()
 		TweenService:Create(btn, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = UDim2.new(0, 155, 0, 45),
-			BackgroundColor3 = Color3.fromRGB(30, 26, 36),
+			Size = UDim2.new(0, 180, 0, 54),
+			BackgroundColor3 = Color3.fromRGB(32, 26, 42),
 		}):Play()
 		TweenService:Create(stroke, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Thickness = 3.6,
+			Thickness = 4.4,
 		}):Play()
 	end)
 
 	btn.MouseLeave:Connect(function()
 		TweenService:Create(btn, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = UDim2.new(0, 145, 0, 42),
-			BackgroundColor3 = Color3.fromRGB(20, 18, 24),
+			Size = UDim2.new(0, 168, 0, 50),
+			BackgroundColor3 = Color3.fromRGB(20, 16, 26),
 		}):Play()
 		TweenService:Create(stroke, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Thickness = 2.4,
+			Thickness = 3.0,
 		}):Play()
 	end)
 
@@ -92,12 +92,12 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	root.Parent = parent
 	rootFrame = root
 
-	-- Vertical Column Container at Bottom-Right
+	-- Vertical Column Container at Bottom-Right (Large rounded buttons)
 	local col = Instance.new("Frame")
 	col.Name = "ButtonColumn"
 	col.AnchorPoint = Vector2.new(1, 1)
-	col.Size = UDim2.new(0, 160, 0, 160)
-	col.Position = UDim2.new(1, -28, 1, -25) -- Pinned bottom-right matching reference
+	col.Size = UDim2.new(0, 190, 0, 195)
+	col.Position = UDim2.new(1, -26, 1, -24) -- Pinned bottom-right matching reference
 	col.BackgroundTransparency = 1
 	col.ZIndex = 26
 	col.Parent = root
@@ -107,7 +107,7 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
 	layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, 10)
+	layout.Padding = UDim.new(0, 12)
 	layout.Parent = col
 
 	-- 1. BET (Golden Neon `#FFD23F`)

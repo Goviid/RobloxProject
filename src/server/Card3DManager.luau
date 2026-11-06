@@ -42,6 +42,18 @@ function Card3DManager.PlaceCard3D(seatIndex: number, stackCount: number)
 	local coasterCF = TableBuilder.GetCoasterCFrame(seatIndex)
 	if not coasterCF then return end
 
+	-- Clean up any initial decorative placeholder tokens on first placement
+	if stackCount == 1 then
+		local matPart = TableBuilder.GetCoasterPart(seatIndex)
+		if matPart then
+			for _, child in ipairs(matPart:GetChildren()) do
+				if string.find(child.Name, "PreStackedCard") then
+					child:Destroy()
+				end
+			end
+		end
+	end
+
 	local folder = getCardsFolder()
 	local coasterPos = coasterCF.Position
 	local baseY = coasterPos.Y + 0.03

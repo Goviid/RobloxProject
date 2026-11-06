@@ -26,36 +26,36 @@ local cardCountLabels: { [number]: TextLabel } = {}
 
 -- Table Seat Coordinates (4-Player Layout: 1=Front/You, 2=Left, 3=Back, 4=Right)
 local SEAT_CONFIGS = {
-	[1] = { -- You (Front)
-		standPos = Vector3.new(0, 3.4, 7.8),
-		lookAt = Vector3.new(0, 3.0, 0),
-		pilePos = Vector3.new(-2.2, 3.06, 3.6),
+	[1] = { -- You (Front - Close-up view)
+		standPos = Vector3.new(0, 3.4, 5.2),
+		lookAt = Vector3.new(0, 2.5, -0.6),
+		pilePos = Vector3.new(-1.8, 3.06, 2.4),
 		isLocal = true,
 		label = "YOUR PILE",
 	},
 	[2] = { -- Left (BLUFFER_99)
-		standPos = Vector3.new(-7.8, 3.4, 0.4),
-		lookAt = Vector3.new(0, 3.0, 0),
-		pilePos = Vector3.new(-4.4, 3.06, 0.6),
-		handPos = Vector3.new(-5.6, 3.3, -1.8),
+		standPos = Vector3.new(-6.6, 3.4, 0.4),
+		lookAt = Vector3.new(0, 2.8, 0),
+		pilePos = Vector3.new(-3.8, 3.06, 0.6),
+		handPos = Vector3.new(-4.8, 3.3, -1.2),
 		handRotY = math.rad(45),
 		isLocal = false,
 		label = "PILE",
 	},
 	[3] = { -- Back (BLUFFE_99)
-		standPos = Vector3.new(0, 3.4, -7.8),
-		lookAt = Vector3.new(0, 3.0, 0),
-		pilePos = Vector3.new(1.8, 3.06, -3.8),
-		handPos = Vector3.new(-1.6, 3.3, -5.4),
+		standPos = Vector3.new(0, 3.4, -6.6),
+		lookAt = Vector3.new(0, 2.8, 0),
+		pilePos = Vector3.new(1.6, 3.06, -3.2),
+		handPos = Vector3.new(-1.2, 3.3, -4.6),
 		handRotY = math.rad(180),
 		isLocal = false,
 		label = "PILE",
 	},
 	[4] = { -- Right (ROSE_KING)
-		standPos = Vector3.new(7.8, 3.4, 0.4),
-		lookAt = Vector3.new(0, 3.0, 0),
-		pilePos = Vector3.new(4.4, 3.06, 0.6),
-		handPos = Vector3.new(5.6, 3.3, -1.8),
+		standPos = Vector3.new(6.6, 3.4, 0.4),
+		lookAt = Vector3.new(0, 2.8, 0),
+		pilePos = Vector3.new(3.8, 3.06, 0.6),
+		handPos = Vector3.new(4.8, 3.3, -1.2),
 		handRotY = math.rad(-45),
 		isLocal = false,
 		label = "PILE",
@@ -89,13 +89,13 @@ function TableBuilder.Build()
 		baseplate.CanCollide = false
 	end
 
-	-- 1. Atmosphere & Lighting: Moody dark speakeasy parlor with warm amber glow
+	-- 1. Atmosphere & Lighting: Warm vibrant game-room lighting (High contrast, bright table)
 	pcall(function()
 		Lighting.GlobalShadows = false
-		Lighting.Brightness = 1.0
+		Lighting.Brightness = 2.2
 		Lighting.ClockTime = 0.0 -- Midnight indoor
-		Lighting.Ambient = Color3.fromRGB(55, 42, 38)
-		Lighting.OutdoorAmbient = Color3.fromRGB(15, 12, 14)
+		Lighting.Ambient = Color3.fromRGB(115, 95, 90)
+		Lighting.OutdoorAmbient = Color3.fromRGB(55, 45, 50)
 		Lighting.FogEnd = 1000
 
 		local sky = Lighting:FindFirstChildOfClass("Sky")
@@ -171,12 +171,47 @@ function TableBuilder.Build()
 
 	local tableLight = Instance.new("PointLight")
 	tableLight.Color = Color3.fromRGB(255, 230, 200)
-	tableLight.Brightness = 1.6
-	tableLight.Range = 32
+	tableLight.Brightness = 2.4
+	tableLight.Range = 36
 	tableLight.Shadows = false
 	tableLight.Parent = lightPart
 
-	-- 3. The Matte Dark-Wood & Felt Table (Octagonal / Rounded)
+	-- Additional warm fill light directly over table felt
+	local centerLightPart = Instance.new("Part")
+	centerLightPart.Name = "TableCenterLight"
+	centerLightPart.Size = Vector3.new(1, 1, 1)
+	centerLightPart.CFrame = CFrame.new(0, 5.2, 0.4)
+	centerLightPart.Anchored = true
+	centerLightPart.CanCollide = false
+	centerLightPart.Transparency = 1
+	centerLightPart.Parent = arena
+
+	local feltFillLight = Instance.new("PointLight")
+	feltFillLight.Color = Color3.fromRGB(255, 235, 210)
+	feltFillLight.Brightness = 2.2
+	feltFillLight.Range = 26
+	feltFillLight.Shadows = false
+	feltFillLight.Parent = centerLightPart
+
+	-- Dedicated Spotlight brightly illuminating Seat 1's "YOUR PILE" (Close-up front-left)
+	local pileSpotPart = Instance.new("Part")
+	pileSpotPart.Name = "YourPileSpotlight"
+	pileSpotPart.Size = Vector3.new(1, 1, 1)
+	pileSpotPart.CFrame = CFrame.new(-1.8, 6.2, 2.4)
+	pileSpotPart.Anchored = true
+	pileSpotPart.CanCollide = false
+	pileSpotPart.Transparency = 1
+	pileSpotPart.Parent = arena
+
+	local yourPileSpot = Instance.new("SpotLight")
+	yourPileSpot.Color = Color3.fromRGB(255, 235, 185)
+	yourPileSpot.Brightness = 3.0
+	yourPileSpot.Range = 12
+	yourPileSpot.Angle = 70
+	yourPileSpot.Face = Enum.NormalId.Bottom
+	yourPileSpot.Parent = pileSpotPart
+
+	-- 3. The Brightened Wood & Felt Table with Glowing Neon Red & Gold LED Highlights
 	local tableModel = Instance.new("Model")
 	tableModel.Name = "PokerTable"
 	tableModel.Parent = arena
@@ -189,10 +224,10 @@ function TableBuilder.Build()
 	pedestal.Anchored = true
 	pedestal.CanCollide = true
 	pedestal.Material = Enum.Material.Wood
-	pedestal.Color = Color3.fromRGB(20, 16, 16)
+	pedestal.Color = Color3.fromRGB(24, 18, 18)
 	pedestal.Parent = tableModel
 
-	-- Matte Dark Felt Main Surface (18-stud diameter circle / cylinder)
+	-- Warm Velvet Main Felt Surface (18-stud diameter cylinder)
 	local feltTop = Instance.new("Part")
 	feltTop.Name = "FeltSurface"
 	feltTop.Shape = Enum.PartType.Cylinder
@@ -201,10 +236,10 @@ function TableBuilder.Build()
 	feltTop.Anchored = true
 	feltTop.CanCollide = true
 	feltTop.Material = Enum.Material.SmoothPlastic
-	feltTop.Color = Color3.fromRGB(26, 24, 28) -- Matte dark felt
+	feltTop.Color = Color3.fromRGB(36, 30, 40) -- Rich warm velvet felt
 	feltTop.Parent = tableModel
 
-	-- Elevated Beveled Leather Outer Armrest / Rim
+	-- Elevated Polished Mahogany Outer Armrest / Rim
 	local tableRim = Instance.new("Part")
 	tableRim.Name = "TableRim"
 	tableRim.Shape = Enum.PartType.Cylinder
@@ -213,10 +248,34 @@ function TableBuilder.Build()
 	tableRim.Anchored = true
 	tableRim.CanCollide = false
 	tableRim.Material = Enum.Material.WoodPlanks
-	tableRim.Color = Color3.fromRGB(18, 14, 16) -- Dark mahogany border
+	tableRim.Color = Color3.fromRGB(48, 26, 20) -- Polished warm mahogany wood
 	tableRim.Parent = tableModel
 
-	-- 4. Center Glowing Circular Pile (With Floating Sparkles)
+	-- Glowing Neon Crimson LED Ring around Outer Perimeter
+	local outerNeonLed = Instance.new("Part")
+	outerNeonLed.Name = "OuterNeonLed"
+	outerNeonLed.Shape = Enum.PartType.Cylinder
+	outerNeonLed.Size = Vector3.new(0.08, 19.65, 19.65)
+	outerNeonLed.CFrame = CFrame.new(0, 2.88, 0) * CFrame.Angles(0, 0, math.rad(90))
+	outerNeonLed.Anchored = true
+	outerNeonLed.CanCollide = false
+	outerNeonLed.Material = Enum.Material.Neon
+	outerNeonLed.Color = Color3.fromRGB(255, 35, 50)
+	outerNeonLed.Parent = tableModel
+
+	-- Glowing Neon Gold LED Ring around Felt Border
+	local innerNeonLed = Instance.new("Part")
+	innerNeonLed.Name = "InnerNeonLed"
+	innerNeonLed.Shape = Enum.PartType.Cylinder
+	innerNeonLed.Size = Vector3.new(0.06, 17.6, 17.6)
+	innerNeonLed.CFrame = CFrame.new(0, 2.84, 0) * CFrame.Angles(0, 0, math.rad(90))
+	innerNeonLed.Anchored = true
+	innerNeonLed.CanCollide = false
+	innerNeonLed.Material = Enum.Material.Neon
+	innerNeonLed.Color = Color3.fromRGB(255, 215, 65)
+	innerNeonLed.Parent = tableModel
+
+	-- 4. Center Glowing Circular Pile (Piled with cards & sparkling embers)
 	local centerPile = Instance.new("Part")
 	centerPile.Name = "CenterGlowingPile"
 	centerPile.Shape = Enum.PartType.Cylinder
@@ -229,48 +288,68 @@ function TableBuilder.Build()
 	centerPile.Transparency = 0.25
 	centerPile.Parent = tableModel
 
-	-- Subtle floating particles rising from center glowing circle
+	-- Floating spark/ember particles rising from center glowing circle
 	local particles = Instance.new("ParticleEmitter")
 	particles.Name = "CenterEmbers"
 	particles.Color = ColorSequence.new(Color3.fromRGB(255, 220, 160))
-	particles.LightEmission = 0.8
-	particles.Size = NumberSequence.new(0.12, 0.04)
-	particles.Transparency = NumberSequence.new(0.2, 1.0)
-	particles.Lifetime = NumberRange.new(1.2, 2.0)
-	particles.Rate = 12
-	particles.Speed = NumberRange.new(0.6, 1.2)
-	particles.SpreadAngle = Vector2.new(30, 30)
+	particles.LightEmission = 0.85
+	particles.Size = NumberSequence.new(0.14, 0.04)
+	particles.Transparency = NumberSequence.new(0.1, 1.0)
+	particles.Lifetime = NumberRange.new(1.2, 2.2)
+	particles.Rate = 18
+	particles.Speed = NumberRange.new(0.8, 1.6)
+	particles.SpreadAngle = Vector2.new(35, 35)
 	particles.EmissionDirection = Enum.NormalId.Right
 	particles.Parent = centerPile
 
-	-- Center Circular SurfaceGui showing decorative face-down token cluster
-	local centerSg = Instance.new("SurfaceGui")
-	centerSg.Name = "CenterSg"
-	centerSg.Face = Enum.NormalId.Right
-	centerSg.CanvasSize = Vector2.new(256, 256)
-	centerSg.Adornee = centerPile
-	centerSg.Parent = centerPile
+	-- Decorative overlapping card tokens piled in center drop zone
+	local centerCardOffsets = {
+		{ x = -0.6, z = 0.4, rot = 25, isSkull = false },
+		{ x = 0.7, z = -0.3, rot = -40, isSkull = false },
+		{ x = -0.2, z = -0.7, rot = 75, isSkull = true },
+		{ x = 0.4, z = 0.6, rot = -15, isSkull = false },
+		{ x = -0.5, z = -0.2, rot = 110, isSkull = false },
+		{ x = 0.1, z = 0.1, rot = 10, isSkull = true },
+	}
+	for cIdx, cData in ipairs(centerCardOffsets) do
+		local cCard = Instance.new("Part")
+		cCard.Name = "CenterPiledCard_" .. cIdx
+		cCard.Shape = Enum.PartType.Cylinder
+		cCard.Size = Vector3.new(0.05, 1.85, 1.85)
+		cCard.CFrame = CFrame.new(cData.x, 3.03 + (cIdx * 0.04), cData.z)
+			* CFrame.Angles(0, math.rad(cData.rot), math.rad(90))
+		cCard.Anchored = true
+		cCard.CanCollide = false
+		cCard.Material = Enum.Material.SmoothPlastic
+		cCard.Color = cData.isSkull and Color3.fromRGB(26, 22, 32) or Color3.fromRGB(238, 222, 195)
+		cCard.Parent = centerPile
 
-	local centerCircle = Instance.new("Frame")
-	centerCircle.Size = UDim2.new(1, 0, 1, 0)
-	centerCircle.BackgroundTransparency = 1
-	centerCircle.Parent = centerSg
+		local cSg = Instance.new("SurfaceGui")
+		cSg.Face = Enum.NormalId.Right
+		cSg.CanvasSize = Vector2.new(128, 128)
+		cSg.Adornee = cCard
+		cSg.Parent = cCard
 
-	local cStroke = Instance.new("UIStroke")
-	cStroke.Color = Color3.fromRGB(255, 240, 200)
-	cStroke.Thickness = 5
-	cStroke.Parent = centerCircle
-	Instance.new("UICorner", centerCircle).CornerRadius = UDim.new(1, 0)
+		local cBg = Instance.new("Frame")
+		cBg.Size = UDim2.new(1, 0, 1, 0)
+		cBg.BackgroundColor3 = cData.isSkull and Color3.fromRGB(26, 22, 32) or Color3.fromRGB(238, 222, 195)
+		cBg.Parent = cSg
+		Instance.new("UICorner", cBg).CornerRadius = UDim.new(1, 0)
 
-	local cIcon = Instance.new("TextLabel")
-	cIcon.Size = UDim2.new(1, 0, 1, 0)
-	cIcon.BackgroundTransparency = 1
-	cIcon.Font = Enum.Font.FredokaOne
-	cIcon.TextSize = 75
-	cIcon.TextColor3 = Color3.fromRGB(255, 235, 190)
-	cIcon.TextTransparency = 0.35
-	cIcon.Text = "💀"
-	cIcon.Parent = centerCircle
+		local cStr = Instance.new("UIStroke")
+		cStr.Color = Color3.fromRGB(255, 215, 80)
+		cStr.Thickness = 2.4
+		cStr.Parent = cBg
+
+		local cIco = Instance.new("TextLabel")
+		cIco.Size = UDim2.new(1, 0, 1, 0)
+		cIco.BackgroundTransparency = 1
+		cIco.Font = Enum.Font.FredokaOne
+		cIco.TextSize = 52
+		cIco.TextColor3 = cData.isSkull and Color3.fromRGB(255, 75, 90) or Color3.fromRGB(210, 30, 50)
+		cIco.Text = cData.isSkull and "💀" or "🌹"
+		cIco.Parent = cBg
+	end
 
 	-- 5. Individual Player Mats ("YOUR PILE" and "PILE")
 	for seatIdx, cfg in pairs(SEAT_CONFIGS) do
@@ -287,6 +366,21 @@ function TableBuilder.Build()
 		mat.Color = Color3.fromRGB(22, 20, 25)
 		mat.Parent = tableModel
 		pileMats[seatIdx] = mat
+
+		-- Energetic spark particle emitter for active turns
+		local turnSparks = Instance.new("ParticleEmitter")
+		turnSparks.Name = "TurnSparks"
+		turnSparks.Color = ColorSequence.new(Color3.fromRGB(255, 225, 110))
+		turnSparks.LightEmission = 0.95
+		turnSparks.Size = NumberSequence.new(0.14, 0.02)
+		turnSparks.Transparency = NumberSequence.new(0.1, 1.0)
+		turnSparks.Lifetime = NumberRange.new(0.8, 1.4)
+		turnSparks.Rate = 18
+		turnSparks.Speed = NumberRange.new(1.0, 2.0)
+		turnSparks.SpreadAngle = Vector2.new(45, 45)
+		turnSparks.EmissionDirection = Enum.NormalId.Top
+		turnSparks.Enabled = (seatIdx == 1) -- initially active for placement
+		turnSparks.Parent = mat
 
 		-- SurfaceGui on Mat
 		local matSg = Instance.new("SurfaceGui")
@@ -307,15 +401,15 @@ function TableBuilder.Build()
 		local matStroke = Instance.new("UIStroke")
 		matStroke.Name = "MatBorder"
 		matStroke.Color = cfg.isLocal and Color3.fromRGB(255, 235, 180) or Color3.fromRGB(200, 200, 215)
-		matStroke.Transparency = 0.4
-		matStroke.Thickness = 2.5
+		matStroke.Transparency = 0.35
+		matStroke.Thickness = 2.8
 		matStroke.Parent = matFrame
 
 		-- Glowing Neon Ring Drop Zone in center of mat
 		local ring = Instance.new("Frame")
 		ring.Name = "DropZoneRing"
-		ring.Size = UDim2.new(0, 155, 0, 155)
-		ring.Position = UDim2.new(0.5, -77, 0.5, -88)
+		ring.Size = UDim2.new(0, 160, 0, 160)
+		ring.Position = UDim2.new(0.5, -80, 0.5, -92)
 		ring.BackgroundTransparency = 1
 		ring.Parent = matFrame
 		Instance.new("UICorner", ring).CornerRadius = UDim.new(1, 0)
@@ -323,7 +417,7 @@ function TableBuilder.Build()
 		local ringStroke = Instance.new("UIStroke")
 		ringStroke.Name = "NeonRingGlow"
 		ringStroke.Color = cfg.isLocal and Color3.fromRGB(255, 215, 140) or Color3.fromRGB(255, 235, 200)
-		ringStroke.Thickness = 4.0
+		ringStroke.Thickness = 4.5
 		ringStroke.Parent = ring
 
 		-- Mat Label: "YOUR PILE" or "PILE"
@@ -335,10 +429,53 @@ function TableBuilder.Build()
 		label.Font = Enum.Font.FredokaOne
 		label.TextSize = 22
 		label.TextColor3 = Color3.fromRGB(255, 255, 255)
-		label.TextStrokeTransparency = 0.4
+		label.TextStrokeTransparency = 0.35
 		label.TextStrokeColor3 = Color3.fromRGB(15, 15, 20)
 		label.Text = cfg.label
 		label.Parent = matFrame
+
+		-- Pre-populate stacked face-down circular card tokens on Seat 1's "YOUR PILE"
+		if seatIdx == 1 then
+			for s = 1, 3 do
+				local sCard = Instance.new("Part")
+				sCard.Name = "YourPile_PreStackedCard_" .. s
+				sCard.Shape = Enum.PartType.Cylinder
+				sCard.Size = Vector3.new(0.06, 2.2, 2.2)
+				sCard.CFrame = CFrame.new(cfg.pilePos.X, 3.06 + (s - 1) * 0.08, cfg.pilePos.Z)
+					* CFrame.Angles(0, 0, math.rad(90))
+				sCard.Anchored = true
+				sCard.CanCollide = false
+				sCard.Material = Enum.Material.SmoothPlastic
+				sCard.Color = Color3.fromRGB(26, 22, 32)
+				sCard.Parent = mat
+
+				local sSg = Instance.new("SurfaceGui")
+				sSg.Face = Enum.NormalId.Right
+				sSg.CanvasSize = Vector2.new(128, 128)
+				sSg.Adornee = sCard
+				sSg.Parent = sCard
+
+				local sBg = Instance.new("Frame")
+				sBg.Size = UDim2.new(1, 0, 1, 0)
+				sBg.BackgroundColor3 = Color3.fromRGB(26, 22, 32)
+				sBg.Parent = sSg
+				Instance.new("UICorner", sBg).CornerRadius = UDim.new(1, 0)
+
+				local sStr = Instance.new("UIStroke")
+				sStr.Color = Color3.fromRGB(245, 205, 80)
+				sStr.Thickness = 2.4
+				sStr.Parent = sBg
+
+				local sIco = Instance.new("TextLabel")
+				sIco.Size = UDim2.new(1, 0, 1, 0)
+				sIco.BackgroundTransparency = 1
+				sIco.Font = Enum.Font.FredokaOne
+				sIco.TextSize = 50
+				sIco.TextColor3 = Color3.fromRGB(245, 210, 80)
+				sIco.Text = "✦"
+				sIco.Parent = sBg
+			end
+		end
 
 		-- Seat 1 Spawn Location (anchored right at the front seat)
 		if seatIdx == 1 then
@@ -605,7 +742,28 @@ function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	head.Color = Color3.fromRGB(15, 14, 18)
 	head.Parent = botModel
 
-	-- Floating Frosted Glass Nametag
+	-- Left and Right blocky arms holding cards
+	local leftArm = Instance.new("Part")
+	leftArm.Name = "LeftArm"
+	leftArm.Size = Vector3.new(1.0, 2.4, 1.0)
+	leftArm.CFrame = targetCF * CFrame.new(-1.6, -0.2, -0.4) * CFrame.Angles(math.rad(-25), 0, math.rad(-15))
+	leftArm.Anchored = true
+	leftArm.CanCollide = false
+	leftArm.Material = Enum.Material.SmoothPlastic
+	leftArm.Color = Color3.fromRGB(15, 14, 18)
+	leftArm.Parent = botModel
+
+	local rightArm = Instance.new("Part")
+	rightArm.Name = "RightArm"
+	rightArm.Size = Vector3.new(1.0, 2.4, 1.0)
+	rightArm.CFrame = targetCF * CFrame.new(1.6, -0.2, -0.4) * CFrame.Angles(math.rad(-25), 0, math.rad(15))
+	rightArm.Anchored = true
+	rightArm.CanCollide = false
+	rightArm.Material = Enum.Material.SmoothPlastic
+	rightArm.Color = Color3.fromRGB(15, 14, 18)
+	rightArm.Parent = botModel
+
+	-- Floating Frosted Glass Nametag Banner above pile
 	seatBillboards[seatIndex] = createPlayerTag(head, botName, seatIndex)
 	botDummies[seatIndex] = botModel
 
@@ -640,7 +798,7 @@ function TableBuilder.StandPlayer(player: Player, seatIndex: number)
 end
 
 -- ============================================================================
--- 5. VISUAL POLISH & TURNS
+-- 5. VISUAL POLISH & TURNS (Spark particle effects on active zones)
 -- ============================================================================
 function TableBuilder.HighlightTurn(activeSeatIndex: number?)
 	for seatIdx, mat in pairs(pileMats) do
@@ -652,6 +810,10 @@ function TableBuilder.HighlightTurn(activeSeatIndex: number?)
 		if ringStroke then
 			ringStroke.Color = isActive and Color3.fromRGB(255, 60, 80) or Color3.fromRGB(255, 230, 180)
 			ringStroke.Thickness = isActive and 6.0 or 3.5
+		end
+		local sparks = mat:FindFirstChild("TurnSparks") :: ParticleEmitter?
+		if sparks then
+			sparks.Enabled = isActive
 		end
 	end
 end

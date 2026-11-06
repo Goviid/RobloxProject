@@ -24,11 +24,11 @@ local canCurrentlyPlace = false
 local isPlayerTurn = false
 local selectedCard: string? = nil
 
--- Circular Token Dimensions (Matching Reference)
-local CARD_DIAMETER = 142
-local CARD_SPACING = 82
-local RESTING_Y = -35
-local HOVER_LIFT_Y = -92
+-- Circular Token Dimensions (Scaled up, positioned higher & prominent matching prompt)
+local CARD_DIAMETER = 168
+local CARD_SPACING = 96
+local RESTING_Y = -65
+local HOVER_LIFT_Y = -125
 
 -- Natural fan angles
 local function getFannedAngle(index: number, total: number): number
@@ -41,7 +41,7 @@ end
 local function getArchY(index: number, total: number): number
 	if total <= 1 then return 0 end
 	local centerDist = math.abs((index - 1) - (total - 1) / 2)
-	return centerDist * 7.0
+	return centerDist * 8.0
 end
 
 -- ============================================================================
@@ -75,18 +75,18 @@ local function createCircularToken(
 	container:SetAttribute("RestingRot", rotAngle)
 	container:SetAttribute("BaseZIndex", baseZIndex)
 
-	-- Floating Prompt Label above token ("PLACE CARD" or "BET")
+	-- Tiny Floating Prompt Label above token ("PLACE CARD")
 	local promptLabel = Instance.new("TextLabel")
 	promptLabel.Name = "PromptLabel"
-	promptLabel.Size = UDim2.new(1, 0, 0, 22)
-	promptLabel.Position = UDim2.new(0, 0, 0, 0)
+	promptLabel.Size = UDim2.new(1, 0, 0, 18)
+	promptLabel.Position = UDim2.new(0, 0, 0, 4)
 	promptLabel.BackgroundTransparency = 1
 	promptLabel.Font = Enum.Font.FredokaOne
-	promptLabel.TextSize = 13
-	promptLabel.TextColor3 = isRose and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 100, 120)
+	promptLabel.TextSize = 11 -- Tiny text as requested
+	promptLabel.TextColor3 = isRose and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 110, 130)
 	promptLabel.TextStrokeTransparency = 0.35
 	promptLabel.TextStrokeColor3 = Color3.fromRGB(15, 15, 20)
-	promptLabel.Text = isRose and "PLACE CARD" or "PLACE CARD"
+	promptLabel.Text = "PLACE CARD"
 	promptLabel.ZIndex = baseZIndex + 4
 	promptLabel.Parent = container
 
@@ -117,8 +117,8 @@ local function createCircularToken(
 	-- Outer Stroke: Rose = Crisp Gold Rim; Skull = Glowing Neon Crimson Rim
 	local tokenStroke = Instance.new("UIStroke")
 	tokenStroke.Name = "TokenStroke"
-	tokenStroke.Color = isRose and Color3.fromRGB(255, 225, 130) or Color3.fromRGB(255, 45, 75)
-	tokenStroke.Thickness = isRose and 4.0 or 4.5
+	tokenStroke.Color = isRose and Color3.fromRGB(255, 215, 75) or Color3.fromRGB(255, 45, 65)
+	tokenStroke.Thickness = isRose and 4.6 or 5.2
 	tokenStroke.Parent = btn
 
 	-- Subtle Color Gradient
@@ -160,7 +160,7 @@ local function createCircularToken(
 	icon.Position = UDim2.new(0, 0, 0, 0)
 	icon.BackgroundTransparency = 1
 	icon.Font = Theme.Fonts.Title
-	icon.TextSize = 64
+	icon.TextSize = 74
 	icon.Text = isRose and "🌹" or "💀"
 	icon.TextColor3 = isRose and Color3.fromRGB(215, 30, 50) or Color3.fromRGB(245, 235, 250)
 	icon.ZIndex = baseZIndex + 3
@@ -289,7 +289,7 @@ function HandBar.ConsumeCard(cardIndex: number)
 end
 
 -- ============================================================================
--- 3. SETUP FLOATING HAND DOCK (Shifted right-center matching reference)
+-- 3. SETUP FLOATING HAND DOCK WITH PLAYER'S BLOCKY ROBLOX HAND
 -- ============================================================================
 function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	onCardClickedCallback = onSelect
@@ -298,12 +298,84 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	local dock = Instance.new("Frame")
 	dock.Name = "FloatingHandDock"
 	dock.AnchorPoint = Vector2.new(0.5, 1)
-	dock.Size = UDim2.new(0, 520, 0, 220)
-	dock.Position = UDim2.new(0.54, 0, 1, 0) -- Shifted right-center matching reference
+	dock.Size = UDim2.new(0, 600, 0, 270)
+	dock.Position = UDim2.new(0.52, 0, 1, 0)
 	dock.BackgroundTransparency = 1
 	dock.BorderSizePixel = 0
-	dock.ZIndex = 20
+	dock.ZIndex = 15
 	dock.Parent = parent
+
+	-- ========================================================================
+	-- PLAYER'S BLOCKY ROBLOX-STYLE HAND (Actively holding the fanned cards)
+	-- ========================================================================
+	local armContainer = Instance.new("Frame")
+	armContainer.Name = "PlayerRobloxArm"
+	armContainer.Size = UDim2.new(0, 160, 0, 180)
+	armContainer.AnchorPoint = Vector2.new(0.5, 1)
+	armContainer.Position = UDim2.new(0.5, 60, 1, 42)
+	armContainer.Rotation = -16
+	armContainer.BackgroundTransparency = 1
+	armContainer.ZIndex = 14
+	armContainer.Parent = dock
+
+	-- Forearm / Sleeve (Dark suit / hoodie sleeve)
+	local sleeve = Instance.new("Frame")
+	sleeve.Name = "Sleeve"
+	sleeve.Size = UDim2.new(0, 110, 0, 140)
+	sleeve.Position = UDim2.new(0.5, -55, 0, 40)
+	sleeve.BackgroundColor3 = Color3.fromRGB(22, 18, 26)
+	sleeve.BorderSizePixel = 0
+	sleeve.ZIndex = 14
+	sleeve.Parent = armContainer
+	Instance.new("UICorner", sleeve).CornerRadius = UDim.new(0, 10)
+
+	local sleeveStroke = Instance.new("UIStroke")
+	sleeveStroke.Color = Color3.fromRGB(38, 30, 44)
+	sleeveStroke.Thickness = 2.0
+	sleeveStroke.Parent = sleeve
+
+	-- Crisp White Shirt Cuff
+	local cuff = Instance.new("Frame")
+	cuff.Name = "Cuff"
+	cuff.Size = UDim2.new(1, 6, 0, 18)
+	cuff.Position = UDim2.new(0, -3, 0, -8)
+	cuff.BackgroundColor3 = Color3.fromRGB(250, 250, 250)
+	cuff.BorderSizePixel = 0
+	cuff.ZIndex = 15
+	cuff.Parent = sleeve
+	Instance.new("UICorner", cuff).CornerRadius = UDim.new(0, 4)
+
+	local cuffStroke = Instance.new("UIStroke")
+	cuffStroke.Color = Color3.fromRGB(210, 210, 215)
+	cuffStroke.Thickness = 1.2
+	cuffStroke.Parent = cuff
+
+	-- Classic Blocky Roblox Hand
+	local hand = Instance.new("Frame")
+	hand.Name = "BlockyHand"
+	hand.Size = UDim2.new(0, 94, 0, 70)
+	hand.Position = UDim2.new(0.5, -47, 0, -66)
+	hand.BackgroundColor3 = Color3.fromRGB(238, 192, 140) -- Natural Roblox skin tone
+	hand.BorderSizePixel = 0
+	hand.ZIndex = 16
+	hand.Parent = sleeve
+	Instance.new("UICorner", hand).CornerRadius = UDim.new(0, 12)
+
+	local handStroke = Instance.new("UIStroke")
+	handStroke.Color = Color3.fromRGB(195, 150, 105)
+	handStroke.Thickness = 1.6
+	handStroke.Parent = hand
+
+	-- Thumb Notch / Palm grip detail
+	local thumb = Instance.new("Frame")
+	thumb.Name = "ThumbGrip"
+	thumb.Size = UDim2.new(0, 28, 0, 42)
+	thumb.Position = UDim2.new(0, -8, 0, 10)
+	thumb.BackgroundColor3 = Color3.fromRGB(222, 175, 125)
+	thumb.BorderSizePixel = 0
+	thumb.ZIndex = 17
+	thumb.Parent = hand
+	Instance.new("UICorner", thumb).CornerRadius = UDim.new(0, 8)
 
 	dockFrame = dock
 	return dock
