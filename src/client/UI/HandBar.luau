@@ -1,7 +1,7 @@
 --!strict
 -- HandBar.luau
--- Tactile 2.5D Hand of Oversized Circular Cards (LOCOfficial style)
--- Raised height, rich textured medallions, spring hover elevation, and direct click placement
+-- Tactile 2.5D Fan of Circular Cards (LOCOfficial style)
+-- Features a radiant handheld fan formation, dynamic re-centering adjustment upon consumption, and spring hover elevation
 
 local TweenService = game:GetService("TweenService")
 local Theme = require(script.Parent.Theme)
@@ -19,29 +19,29 @@ local canCurrentlyPlace = false
 local isPlayerTurn = false
 local selectedCard: string? = nil
 
--- Oversized 2.5D Card Geometry
-local CARD_DIAMETER = 144       -- Oversized substantial circular card
-local CARD_OVERLAP_SPACING = 114 -- Natural horizontal overlap in hand
-local RESTING_Y_OFFSET = -75    -- Raised height so full card is visible hovering above screen bottom
-local HOVER_LIFT_Y_OFFSET = -135 -- Elevated high into view when hovered
+-- Fan Formation Geometry
+local CARD_DIAMETER = 144        -- Substantial circular card diameter
+local CARD_OVERLAP_SPACING = 110 -- Horizontal spacing in the fan
+local RESTING_Y_OFFSET = -70     -- Base height above screen bottom
+local HOVER_LIFT_Y_OFFSET = -140  -- Raised high into view when hovered
 
--- Calculated fanned rotation angles (degrees) for natural hand curve
+-- Calculated distinct fan angles (degrees) for natural card fan curve
 local function getFannedAngle(index: number, totalCards: number): number
 	if totalCards <= 1 then return 0 end
 	local normalized = (index - 1) / (totalCards - 1) -- 0.0 to 1.0
-	local maxAngle = if totalCards == 4 then 7.5 elseif totalCards == 3 then 5.0 else 3.0
+	local maxAngle = if totalCards >= 4 then 15.0 elseif totalCards == 3 then 10.0 else 6.0
 	return (normalized - 0.5) * (maxAngle * 2)
 end
 
--- Subtle vertical arch so outer cards rest slightly lower in the palm
+-- Natural vertical arch: outer cards rest lower in the palm, center cards arch higher
 local function getArchYOffset(index: number, totalCards: number): number
 	if totalCards <= 1 then return 0 end
 	local centerDist = math.abs((index - 1) - (totalCards - 1) / 2)
-	return centerDist * 4.5
+	return centerDist * 9.0 -- Noticeable, natural fan arc
 end
 
 -- ============================================================================
--- 1. CONSTRUCT A RICH TEXTURED 2.5D CIRCULAR CARD
+-- 1. CONSTRUCT A RICH TEXTURED 2.5D FAN CARD
 -- ============================================================================
 local function create25DCard(
 	cardType: string,
@@ -53,10 +53,11 @@ local function create25DCard(
 	local isRose = (cardType == Enums.CardType.Rose)
 	local rotAngle = getFannedAngle(index, totalCards)
 	local archY = getArchYOffset(index, totalCards)
-	local restingPos = UDim2.new(0.5, xOffset, 1, RESTING_Y_OFFSET + archY)
+	local restingY = RESTING_Y_OFFSET + archY
+	local restingPos = UDim2.new(0.5, xOffset, 1, restingY)
 	local baseZIndex = 20 + index
 
-	-- Outer Container (handles position, rotation & hover)
+	-- Outer Container (handles fan position, rotation & hover)
 	local container = Instance.new("Frame")
 	container.Name = "CardHolder_" .. index .. "_" .. cardType
 	container.Size = UDim2.new(0, CARD_DIAMETER, 0, CARD_DIAMETER)
@@ -65,6 +66,12 @@ local function create25DCard(
 	container.Rotation = rotAngle
 	container.BackgroundTransparency = 1
 	container.ZIndex = baseZIndex
+
+	-- Store dynamic resting state on container attributes so adjustments update hover targets!
+	container:SetAttribute("RestingX", xOffset)
+	container:SetAttribute("RestingY", restingY)
+	container:SetAttribute("RestingRot", rotAngle)
+	container:SetAttribute("BaseZIndex", baseZIndex)
 
 	-- 1. Tactile 2.5D Drop Shadow
 	local shadow = Instance.new("Frame")
@@ -152,7 +159,6 @@ local function create25DCard(
 	icon.ZIndex = baseZIndex + 3
 	icon.Parent = btn
 
-	-- Icon Drop Shadow for embossed 2.5D appearance
 	local iconShadow = Instance.new("TextLabel")
 	iconShadow.Name = "IconShadow"
 	iconShadow.Size = UDim2.new(1, 0, 0, 72)
@@ -196,7 +202,7 @@ local function create25DCard(
 	btn.MouseEnter:Connect(function()
 		if not isPlayerTurn or not canCurrentlyPlace then return end
 
-		-- Bring this card to the very front so it overlaps its neighbors
+		-- Bring this card to the very front so it pops over neighbors
 		container.ZIndex = 60
 		shadow.ZIndex = 60
 		btn.ZIndex = 61
@@ -205,20 +211,20 @@ local function create25DCard(
 		icon.ZIndex = 63
 		nameLabel.ZIndex = 63
 
+		local curX = container:GetAttribute("RestingX") or xOffset
+
 		-- Lift up towards camera, straighten up (0 deg), and scale up slightly
 		TweenService:Create(container, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Position = UDim2.new(0.5, xOffset, 1, HOVER_LIFT_Y_OFFSET),
+			Position = UDim2.new(0.5, curX, 1, HOVER_LIFT_Y_OFFSET),
 			Rotation = 0,
 			Size = UDim2.new(0, CARD_DIAMETER + 12, 0, CARD_DIAMETER + 12),
 		}):Play()
 
-		-- Drop shadow deepens and moves downward
 		TweenService:Create(shadow, TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			Position = UDim2.new(0, 0, 0, 18),
 			BackgroundTransparency = 0.70,
 		}):Play()
 
-		-- Glow outline
 		TweenService:Create(stroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			Color = Color3.fromRGB(255, 240, 120),
 			Thickness = 5.2,
@@ -226,18 +232,23 @@ local function create25DCard(
 	end)
 
 	btn.MouseLeave:Connect(function()
-		-- Reset back to resting fanned position
-		container.ZIndex = baseZIndex
-		shadow.ZIndex = baseZIndex
-		btn.ZIndex = baseZIndex + 1
-		innerRing.ZIndex = baseZIndex + 2
-		iconShadow.ZIndex = baseZIndex + 2
-		icon.ZIndex = baseZIndex + 3
-		nameLabel.ZIndex = baseZIndex + 3
+		-- Read current dynamic attributes so it returns to the adjusted fan slot!
+		local curX = container:GetAttribute("RestingX") or xOffset
+		local curY = container:GetAttribute("RestingY") or restingY
+		local curRot = container:GetAttribute("RestingRot") or rotAngle
+		local curZIndex = container:GetAttribute("BaseZIndex") or baseZIndex
+
+		container.ZIndex = curZIndex
+		shadow.ZIndex = curZIndex
+		btn.ZIndex = curZIndex + 1
+		innerRing.ZIndex = curZIndex + 2
+		iconShadow.ZIndex = curZIndex + 2
+		icon.ZIndex = curZIndex + 3
+		nameLabel.ZIndex = curZIndex + 3
 
 		TweenService:Create(container, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Position = restingPos,
-			Rotation = rotAngle,
+			Position = UDim2.new(0.5, curX, 1, curY),
+			Rotation = curRot,
 			Size = UDim2.new(0, CARD_DIAMETER, 0, CARD_DIAMETER),
 		}):Play()
 
@@ -252,7 +263,7 @@ local function create25DCard(
 		}):Play()
 	end)
 
-	-- Direct click to place (immediately consumes card from hand!)
+	-- Direct click to place (immediately consumes card and triggers fan re-adjustment!)
 	btn.MouseButton1Click:Connect(function()
 		if not isPlayerTurn or not canCurrentlyPlace then return end
 		isPlayerTurn = false -- Prevent double clicks while server processes turn
@@ -270,7 +281,7 @@ local function create25DCard(
 end
 
 -- ============================================================================
--- 2. CONSUME CARD FROM HAND (Smooth fly-off & re-centering animation)
+-- 2. CONSUME CARD FROM HAND (Smooth fly-off & dynamic fan re-adjustment!)
 -- ============================================================================
 function HandBar.ConsumeCard(cardIndex: number)
 	if not dockFrame then return end
@@ -282,7 +293,7 @@ function HandBar.ConsumeCard(cardIndex: number)
 	table.remove(currentHand, cardIndex)
 
 	-- Exit tween for placed card (lifts up and shrinks out)
-	local exitTween = TweenService:Create(targetContainer, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+	local exitTween = TweenService:Create(targetContainer, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
 		Position = targetContainer.Position + UDim2.new(0, 0, 0, -90),
 		Size = UDim2.new(0, 0, 0, 0),
 	})
@@ -291,7 +302,7 @@ function HandBar.ConsumeCard(cardIndex: number)
 		targetContainer:Destroy()
 	end)
 
-	-- Smoothly re-position remaining cards into new centered fan
+	-- Smoothly re-position & re-fan remaining cards into their new centered formation!
 	local totalRemaining = #currentHand
 	if totalRemaining == 0 then
 		dockFrame.Visible = false
@@ -305,12 +316,36 @@ function HandBar.ConsumeCard(cardIndex: number)
 		local xOffset = startX + (i - 1) * CARD_OVERLAP_SPACING
 		local rotAngle = getFannedAngle(i, totalRemaining)
 		local archY = getArchYOffset(i, totalRemaining)
-		local newPos = UDim2.new(0.5, xOffset, 1, RESTING_Y_OFFSET + archY)
+		local newY = RESTING_Y_OFFSET + archY
+		local newZIndex = 20 + i
 
-		container.ZIndex = 20 + i
-		TweenService:Create(container, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Position = newPos,
+		-- Update dynamic attributes so subsequent hovers return to the adjusted position
+		container:SetAttribute("RestingX", xOffset)
+		container:SetAttribute("RestingY", newY)
+		container:SetAttribute("RestingRot", rotAngle)
+		container:SetAttribute("BaseZIndex", newZIndex)
+
+		container.ZIndex = newZIndex
+		local s = container:FindFirstChild("CardShadow") :: Frame?
+		if s then s.ZIndex = newZIndex end
+		local b = container:FindFirstChild("CardButton") :: ImageButton?
+		if b then
+			b.ZIndex = newZIndex + 1
+			local r = b:FindFirstChild("InnerRing") :: Frame?
+			if r then r.ZIndex = newZIndex + 2 end
+			local is = b:FindFirstChild("IconShadow") :: TextLabel?
+			if is then is.ZIndex = newZIndex + 2 end
+			local ic = b:FindFirstChild("CardIcon") :: TextLabel?
+			if ic then ic.ZIndex = newZIndex + 3 end
+			local nl = b:FindFirstChild("CardLabel") :: TextLabel?
+			if nl then nl.ZIndex = newZIndex + 3 end
+		end
+
+		-- Smoothly glide into adjusted fan position and angle
+		TweenService:Create(container, TweenInfo.new(0.30, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0.5, xOffset, 1, newY),
 			Rotation = rotAngle,
+			Size = UDim2.new(0, CARD_DIAMETER, 0, CARD_DIAMETER),
 		}):Play()
 	end
 end
@@ -325,7 +360,7 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	local dock = Instance.new("Frame")
 	dock.Name = "FloatingHandDock"
 	dock.AnchorPoint = Vector2.new(0.5, 1)
-	dock.Size = UDim2.new(0, 640, 0, 190)
+	dock.Size = UDim2.new(0, 640, 0, 220)
 	dock.Position = UDim2.new(0.5, 0, 1, 0)
 	dock.BackgroundTransparency = 1 -- Zero black box!
 	dock.BorderSizePixel = 0
@@ -337,7 +372,7 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 end
 
 -- ============================================================================
--- 3. RENDER / UPDATE HAND CARDS
+-- 4. RENDER / UPDATE HAND CARDS
 -- ============================================================================
 function HandBar.UpdateHand(hand: { string }, isTurn: boolean, canPlace: boolean)
 	if not dockFrame then return end
@@ -369,7 +404,7 @@ function HandBar.UpdateHand(hand: { string }, isTurn: boolean, canPlace: boolean
 end
 
 -- ============================================================================
--- 4. UTILITY METHODS
+-- 5. UTILITY METHODS
 -- ============================================================================
 function HandBar.SetVisible(visible: boolean)
 	if dockFrame then

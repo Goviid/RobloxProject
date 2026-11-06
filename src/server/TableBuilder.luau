@@ -498,7 +498,94 @@ function TableBuilder.StandPlayer(player: Player, seatIndex: number)
 end
 
 -- ============================================================================
--- 4. SPAWN STYLIZED STANDING BOT AVATARS (LOCOfficial Style)
+-- 4. STANDING 3D CARD MODELS FOR OPPONENTS (LOCOfficial style card back wall)
+-- ============================================================================
+local function renderOpponentCards3D(seatIndex: number, count: number)
+	if seatIndex == 1 or not arenaModel then return end
+	local targetCF = standingCFrames[seatIndex]
+	if not targetCF then return end
+
+	local folderName = "OpponentHand_" .. seatIndex
+	local existingFolder = arenaModel:FindFirstChild(folderName)
+	if existingFolder then
+		existingFolder:Destroy()
+	end
+
+	if count <= 0 then return end
+
+	local folder = Instance.new("Folder")
+	folder.Name = folderName
+	folder.Parent = arenaModel
+
+	local CARD_W = 0.95
+	local CARD_H = 1.45
+	local SPACING = 0.75
+	local totalWidth = (count - 1) * SPACING
+	local startX = -totalWidth / 2
+
+	for i = 1, count do
+		local xOff = startX + (i - 1) * SPACING
+		local fanRot = (count > 1) and math.rad(( (i - 1)/(count - 1) - 0.5 ) * 16) or 0
+
+		-- Upright card in front of bot's chest, angled towards center
+		local cardCF = targetCF * CFrame.new(xOff, 0.2, -1.65) * CFrame.Angles(0, fanRot, 0)
+
+		local card = Instance.new("Part")
+		card.Name = "OpponentCard_" .. i
+		card.Size = Vector3.new(CARD_W, CARD_H, 0.04)
+		card.CFrame = cardCF
+		card.Anchored = true
+		card.CanCollide = false
+		card.Material = Enum.Material.SmoothPlastic
+		card.Color = Color3.fromRGB(24, 20, 28)
+		card.CastShadow = false
+		card.Parent = folder
+
+		local sg = Instance.new("SurfaceGui")
+		sg.Name = "CardBackGui"
+		sg.Face = Enum.NormalId.Back -- Faces arena center towards human player
+		sg.CanvasSize = Vector2.new(128, 192)
+		sg.AlwaysOnTop = false
+		sg.Adornee = card
+		sg.Parent = card
+
+		local bg = Instance.new("Frame")
+		bg.Size = UDim2.new(1, 0, 1, 0)
+		bg.BackgroundColor3 = Color3.fromRGB(22, 18, 26)
+		bg.BorderSizePixel = 0
+		bg.Parent = sg
+		Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 10)
+
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = Color3.fromRGB(240, 195, 65)
+		stroke.Thickness = 2.5
+		stroke.Parent = bg
+
+		local innerBorder = Instance.new("Frame")
+		innerBorder.Size = UDim2.new(1, -12, 1, -12)
+		innerBorder.Position = UDim2.new(0, 6, 0, 6)
+		innerBorder.BackgroundTransparency = 1
+		innerBorder.Parent = bg
+		Instance.new("UICorner", innerBorder).CornerRadius = UDim.new(0, 6)
+		local innerStroke = Instance.new("UIStroke")
+		innerStroke.Color = Color3.fromRGB(255, 235, 140)
+		innerStroke.Transparency = 0.5
+		innerStroke.Thickness = 1.2
+		innerStroke.Parent = innerBorder
+
+		local icon = Instance.new("TextLabel")
+		icon.Size = UDim2.new(1, 0, 1, 0)
+		icon.BackgroundTransparency = 1
+		icon.Font = Enum.Font.FredokaOne
+		icon.TextSize = 42
+		icon.TextColor3 = Color3.fromRGB(245, 205, 75)
+		icon.Text = "✦"
+		icon.Parent = bg
+	end
+end
+
+-- ============================================================================
+-- 5. SPAWN STYLIZED STANDING BOT AVATARS (LOCOfficial Style)
 -- ============================================================================
 function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	local targetCF = standingCFrames[seatIndex]
@@ -674,91 +761,6 @@ function TableBuilder.UpdateScore(seatIndex: number, score: number)
 			gem.Text = hasPoint and "◆" or "◇"
 			gem.TextColor3 = hasPoint and Color3.fromRGB(255, 220, 60) or Color3.fromRGB(210, 230, 255)
 		end
-	end
-end
-
--- Standing 3D Card Models for Opponents (LOCOfficial style card back wall)
-local function renderOpponentCards3D(seatIndex: number, count: number)
-	if seatIndex == 1 or not arenaModel then return end
-	local targetCF = standingCFrames[seatIndex]
-	if not targetCF then return end
-
-	local folderName = "OpponentHand_" .. seatIndex
-	local existingFolder = arenaModel:FindFirstChild(folderName)
-	if existingFolder then
-		existingFolder:Destroy()
-	end
-
-	if count <= 0 then return end
-
-	local folder = Instance.new("Folder")
-	folder.Name = folderName
-	folder.Parent = arenaModel
-
-	local CARD_W = 0.95
-	local CARD_H = 1.45
-	local SPACING = 0.75
-	local totalWidth = (count - 1) * SPACING
-	local startX = -totalWidth / 2
-
-	for i = 1, count do
-		local xOff = startX + (i - 1) * SPACING
-		local fanRot = (count > 1) and math.rad(( (i - 1)/(count - 1) - 0.5 ) * 16) or 0
-
-		-- Upright card in front of bot's chest, angled towards center
-		local cardCF = targetCF * CFrame.new(xOff, 0.2, -1.65) * CFrame.Angles(0, fanRot, 0)
-
-		local card = Instance.new("Part")
-		card.Name = "OpponentCard_" .. i
-		card.Size = Vector3.new(CARD_W, CARD_H, 0.04)
-		card.CFrame = cardCF
-		card.Anchored = true
-		card.CanCollide = false
-		card.Material = Enum.Material.SmoothPlastic
-		card.Color = Color3.fromRGB(24, 20, 28)
-		card.CastShadow = false
-		card.Parent = folder
-
-		local sg = Instance.new("SurfaceGui")
-		sg.Name = "CardBackGui"
-		sg.Face = Enum.NormalId.Back -- Faces arena center towards human player
-		sg.CanvasSize = Vector2.new(128, 192)
-		sg.AlwaysOnTop = false
-		sg.Adornee = card
-		sg.Parent = card
-
-		local bg = Instance.new("Frame")
-		bg.Size = UDim2.new(1, 0, 1, 0)
-		bg.BackgroundColor3 = Color3.fromRGB(22, 18, 26)
-		bg.BorderSizePixel = 0
-		bg.Parent = sg
-		Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 10)
-
-		local stroke = Instance.new("UIStroke")
-		stroke.Color = Color3.fromRGB(240, 195, 65)
-		stroke.Thickness = 2.5
-		stroke.Parent = bg
-
-		local innerBorder = Instance.new("Frame")
-		innerBorder.Size = UDim2.new(1, -12, 1, -12)
-		innerBorder.Position = UDim2.new(0, 6, 0, 6)
-		innerBorder.BackgroundTransparency = 1
-		innerBorder.Parent = bg
-		Instance.new("UICorner", innerBorder).CornerRadius = UDim.new(0, 6)
-		local innerStroke = Instance.new("UIStroke")
-		innerStroke.Color = Color3.fromRGB(255, 235, 140)
-		innerStroke.Transparency = 0.5
-		innerStroke.Thickness = 1.2
-		innerStroke.Parent = innerBorder
-
-		local icon = Instance.new("TextLabel")
-		icon.Size = UDim2.new(1, 0, 1, 0)
-		icon.BackgroundTransparency = 1
-		icon.Font = Enum.Font.FredokaOne
-		icon.TextSize = 42
-		icon.TextColor3 = Color3.fromRGB(245, 205, 75)
-		icon.Text = "✦"
-		icon.Parent = bg
 	end
 end
 
