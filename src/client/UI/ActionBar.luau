@@ -1,11 +1,11 @@
 --!strict
 -- ActionBar.luau
--- Prominent, Centered, Highly Polished Action Bar (Locofficial Style)
+-- Prominent, Clean, Non-overlapping Action Controls (Locofficial Style)
 -- Features:
--- 1. Prominent, obvious, centered "⚡ BID" button directly above the circular cards
+-- 1. "⚡ BID" button always visible floating clearly above the card dock
 -- 2. Side-by-side "⚡ RAISE BID" and "✕ PASS" during Bidding phase
 -- 3. Sleek frosted glass Bid Picker Modal centered directly above the button
--- 4. Informational status pill for round progress and hints
+-- 4. Compact boundary box so it never intercepts clicks on player cards
 
 local TweenService = game:GetService("TweenService")
 local Enums = require(game:GetService("ReplicatedStorage").Shared.Enums)
@@ -17,8 +17,6 @@ local actionRow: Frame? = nil
 local bidButton: TextButton? = nil
 local raiseBidButton: TextButton? = nil
 local passButton: TextButton? = nil
-local statusPill: Frame? = nil
-local statusLabel: TextLabel? = nil
 
 -- Bid Number Picker Modal
 local bidModal: Frame? = nil
@@ -27,10 +25,11 @@ local bidSubtitleLabel: TextLabel? = nil
 local currentBid = 1
 local minBid = 1
 local maxBid = 1
+local isBidUnlocked = false
 
 local onActionCallback: ((action: string, data: any) -> ())? = nil
 
--- Helper to construct a large glowing neon pill button
+-- Helper to construct a glowing neon pill button
 local function makeActionPill(
 	name: string,
 	text: string,
@@ -45,7 +44,7 @@ local function makeActionPill(
 	btn.BorderSizePixel = 0
 	btn.AutoButtonColor = false
 	btn.Font = Enum.Font.FredokaOne
-	btn.TextSize = 20
+	btn.TextSize = 18
 	btn.TextColor3 = neonColor
 	btn.Text = text
 	btn.Parent = parent
@@ -54,29 +53,28 @@ local function makeActionPill(
 	local stroke = Instance.new("UIStroke")
 	stroke.Name = "NeonBorder"
 	stroke.Color = neonColor
-	stroke.Thickness = 3.0
+	stroke.Thickness = 2.6
 	stroke.Parent = btn
 
 	local origSize = size
 
-	-- Tactile hover animation
 	btn.MouseEnter:Connect(function()
-		TweenService:Create(btn, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = UDim2.new(origSize.X.Scale, origSize.X.Offset + 10, origSize.Y.Scale, origSize.Y.Offset + 4),
+		TweenService:Create(btn, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.new(origSize.X.Scale, origSize.X.Offset + 8, origSize.Y.Scale, origSize.Y.Offset + 2),
 			BackgroundColor3 = Color3.fromRGB(34, 28, 44),
 		}):Play()
-		TweenService:Create(stroke, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Thickness = 4.2,
+		TweenService:Create(stroke, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Thickness = 3.6,
 		}):Play()
 	end)
 
 	btn.MouseLeave:Connect(function()
-		TweenService:Create(btn, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		TweenService:Create(btn, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			Size = origSize,
 			BackgroundColor3 = Color3.fromRGB(22, 18, 28),
 		}):Play()
-		TweenService:Create(stroke, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Thickness = 3.0,
+		TweenService:Create(stroke, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Thickness = 2.6,
 		}):Play()
 	end)
 
@@ -89,22 +87,23 @@ end
 function ActionBar.Create(parent: GuiObject, callback: (action: string, data: any) -> ()): Frame
 	onActionCallback = callback
 
+	-- Root container strictly bounded directly above cards (never covers the hand!)
 	local root = Instance.new("Frame")
 	root.Name = "ActionBarRoot"
-	root.Size = UDim2.new(1, 0, 1, 0)
+	root.AnchorPoint = Vector2.new(0.5, 1)
+	root.Size = UDim2.new(0, 420, 0, 50)
+	root.Position = UDim2.new(0.5, 0, 1, -160) -- Floats cleanly above the resting cards
 	root.BackgroundTransparency = 1
-	root.ZIndex = 25
+	root.Active = false
+	root.ZIndex = 40
 	root.Parent = parent
 	rootFrame = root
 
-	-- Prominent Centered Row directly above the circular cards dock
 	local row = Instance.new("Frame")
-	row.Name = "CenteredActionRow"
-	row.AnchorPoint = Vector2.new(0.5, 1)
-	row.Size = UDim2.new(0, 440, 0, 54)
-	row.Position = UDim2.new(0.5, 0, 1, -210) -- Prominently floating in center view
+	row.Name = "ActionRow"
+	row.Size = UDim2.new(1, 0, 1, 0)
 	row.BackgroundTransparency = 1
-	row.ZIndex = 26
+	row.Active = false
 	row.Parent = root
 	actionRow = row
 
@@ -113,26 +112,26 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	layout.VerticalAlignment = Enum.VerticalAlignment.Center
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, 14)
+	layout.Padding = UDim.new(0, 12)
 	layout.Parent = row
 
-	-- 1. Prominent OBVIOUS BID Button (Placement Phase)
+	-- 1. Prominent BID Button (Always visible in placement phase!)
 	bidButton = makeActionPill(
 		"BidBtn",
 		"⚡ START BID",
 		Color3.fromRGB(255, 215, 65),
-		UDim2.new(0, 200, 0, 48),
+		UDim2.new(0, 190, 0, 44),
 		row
 	)
 	bidButton.LayoutOrder = 1
-	bidButton.Visible = false
+	bidButton.Visible = true
 
 	-- 2. RAISE BID Button (Bidding Phase)
 	raiseBidButton = makeActionPill(
 		"RaiseBidBtn",
 		"⚡ RAISE BID",
 		Color3.fromRGB(255, 215, 65),
-		UDim2.new(0, 180, 0, 48),
+		UDim2.new(0, 170, 0, 44),
 		row
 	)
 	raiseBidButton.LayoutOrder = 2
@@ -143,83 +142,51 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 		"PassBtn",
 		"✕ PASS",
 		Color3.fromRGB(255, 95, 115),
-		UDim2.new(0, 130, 0, 48),
+		UDim2.new(0, 120, 0, 44),
 		row
 	)
 	passButton.LayoutOrder = 3
 	passButton.Visible = false
 
-	-- 4. Sleek Status Pill (Hints / Turn Info)
-	local pill = Instance.new("Frame")
-	pill.Name = "StatusPill"
-	pill.Size = UDim2.new(0, 360, 0, 40)
-	pill.BackgroundColor3 = Color3.fromRGB(16, 14, 22)
-	pill.BackgroundTransparency = 0.25
-	pill.BorderSizePixel = 0
-	pill.LayoutOrder = 4
-	pill.Visible = false
-	pill.Parent = row
-	Instance.new("UICorner", pill).CornerRadius = UDim.new(1, 0)
-
-	local pStroke = Instance.new("UIStroke")
-	pStroke.Color = Color3.fromRGB(80, 225, 245)
-	pStroke.Transparency = 0.4
-	pStroke.Thickness = 1.8
-	pStroke.Parent = pill
-
-	local pLabel = Instance.new("TextLabel")
-	pLabel.Name = "StatusText"
-	pLabel.Size = UDim2.new(1, -20, 1, 0)
-	pLabel.Position = UDim2.new(0, 10, 0, 0)
-	pLabel.BackgroundTransparency = 1
-	pLabel.Font = Enum.Font.FredokaOne
-	pLabel.TextSize = 15
-	pLabel.TextColor3 = Color3.fromRGB(240, 245, 255)
-	pLabel.Text = "Waiting for game..."
-	pLabel.Parent = pill
-
-	statusPill = pill
-	statusLabel = pLabel
-
 	-- ========================================================================
-	-- 2. BID NUMBER PICKER POPUP MODAL (Centered directly above Bid Button)
+	-- 2. BID NUMBER PICKER POPUP MODAL (Floats cleanly above the action bar)
 	-- ========================================================================
 	local modal = Instance.new("Frame")
 	modal.Name = "BidPickerModal"
 	modal.AnchorPoint = Vector2.new(0.5, 1)
-	modal.Size = UDim2.new(0, 270, 0, 150)
-	modal.Position = UDim2.new(0.5, 0, 1, -270)
+	modal.Size = UDim2.new(0, 260, 0, 142)
+	modal.Position = UDim2.new(0.5, 0, 1, -220)
 	modal.BackgroundColor3 = Color3.fromRGB(18, 15, 25)
-	modal.BackgroundTransparency = 0.12
+	modal.BackgroundTransparency = 0.10
 	modal.BorderSizePixel = 0
-	modal.ZIndex = 40
+	modal.ZIndex = 50
 	modal.Visible = false
-	modal.Parent = root
-	Instance.new("UICorner", modal).CornerRadius = UDim.new(0, 16)
+	modal.Parent = parent
+	Instance.new("UICorner", modal).CornerRadius = UDim.new(0, 14)
 
 	local mStroke = Instance.new("UIStroke")
 	mStroke.Color = Color3.fromRGB(255, 215, 65)
-	mStroke.Thickness = 2.6
+	mStroke.Thickness = 2.4
 	mStroke.Parent = modal
 
 	-- Modal Title
 	local mTitle = Instance.new("TextLabel")
-	mTitle.Size = UDim2.new(1, 0, 0, 28)
-	mTitle.Position = UDim2.new(0, 0, 0, 8)
+	mTitle.Size = UDim2.new(1, 0, 0, 26)
+	mTitle.Position = UDim2.new(0, 0, 0, 6)
 	mTitle.BackgroundTransparency = 1
 	mTitle.Font = Enum.Font.FredokaOne
-	mTitle.TextSize = 16
+	mTitle.TextSize = 15
 	mTitle.TextColor3 = Color3.fromRGB(255, 220, 100)
 	mTitle.Text = "CHOOSE YOUR BID"
 	mTitle.Parent = modal
 
-	-- Close 'X' Button in Top-Right
+	-- Close 'X' Button
 	local closeBtn = Instance.new("TextButton")
-	closeBtn.Size = UDim2.new(0, 26, 0, 26)
-	closeBtn.Position = UDim2.new(1, -32, 0, 8)
+	closeBtn.Size = UDim2.new(0, 24, 0, 24)
+	closeBtn.Position = UDim2.new(1, -28, 0, 6)
 	closeBtn.BackgroundColor3 = Color3.fromRGB(30, 24, 38)
 	closeBtn.Font = Enum.Font.FredokaOne
-	closeBtn.TextSize = 14
+	closeBtn.TextSize = 13
 	closeBtn.TextColor3 = Color3.fromRGB(200, 200, 215)
 	closeBtn.Text = "✕"
 	closeBtn.Parent = modal
@@ -230,57 +197,57 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 
 	-- Value Controls: [-]  [ VALUE ]  [+]
 	local minusBtn = Instance.new("TextButton")
-	minusBtn.Size = UDim2.new(0, 42, 0, 42)
-	minusBtn.Position = UDim2.new(0, 20, 0, 40)
+	minusBtn.Size = UDim2.new(0, 38, 0, 38)
+	minusBtn.Position = UDim2.new(0, 18, 0, 36)
 	minusBtn.BackgroundColor3 = Color3.fromRGB(32, 26, 42)
 	minusBtn.Font = Enum.Font.FredokaOne
-	minusBtn.TextSize = 24
+	minusBtn.TextSize = 22
 	minusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	minusBtn.Text = "-"
 	minusBtn.Parent = modal
 	Instance.new("UICorner", minusBtn).CornerRadius = UDim.new(1, 0)
 
 	local valLabel = Instance.new("TextLabel")
-	valLabel.Size = UDim2.new(1, -132, 0, 42)
-	valLabel.Position = UDim2.new(0, 66, 0, 40)
+	valLabel.Size = UDim2.new(1, -120, 0, 38)
+	valLabel.Position = UDim2.new(0, 60, 0, 36)
 	valLabel.BackgroundTransparency = 1
 	valLabel.Font = Enum.Font.FredokaOne
-	valLabel.TextSize = 34
+	valLabel.TextSize = 30
 	valLabel.TextColor3 = Color3.fromRGB(255, 225, 90)
 	valLabel.Text = "1"
 	valLabel.Parent = modal
 	bidValueLabel = valLabel
 
 	local plusBtn = Instance.new("TextButton")
-	plusBtn.Size = UDim2.new(0, 42, 0, 42)
-	plusBtn.Position = UDim2.new(1, -62, 0, 40)
+	plusBtn.Size = UDim2.new(0, 38, 0, 38)
+	plusBtn.Position = UDim2.new(1, -56, 0, 36)
 	plusBtn.BackgroundColor3 = Color3.fromRGB(32, 26, 42)
 	plusBtn.Font = Enum.Font.FredokaOne
-	plusBtn.TextSize = 24
+	plusBtn.TextSize = 22
 	plusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	plusBtn.Text = "+"
 	plusBtn.Parent = modal
 	Instance.new("UICorner", plusBtn).CornerRadius = UDim.new(1, 0)
 
-	-- Subtitle: "Total Cards on Table: X"
+	-- Subtitle: "Cards on Table: X"
 	local subLabel = Instance.new("TextLabel")
 	subLabel.Size = UDim2.new(1, 0, 0, 16)
-	subLabel.Position = UDim2.new(0, 0, 0, 84)
+	subLabel.Position = UDim2.new(0, 0, 0, 78)
 	subLabel.BackgroundTransparency = 1
 	subLabel.Font = Enum.Font.FredokaOne
-	subLabel.TextSize = 12
+	subLabel.TextSize = 11
 	subLabel.TextColor3 = Color3.fromRGB(180, 185, 200)
-	subLabel.Text = "Total Cards on Table: 4"
+	subLabel.Text = "Cards on Table: 4"
 	subLabel.Parent = modal
 	bidSubtitleLabel = subLabel
 
 	-- Confirm Bid Button
 	local confirmBtn = Instance.new("TextButton")
-	confirmBtn.Size = UDim2.new(1, -40, 0, 36)
-	confirmBtn.Position = UDim2.new(0, 20, 1, -44)
+	confirmBtn.Size = UDim2.new(1, -36, 0, 32)
+	confirmBtn.Position = UDim2.new(0, 18, 1, -40)
 	confirmBtn.BackgroundColor3 = Color3.fromRGB(235, 155, 30)
 	confirmBtn.Font = Enum.Font.FredokaOne
-	confirmBtn.TextSize = 16
+	confirmBtn.TextSize = 15
 	confirmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	confirmBtn.Text = "CONFIRM BID"
 	confirmBtn.Parent = modal
@@ -311,6 +278,12 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 
 	-- Click Handlers
 	bidButton.MouseButton1Click:Connect(function()
+		if not isBidUnlocked then
+			-- Show informational feedback if clicked on Turn 1
+			local NotificationBanner = require(script.Parent.NotificationBanner)
+			NotificationBanner.Show("👉 Place your 1st card before starting a bid!", "info")
+			return
+		end
 		modal.Visible = not modal.Visible
 	end)
 
@@ -339,7 +312,7 @@ function ActionBar.UpdateState(
 	hasCardsInStack: boolean,
 	canStartBid: boolean?
 )
-	if not rootFrame or not bidButton or not raiseBidButton or not passButton or not statusPill or not statusLabel then
+	if not rootFrame or not bidButton or not raiseBidButton or not passButton then
 		return
 	end
 
@@ -350,59 +323,45 @@ function ActionBar.UpdateState(
 		bidValueLabel.Text = tostring(currentBid)
 	end
 	if bidSubtitleLabel then
-		bidSubtitleLabel.Text = "Cards on Table: " .. totalCards
+		bidSubtitleLabel.Text = "Total Cards on Table: " .. totalCards
 	end
 
 	local inPlacement = (gameState == Enums.GameState.Placement)
 	local inBidding = (gameState == Enums.GameState.Bidding)
-	local inRevealing = (gameState == Enums.GameState.Revealing)
 
 	if inPlacement then
-		if isMyTurn then
-			if canStartBid == true or totalCards >= 4 then
-				bidButton.Visible = true
-				bidButton.Text = "⚡ START BID"
-				raiseBidButton.Visible = false
-				passButton.Visible = false
-				statusPill.Visible = false
-			else
-				bidButton.Visible = false
-				raiseBidButton.Visible = false
-				passButton.Visible = false
-				statusPill.Visible = true
-				statusLabel.Text = "👉 YOUR TURN: Choose a card from hand to place!"
-			end
-		else
-			bidButton.Visible = false
-			raiseBidButton.Visible = false
-			passButton.Visible = false
-			statusPill.Visible = true
-			statusLabel.Text = "Waiting for other players to place..."
-		end
-	elseif inBidding then
-		if isMyTurn then
-			bidButton.Visible = false
-			raiseBidButton.Visible = (highestBid < totalCards)
-			passButton.Visible = true
-			statusPill.Visible = false
-		else
-			bidButton.Visible = false
-			raiseBidButton.Visible = false
-			passButton.Visible = false
-			statusPill.Visible = true
-			statusLabel.Text = "Bidding Phase: Current bid is " .. highestBid .. " cards"
-		end
-	elseif inRevealing then
-		bidButton.Visible = false
+		-- In Placement Phase: BID button is ALWAYS visible so player sees the option!
+		bidButton.Visible = true
 		raiseBidButton.Visible = false
 		passButton.Visible = false
-		statusPill.Visible = true
-		statusLabel.Text = "🔍 Click card stacks on the table to reveal them!"
+
+		local canBidNow = (canStartBid == true or totalCards >= 4)
+		isBidUnlocked = canBidNow and isMyTurn
+
+		local stroke = bidButton:FindFirstChildWhichIsA("UIStroke")
+		if isBidUnlocked then
+			bidButton.Text = "⚡ START BID"
+			bidButton.TextColor3 = Color3.fromRGB(255, 215, 65)
+			if stroke then stroke.Color = Color3.fromRGB(255, 215, 65) end
+		else
+			-- Clearly visible but indicates turn requirement
+			bidButton.Text = (totalCards >= 4) and "⚡ BID (Wait for turn)" or "⚡ BID (Turn 2+)"
+			bidButton.TextColor3 = Color3.fromRGB(170, 160, 130)
+			if stroke then stroke.Color = Color3.fromRGB(110, 100, 70) end
+		end
+	elseif inBidding then
+		bidButton.Visible = false
+		if isMyTurn then
+			raiseBidButton.Visible = (highestBid < totalCards)
+			passButton.Visible = true
+		else
+			raiseBidButton.Visible = false
+			passButton.Visible = false
+		end
 	else
 		bidButton.Visible = false
 		raiseBidButton.Visible = false
 		passButton.Visible = false
-		statusPill.Visible = false
 	end
 
 	if not isMyTurn and bidModal then

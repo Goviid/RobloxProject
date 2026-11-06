@@ -1,12 +1,12 @@
 --!strict
 -- HandBar.luau
--- Circular Cards / Tokens Hand Fan (Matching the exact concept reference image)
+-- Clean Circular Tokens Hand Fan (Locofficial Style)
 -- Features:
 -- 1. Cream circular Rose tokens with crimson roses & gold rims
 -- 2. Dark circular Skull token with stylized skull & glowing neon crimson rim
--- 3. Floating "PLACE CARD" prompts above each token
+-- 3. Docked cleanly at the bottom edge of screen (never obscuring action buttons)
 -- 4. Smooth hover elevation with glowing neon highlights
--- 5. Tactile card placement into "YOUR PILE" with dynamic re-centering
+-- 5. Snappy card consumption with dynamic re-centering
 
 local TweenService = game:GetService("TweenService")
 local Theme = require(script.Parent.Theme)
@@ -24,24 +24,24 @@ local canCurrentlyPlace = false
 local isPlayerTurn = false
 local selectedCard: string? = nil
 
--- Circular Token Dimensions (Clean circular tokens docked at bottom center)
-local CARD_DIAMETER = 150
-local CARD_SPACING = 88
-local RESTING_Y = -55
-local HOVER_LIFT_Y = -105
+-- Circular Token Dimensions (Clean compact tokens docked at bottom edge)
+local CARD_DIAMETER = 120
+local CARD_SPACING = 78
+local RESTING_Y = 10
+local HOVER_LIFT_Y = -35
 
 -- Natural fan angles
 local function getFannedAngle(index: number, total: number): number
 	if total <= 1 then return 0 end
 	local norm = (index - 1) / (total - 1) -- 0.0 to 1.0
-	local maxDeg = if total >= 4 then 12.0 elseif total == 3 then 8.0 else 5.0
+	local maxDeg = if total >= 4 then 10.0 elseif total == 3 then 7.0 else 4.0
 	return (norm - 0.5) * (maxDeg * 2)
 end
 
 local function getArchY(index: number, total: number): number
 	if total <= 1 then return 0 end
 	local centerDist = math.abs((index - 1) - (total - 1) / 2)
-	return centerDist * 8.0
+	return centerDist * 6.0
 end
 
 -- ============================================================================
@@ -58,32 +58,31 @@ local function createCircularToken(
 	local rotAngle = getFannedAngle(index, totalCards)
 	local archY = getArchY(index, totalCards)
 	local restingYPos = RESTING_Y + archY
-	local baseZIndex = 20 + index
+	local baseZIndex = 30 + index
 
 	local container = Instance.new("Frame")
 	container.Name = "TokenHolder_" .. index .. "_" .. cardType
-	container.Size = UDim2.new(0, CARD_DIAMETER, 0, CARD_DIAMETER + 36)
+	container.Size = UDim2.new(0, CARD_DIAMETER, 0, CARD_DIAMETER + 26)
 	container.AnchorPoint = Vector2.new(0.5, 1)
 	container.Position = UDim2.new(0.5, xOffset, 1, restingYPos)
 	container.Rotation = rotAngle
 	container.BackgroundTransparency = 1
 	container.ZIndex = baseZIndex
 
-	-- Dynamic attributes for smooth re-centering & return
 	container:SetAttribute("RestingX", xOffset)
 	container:SetAttribute("RestingY", restingYPos)
 	container:SetAttribute("RestingRot", rotAngle)
 	container:SetAttribute("BaseZIndex", baseZIndex)
 
-	-- Tiny Floating Prompt Label above token ("PLACE CARD")
+	-- Floating Prompt Label above token (Only shown on hover)
 	local promptLabel = Instance.new("TextLabel")
 	promptLabel.Name = "PromptLabel"
-	promptLabel.Size = UDim2.new(1, 0, 0, 18)
-	promptLabel.Position = UDim2.new(0, 0, 0, 4)
+	promptLabel.Size = UDim2.new(1, 0, 0, 16)
+	promptLabel.Position = UDim2.new(0, 0, 0, 2)
 	promptLabel.BackgroundTransparency = 1
 	promptLabel.Font = Enum.Font.FredokaOne
-	promptLabel.TextSize = 11 -- Tiny text as requested
-	promptLabel.TextColor3 = isRose and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 110, 130)
+	promptLabel.TextSize = 12
+	promptLabel.TextColor3 = isRose and Color3.fromRGB(255, 235, 150) or Color3.fromRGB(255, 100, 120)
 	promptLabel.TextStrokeTransparency = 0.35
 	promptLabel.TextStrokeColor3 = Color3.fromRGB(15, 15, 20)
 	promptLabel.Text = ""
@@ -94,8 +93,8 @@ local function createCircularToken(
 	local shadow = Instance.new("Frame")
 	shadow.Name = "TokenShadow"
 	shadow.Size = UDim2.new(0, CARD_DIAMETER, 0, CARD_DIAMETER)
-	shadow.Position = UDim2.new(0, 0, 0, 36)
-	shadow.BackgroundColor3 = Color3.fromRGB(12, 10, 16)
+	shadow.Position = UDim2.new(0, 0, 0, 26)
+	shadow.BackgroundColor3 = Color3.fromRGB(10, 8, 14)
 	shadow.BackgroundTransparency = 0.65
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = baseZIndex
@@ -106,7 +105,7 @@ local function createCircularToken(
 	local btn = Instance.new("ImageButton")
 	btn.Name = "TokenButton"
 	btn.Size = UDim2.new(0, CARD_DIAMETER, 0, CARD_DIAMETER)
-	btn.Position = UDim2.new(0, 0, 0, 28)
+	btn.Position = UDim2.new(0, 0, 0, 20)
 	btn.BackgroundColor3 = isRose and Color3.fromRGB(240, 226, 202) or Color3.fromRGB(28, 24, 32)
 	btn.BorderSizePixel = 0
 	btn.AutoButtonColor = false
@@ -114,14 +113,14 @@ local function createCircularToken(
 	btn.Parent = container
 	Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
 
-	-- Outer Stroke: Rose = Crisp Gold Rim; Skull = Glowing Neon Crimson Rim
+	-- Outer Stroke: Rose = Gold Rim; Skull = Glowing Neon Crimson Rim
 	local tokenStroke = Instance.new("UIStroke")
 	tokenStroke.Name = "TokenStroke"
 	tokenStroke.Color = isRose and Color3.fromRGB(255, 215, 75) or Color3.fromRGB(255, 45, 65)
-	tokenStroke.Thickness = isRose and 4.6 or 5.2
+	tokenStroke.Thickness = isRose and 3.8 or 4.2
 	tokenStroke.Parent = btn
 
-	-- Subtle Color Gradient
+	-- Gradient
 	local grad = Instance.new("UIGradient")
 	grad.Rotation = 45
 	if isRose then
@@ -140,8 +139,8 @@ local function createCircularToken(
 	-- Inner Concentric Ring
 	local inner = Instance.new("Frame")
 	inner.Name = "InnerRing"
-	inner.Size = UDim2.new(1, -18, 1, -18)
-	inner.Position = UDim2.new(0, 9, 0, 9)
+	inner.Size = UDim2.new(1, -14, 1, -14)
+	inner.Position = UDim2.new(0, 7, 0, 7)
 	inner.BackgroundTransparency = 1
 	inner.ZIndex = baseZIndex + 2
 	inner.Parent = btn
@@ -150,7 +149,7 @@ local function createCircularToken(
 	local innerStroke = Instance.new("UIStroke")
 	innerStroke.Color = isRose and Color3.fromRGB(205, 175, 115) or Color3.fromRGB(255, 75, 105)
 	innerStroke.Transparency = 0.45
-	innerStroke.Thickness = 1.6
+	innerStroke.Thickness = 1.4
 	innerStroke.Parent = inner
 
 	-- Center Icon (🌹 or 💀)
@@ -160,13 +159,13 @@ local function createCircularToken(
 	icon.Position = UDim2.new(0, 0, 0, 0)
 	icon.BackgroundTransparency = 1
 	icon.Font = Theme.Fonts.Title
-	icon.TextSize = 74
+	icon.TextSize = 58
 	icon.Text = isRose and "🌹" or "💀"
 	icon.TextColor3 = isRose and Color3.fromRGB(215, 30, 50) or Color3.fromRGB(245, 235, 250)
 	icon.ZIndex = baseZIndex + 3
 	icon.Parent = btn
 
-	-- Hover & Elevation (Tactile Locofficial-style hover response)
+	-- Hover & Elevation
 	btn.MouseEnter:Connect(function()
 		container.ZIndex = 60
 		shadow.ZIndex = 60
@@ -177,22 +176,20 @@ local function createCircularToken(
 
 		local curX = container:GetAttribute("RestingX") or xOffset
 
-		TweenService:Create(container, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		TweenService:Create(container, TweenInfo.new(0.20, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 			Position = UDim2.new(0.5, curX, 1, HOVER_LIFT_Y),
 			Rotation = 0,
 		}):Play()
 
 		TweenService:Create(tokenStroke, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Thickness = 6.0,
+			Thickness = 5.0,
 			Color = isRose and Color3.fromRGB(255, 245, 180) or Color3.fromRGB(255, 70, 100),
 		}):Play()
 
 		if isPlayerTurn and canCurrentlyPlace then
 			promptLabel.Text = isRose and "PLACE ROSE" or "PLACE SKULL"
-			promptLabel.TextColor3 = isRose and Color3.fromRGB(255, 235, 150) or Color3.fromRGB(255, 80, 110)
 		else
 			promptLabel.Text = isRose and "ROSE" or "SKULL"
-			promptLabel.TextColor3 = isRose and Color3.fromRGB(255, 235, 150) or Color3.fromRGB(255, 80, 110)
 		end
 	end)
 
@@ -209,18 +206,17 @@ local function createCircularToken(
 		icon.ZIndex = curZ + 3
 		promptLabel.ZIndex = curZ + 4
 
-		TweenService:Create(container, TweenInfo.new(0.20, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		TweenService:Create(container, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			Position = UDim2.new(0.5, curX, 1, curY),
 			Rotation = curRot,
 		}):Play()
 
 		TweenService:Create(tokenStroke, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Thickness = isRose and 4.0 or 4.5,
-			Color = isRose and Color3.fromRGB(255, 225, 130) or Color3.fromRGB(255, 45, 75),
+			Thickness = isRose and 3.8 or 4.2,
+			Color = isRose and Color3.fromRGB(255, 215, 75) or Color3.fromRGB(255, 45, 65),
 		}):Play()
 
 		promptLabel.Text = ""
-		promptLabel.TextColor3 = isRose and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 100, 120)
 	end)
 
 	btn.MouseButton1Click:Connect(function()
@@ -260,27 +256,15 @@ function HandBar.ConsumeCard(cardIndex: number)
 
 	local tweenInfo = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
-	if btn then
-		TweenService:Create(btn, tweenInfo, { BackgroundTransparency = 1 }):Play()
-	end
-	if shadow then
-		TweenService:Create(shadow, tweenInfo, { BackgroundTransparency = 1 }):Play()
-	end
-	if icon then
-		TweenService:Create(icon, tweenInfo, { TextTransparency = 1 }):Play()
-	end
-	if promptLabel then
-		TweenService:Create(promptLabel, tweenInfo, { TextTransparency = 1 }):Play()
-	end
-	if stroke then
-		TweenService:Create(stroke, tweenInfo, { Transparency = 1 }):Play()
-	end
-	if innerStroke then
-		TweenService:Create(innerStroke, tweenInfo, { Transparency = 1 }):Play()
-	end
+	if btn then TweenService:Create(btn, tweenInfo, { BackgroundTransparency = 1 }):Play() end
+	if shadow then TweenService:Create(shadow, tweenInfo, { BackgroundTransparency = 1 }):Play() end
+	if icon then TweenService:Create(icon, tweenInfo, { TextTransparency = 1 }):Play() end
+	if promptLabel then TweenService:Create(promptLabel, tweenInfo, { TextTransparency = 1 }):Play() end
+	if stroke then TweenService:Create(stroke, tweenInfo, { Transparency = 1 }):Play() end
+	if innerStroke then TweenService:Create(innerStroke, tweenInfo, { Transparency = 1 }):Play() end
 
 	local exitTween = TweenService:Create(targetContainer, tweenInfo, {
-		Position = targetContainer.Position + UDim2.new(0, 0, 0, 60),
+		Position = targetContainer.Position + UDim2.new(0, 0, 0, 50),
 	})
 	exitTween:Play()
 	exitTween.Completed:Connect(function()
@@ -301,7 +285,7 @@ function HandBar.ConsumeCard(cardIndex: number)
 		local rotAngle = getFannedAngle(i, totalRemaining)
 		local archY = getArchY(i, totalRemaining)
 		local newY = RESTING_Y + archY
-		local newZ = 20 + i
+		local newZ = 30 + i
 
 		container:SetAttribute("RestingX", xOffset)
 		container:SetAttribute("RestingY", newY)
@@ -317,7 +301,7 @@ function HandBar.ConsumeCard(cardIndex: number)
 end
 
 -- ============================================================================
--- 3. SETUP FLOATING HAND DOCK (Locofficial style - cards only, clean fan)
+-- 3. SETUP FLOATING HAND DOCK (Locofficial style - docked at bottom edge)
 -- ============================================================================
 function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	onCardClickedCallback = onSelect
@@ -326,11 +310,11 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	local dock = Instance.new("Frame")
 	dock.Name = "FloatingHandDock"
 	dock.AnchorPoint = Vector2.new(0.5, 1)
-	dock.Size = UDim2.new(0, 600, 0, 240)
+	dock.Size = UDim2.new(0, 520, 0, 180)
 	dock.Position = UDim2.new(0.5, 0, 1, 0)
 	dock.BackgroundTransparency = 1
 	dock.BorderSizePixel = 0
-	dock.ZIndex = 15
+	dock.ZIndex = 25
 	dock.Parent = parent
 
 	dockFrame = dock
@@ -340,21 +324,10 @@ end
 function HandBar.UpdateHand(hand: { string }, isTurn: boolean, canPlace: boolean)
 	if not dockFrame then return end
 
-	currentHand = hand
+	currentHand = table.clone(hand)
 	isPlayerTurn = isTurn
 	canCurrentlyPlace = canPlace
 	dockFrame.Visible = (#hand > 0)
-
-	-- If the visual cards count already matches, just reset prompt texts
-	if #cardContainers == #hand and #hand > 0 then
-		for _, c in ipairs(cardContainers) do
-			local pLabel = c:FindFirstChild("PromptLabel") :: TextLabel?
-			if pLabel then
-				pLabel.Text = ""
-			end
-		end
-		return
-	end
 
 	for _, c in ipairs(cardContainers) do
 		c:Destroy()

@@ -14,13 +14,13 @@ local CameraController = {}
 local localPlayer = Players.LocalPlayer
 
 local function getCameraConfig(): (Vector3, Vector3)
-	-- Tactical over-the-table first-person perspective matching reference
-	local lookTarget = Vector3.new(0, 2.7, -1.8)
-	local camPos = Vector3.new(0, 5.2, 7.6)
+	-- Zoomed out, overhead table view ("from the top") looking down at the circular table
+	local lookTarget = Vector3.new(0, 3.0, 0.5)
+	local camPos = Vector3.new(0, 9.6, 9.8)
 	return lookTarget, camPos
 end
 
-local DEFAULT_FOV = 60
+local DEFAULT_FOV = 65
 local isShakeActive = false
 local shakeOffset = Vector3.zero
 local isInitialized = false

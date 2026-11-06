@@ -22,8 +22,8 @@ function NotificationBanner.Create(parent: GuiObject): Frame
 	local container = Instance.new("Frame")
 	container.Name = "NotificationBanner"
 	container.AnchorPoint = Vector2.new(0.5, 0)
-	container.Size = UDim2.new(0, 580, 0, 48)
-	container.Position = UDim2.new(0.5, 0, 0, 94)
+	container.Size = UDim2.new(0, 580, 0, 32)
+	container.Position = UDim2.new(0.5, 0, 0, 58)
 	container.BackgroundTransparency = 1 -- Zero black box!
 	container.BorderSizePixel = 0
 	container.ZIndex = 30
@@ -36,13 +36,13 @@ function NotificationBanner.Create(parent: GuiObject): Frame
 	label.Position = UDim2.new(0, 0, 0, 0)
 	label.BackgroundTransparency = 1
 	label.Font = Theme.Fonts.Title
-	label.TextSize = 21
+	label.TextSize = 17
 	label.TextColor3 = Color3.fromRGB(255, 255, 255)
 	label.TextTransparency = 0.15 -- Somewhat transparent, pleasant and non-annoying
 	label.TextStrokeTransparency = 0.55
 	label.TextStrokeColor3 = Color3.fromRGB(15, 35, 65)
 	label.TextWrapped = true
-	label.Text = "Welcome to Skulls & Roses"
+	label.Text = ""
 	label.ZIndex = 31
 	label.Parent = container
 

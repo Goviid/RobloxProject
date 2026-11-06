@@ -1,10 +1,11 @@
 --!strict
 -- TableView.luau
--- Minimalist Top Glassmorphism HUD (Matching concept reference image)
+-- Clean, Unified Top Glassmorphism HUD (Locofficial Style)
 -- Features:
--- 1. Left Pill: "1 TURN" with cyan neon border
--- 2. Center Pill: "ROUND 1: BETTING PHASE" with gold/amber border
--- 3. Right Pill: "TURN 2" with crimson neon border
+-- 1. Left Pill: "TURN 1" (dynamically updates to Turn 2, Turn 3, etc. - NEVER duplicates!)
+-- 2. Center Pill: "ROUND 1: PLACEMENT PHASE" with gold/amber border
+-- 3. Right Pill: "👤 YOUR TURN" (Gold) or "🤖 {NAME}'S TURN" (Cyan)
+-- 4. Clean, non-overlapping alert line below
 
 local TweenService = game:GetService("TweenService")
 local Enums = require(game:GetService("ReplicatedStorage").Shared.Enums)
@@ -12,9 +13,11 @@ local Enums = require(game:GetService("ReplicatedStorage").Shared.Enums)
 local TableView = {}
 
 local containerFrame: Frame? = nil
+local turnPillLabel: TextLabel? = nil
+local turnPillStroke: UIStroke? = nil
 local centerTitleLabel: TextLabel? = nil
-local leftTurnLabel: TextLabel? = nil
-local rightTurnLabel: TextLabel? = nil
+local activePlayerLabel: TextLabel? = nil
+local activePlayerStroke: UIStroke? = nil
 local matchAlertLabel: TextLabel? = nil
 local currentRoundNumber = 1
 
@@ -22,116 +25,132 @@ function TableView.Create(parent: GuiObject, _onRevealClick: (targetUserId: numb
 	local container = Instance.new("Frame")
 	container.Name = "TopHudContainer"
 	container.AnchorPoint = Vector2.new(0.5, 0)
-	container.Size = UDim2.new(1, 0, 0, 110)
-	container.Position = UDim2.new(0.5, 0, 0, 12)
+	container.Size = UDim2.new(0, 720, 0, 85)
+	container.Position = UDim2.new(0.5, 0, 0, 10)
 	container.BackgroundTransparency = 1
 	container.ZIndex = 20
 	container.Parent = parent
 
 	-- ========================================================================
-	-- 1. LEFT PILL: "1 TURN" (Cyan Neon `#50E1F5`)
+	-- TOP ROW: [ TURN 1 ]  [ ROUND 1: PLACEMENT PHASE ]  [ YOUR TURN ]
 	-- ========================================================================
-	local leftPill = Instance.new("Frame")
-	leftPill.Name = "LeftTurnPill"
-	leftPill.AnchorPoint = Vector2.new(0.5, 0)
-	leftPill.Size = UDim2.new(0, 140, 0, 42)
-	leftPill.Position = UDim2.new(0.5, -280, 0, 4)
-	leftPill.BackgroundColor3 = Color3.fromRGB(16, 14, 22)
-	leftPill.BackgroundTransparency = 0.20
-	leftPill.BorderSizePixel = 0
-	leftPill.Parent = container
-	Instance.new("UICorner", leftPill).CornerRadius = UDim.new(1, 0)
+	local topRow = Instance.new("Frame")
+	topRow.Name = "HeaderRow"
+	topRow.Size = UDim2.new(1, 0, 0, 44)
+	topRow.Position = UDim2.new(0, 0, 0, 0)
+	topRow.BackgroundTransparency = 1
+	topRow.Parent = container
 
-	local leftStroke = Instance.new("UIStroke")
-	leftStroke.Color = Color3.fromRGB(80, 225, 245)
-	leftStroke.Thickness = 2.4
-	leftStroke.Parent = leftPill
+	local rowLayout = Instance.new("UIListLayout")
+	rowLayout.FillDirection = Enum.FillDirection.Horizontal
+	rowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	rowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	rowLayout.Padding = UDim.new(0, 12)
+	rowLayout.Parent = topRow
 
-	local leftText = Instance.new("TextLabel")
-	leftText.Size = UDim2.new(1, 0, 1, 0)
-	leftText.BackgroundTransparency = 1
-	leftText.Font = Enum.Font.FredokaOne
-	leftText.TextSize = 17
-	leftText.TextColor3 = Color3.fromRGB(255, 255, 255)
-	leftText.Text = "1 TURN"
-	leftText.Parent = leftPill
-	leftTurnLabel = leftText
+	-- 1. LEFT PILL: Current Turn Number ("TURN 1")
+	local turnPill = Instance.new("Frame")
+	turnPill.Name = "TurnPill"
+	turnPill.Size = UDim2.new(0, 130, 0, 40)
+	turnPill.BackgroundColor3 = Color3.fromRGB(16, 14, 22)
+	turnPill.BackgroundTransparency = 0.20
+	turnPill.BorderSizePixel = 0
+	turnPill.LayoutOrder = 1
+	turnPill.Parent = topRow
+	Instance.new("UICorner", turnPill).CornerRadius = UDim.new(1, 0)
 
-	-- ========================================================================
-	-- 2. CENTER PILL: "ROUND 1: PLACEMENT PHASE" (Glowing Gold/Red Border)
-	-- ========================================================================
+	local tStroke = Instance.new("UIStroke")
+	tStroke.Name = "TurnStroke"
+	tStroke.Color = Color3.fromRGB(80, 225, 245)
+	tStroke.Thickness = 2.2
+	tStroke.Parent = turnPill
+	turnPillStroke = tStroke
+
+	local tText = Instance.new("TextLabel")
+	tText.Name = "TurnText"
+	tText.Size = UDim2.new(1, 0, 1, 0)
+	tText.BackgroundTransparency = 1
+	tText.Font = Enum.Font.FredokaOne
+	tText.TextSize = 16
+	tText.TextColor3 = Color3.fromRGB(240, 250, 255)
+	tText.Text = "TURN 1"
+	tText.Parent = turnPill
+	turnPillLabel = tText
+
+	-- 2. CENTER PILL: "ROUND 1: PLACEMENT PHASE"
 	local centerPill = Instance.new("Frame")
 	centerPill.Name = "CenterPhasePill"
-	centerPill.AnchorPoint = Vector2.new(0.5, 0)
-	centerPill.Size = UDim2.new(0, 390, 0, 48)
-	centerPill.Position = UDim2.new(0.5, 0, 0, 0)
+	centerPill.Size = UDim2.new(0, 340, 0, 44)
 	centerPill.BackgroundColor3 = Color3.fromRGB(18, 14, 24)
 	centerPill.BackgroundTransparency = 0.15
 	centerPill.BorderSizePixel = 0
-	centerPill.Parent = container
+	centerPill.LayoutOrder = 2
+	centerPill.Parent = topRow
 	Instance.new("UICorner", centerPill).CornerRadius = UDim.new(1, 0)
 
 	local centerStroke = Instance.new("UIStroke")
 	centerStroke.Color = Color3.fromRGB(255, 215, 65)
-	centerStroke.Thickness = 2.8
+	centerStroke.Thickness = 2.6
 	centerStroke.Parent = centerPill
 
 	local strokeGrad = Instance.new("UIGradient")
 	strokeGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 50, 70)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 220, 75)),
-		ColorSequenceKeypoint.new(1.0, Color3.fromRGB(255, 50, 70)),
+		ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 65, 85)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 225, 80)),
+		ColorSequenceKeypoint.new(1.0, Color3.fromRGB(255, 65, 85)),
 	})
 	strokeGrad.Parent = centerStroke
 
 	local centerLabel = Instance.new("TextLabel")
+	centerLabel.Name = "PhaseLabel"
 	centerLabel.Size = UDim2.new(1, 0, 1, 0)
 	centerLabel.BackgroundTransparency = 1
 	centerLabel.Font = Enum.Font.FredokaOne
-	centerLabel.TextSize = 20
+	centerLabel.TextSize = 18
 	centerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	centerLabel.RichText = true
-	centerLabel.Text = `ROUND {currentRoundNumber}: <font color="#FFD23F">PLACEMENT PHASE</font>`
+	centerLabel.Text = `ROUND {currentRoundNumber}: <font color="#4ECCA3">PLACEMENT PHASE</font>`
 	centerLabel.Parent = centerPill
 	centerTitleLabel = centerLabel
 
-	-- ========================================================================
-	-- 3. RIGHT PILL: "TURN 2" (Crimson Neon `#FF4757`)
-	-- ========================================================================
-	local rightPill = Instance.new("Frame")
-	rightPill.Name = "RightTurnPill"
-	rightPill.AnchorPoint = Vector2.new(0.5, 0)
-	rightPill.Size = UDim2.new(0, 140, 0, 42)
-	rightPill.Position = UDim2.new(0.5, 280, 0, 4)
-	rightPill.BackgroundColor3 = Color3.fromRGB(16, 14, 22)
-	rightPill.BackgroundTransparency = 0.20
-	rightPill.BorderSizePixel = 0
-	rightPill.Parent = container
-	Instance.new("UICorner", rightPill).CornerRadius = UDim.new(1, 0)
+	-- 3. RIGHT PILL: Active Player Badge ("YOUR TURN" / "BLUFFER_99'S TURN")
+	local activePill = Instance.new("Frame")
+	activePill.Name = "ActivePlayerPill"
+	activePill.Size = UDim2.new(0, 160, 0, 40)
+	activePill.BackgroundColor3 = Color3.fromRGB(16, 14, 22)
+	activePill.BackgroundTransparency = 0.20
+	activePill.BorderSizePixel = 0
+	activePill.LayoutOrder = 3
+	activePill.Parent = topRow
+	Instance.new("UICorner", activePill).CornerRadius = UDim.new(1, 0)
 
-	local rightStroke = Instance.new("UIStroke")
-	rightStroke.Color = Color3.fromRGB(255, 75, 95)
-	rightStroke.Thickness = 2.4
-	rightStroke.Parent = rightPill
+	local aStroke = Instance.new("UIStroke")
+	aStroke.Name = "ActiveStroke"
+	aStroke.Color = Color3.fromRGB(255, 215, 65)
+	aStroke.Thickness = 2.4
+	aStroke.Parent = activePill
+	activePlayerStroke = aStroke
 
-	local rightText = Instance.new("TextLabel")
-	rightText.Size = UDim2.new(1, 0, 1, 0)
-	rightText.BackgroundTransparency = 1
-	rightText.Font = Enum.Font.FredokaOne
-	rightText.TextSize = 17
-	rightText.TextColor3 = Color3.fromRGB(255, 255, 255)
-	rightText.Text = "TURN 2"
-	rightText.Parent = rightPill
-	rightTurnLabel = rightText
+	local aText = Instance.new("TextLabel")
+	aText.Name = "ActivePlayerText"
+	aText.Size = UDim2.new(1, 0, 1, 0)
+	aText.BackgroundTransparency = 1
+	aText.Font = Enum.Font.FredokaOne
+	aText.TextSize = 15
+	aText.TextColor3 = Color3.fromRGB(255, 225, 80)
+	aText.Text = "👤 YOUR TURN"
+	aText.Parent = activePill
+	activePlayerLabel = aText
 
 	-- ========================================================================
-	-- 4. BOLD YELLOW-GOLD ALERT TEXT ("BLUFFER_99 raised the bid to 3!")
+	-- BOTTOM ROW: Non-overlapping Alert Announcement Line
 	-- ========================================================================
 	local alertFrame = Instance.new("Frame")
 	alertFrame.Name = "MatchAlertFrame"
 	alertFrame.AnchorPoint = Vector2.new(0.5, 0)
-	alertFrame.Size = UDim2.new(0, 460, 0, 32)
-	alertFrame.Position = UDim2.new(0.5, 0, 0, 54)
+	alertFrame.Size = UDim2.new(1, 0, 0, 28)
+	alertFrame.Position = UDim2.new(0.5, 0, 0, 50)
 	alertFrame.BackgroundTransparency = 1
 	alertFrame.Parent = container
 
@@ -140,10 +159,10 @@ function TableView.Create(parent: GuiObject, _onRevealClick: (targetUserId: numb
 	alertText.Size = UDim2.new(1, 0, 1, 0)
 	alertText.BackgroundTransparency = 1
 	alertText.Font = Enum.Font.FredokaOne
-	alertText.TextSize = 18
-	alertText.TextColor3 = Color3.fromRGB(255, 215, 65) -- Bold Yellow-Gold as requested
-	alertText.TextStrokeTransparency = 0.35
-	alertText.TextStrokeColor3 = Color3.fromRGB(18, 14, 20)
+	alertText.TextSize = 16
+	alertText.TextColor3 = Color3.fromRGB(255, 220, 85)
+	alertText.TextStrokeTransparency = 0.4
+	alertText.TextStrokeColor3 = Color3.fromRGB(15, 12, 18)
 	alertText.Text = ""
 	alertText.Parent = alertFrame
 	matchAlertLabel = alertText
@@ -155,6 +174,23 @@ end
 function TableView.SetAlertText(text: string)
 	if matchAlertLabel then
 		matchAlertLabel.Text = text
+	end
+end
+
+function TableView.UpdateTurn(turnNumber: number, activePlayerName: string, isMyTurn: boolean)
+	if turnPillLabel then
+		turnPillLabel.Text = "TURN " .. turnNumber
+	end
+	if activePlayerLabel and activePlayerStroke then
+		if isMyTurn then
+			activePlayerLabel.Text = "👤 YOUR TURN"
+			activePlayerLabel.TextColor3 = Color3.fromRGB(255, 225, 80)
+			activePlayerStroke.Color = Color3.fromRGB(255, 215, 65)
+		else
+			activePlayerLabel.Text = "🤖 " .. activePlayerName .. "'S TURN"
+			activePlayerLabel.TextColor3 = Color3.fromRGB(160, 235, 255)
+			activePlayerStroke.Color = Color3.fromRGB(80, 220, 245)
+		end
 	end
 end
 
@@ -175,7 +211,7 @@ function TableView.UpdateCenter(gameState: string, highestBid: number, challenge
 end
 
 function TableView.UpdateLayout(_players: any, _activeId: number?, _challengerId: number?)
-	-- Layout is statically in 3D table matching concept reference
+	-- 3D Table layout handles avatars in world
 end
 
 return TableView

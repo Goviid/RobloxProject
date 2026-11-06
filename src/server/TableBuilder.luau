@@ -26,37 +26,37 @@ local cardCountLabels: { [number]: TextLabel } = {}
 
 -- Table Seat Coordinates (4-Player Layout: 1=Front/You, 2=Left, 3=Back, 4=Right)
 local SEAT_CONFIGS = {
-	[1] = { -- You (Front)
+	[1] = { -- You (Front) - Centered directly in front
 		standPos = Vector3.new(0, 3.4, 7.8),
 		lookAt = Vector3.new(0, 3.0, 0),
-		pilePos = Vector3.new(-2.2, 3.06, 3.6),
+		pilePos = Vector3.new(0, 3.06, 4.4),
 		isLocal = true,
 		label = "YOUR PILE",
 	},
-	[2] = { -- Left (BLUFFER_99)
-		standPos = Vector3.new(-7.8, 3.4, 0.4),
+	[2] = { -- Left (BLUFFER_99) - Centered directly in front
+		standPos = Vector3.new(-7.8, 3.4, 0),
 		lookAt = Vector3.new(0, 3.0, 0),
-		pilePos = Vector3.new(-4.4, 3.06, 0.6),
-		handPos = Vector3.new(-5.6, 3.3, -1.8),
-		handRotY = math.rad(45),
+		pilePos = Vector3.new(-4.4, 3.06, 0),
+		handPos = Vector3.new(-5.8, 3.3, 0),
+		handRotY = math.rad(90),
 		isLocal = false,
 		label = "PILE",
 	},
-	[3] = { -- Back (BLUFFE_99)
+	[3] = { -- Back (BLUFFE_99) - Centered directly in front
 		standPos = Vector3.new(0, 3.4, -7.8),
 		lookAt = Vector3.new(0, 3.0, 0),
-		pilePos = Vector3.new(1.8, 3.06, -3.8),
-		handPos = Vector3.new(-1.6, 3.3, -5.4),
+		pilePos = Vector3.new(0, 3.06, -4.4),
+		handPos = Vector3.new(0, 3.3, -5.8),
 		handRotY = math.rad(180),
 		isLocal = false,
 		label = "PILE",
 	},
-	[4] = { -- Right (ROSE_KING)
-		standPos = Vector3.new(7.8, 3.4, 0.4),
+	[4] = { -- Right (ROSE_KING) - Centered directly in front
+		standPos = Vector3.new(7.8, 3.4, 0),
 		lookAt = Vector3.new(0, 3.0, 0),
-		pilePos = Vector3.new(4.4, 3.06, 0.6),
-		handPos = Vector3.new(5.6, 3.3, -1.8),
-		handRotY = math.rad(-45),
+		pilePos = Vector3.new(4.4, 3.06, 0),
+		handPos = Vector3.new(5.8, 3.3, 0),
+		handRotY = math.rad(-90),
 		isLocal = false,
 		label = "PILE",
 	},
@@ -193,11 +193,11 @@ function TableBuilder.Build()
 	feltFillLight.Shadows = false
 	feltFillLight.Parent = centerLightPart
 
-	-- Dedicated Spotlight brightly illuminating Seat 1's "YOUR PILE" (Close-up front-left)
+	-- Dedicated Spotlight brightly illuminating Seat 1's "YOUR PILE" (Centered in front)
 	local pileSpotPart = Instance.new("Part")
 	pileSpotPart.Name = "YourPileSpotlight"
 	pileSpotPart.Size = Vector3.new(1, 1, 1)
-	pileSpotPart.CFrame = CFrame.new(-2.2, 6.2, 3.6)
+	pileSpotPart.CFrame = CFrame.new(0, 7.0, 4.4)
 	pileSpotPart.Anchored = true
 	pileSpotPart.CanCollide = false
 	pileSpotPart.Transparency = 1

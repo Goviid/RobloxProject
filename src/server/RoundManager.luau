@@ -157,10 +157,17 @@ local function checkBotTurn()
 		if RoundManager.GetActivePlayerId() ~= activeId then return end
 
 		if currentGameState == Enums.GameState.Placement then
-			local canBid = (#p.playedStack >= 1)
+			local canBid = haveAllPlacedFirstCard()
 			local decision = BotController.DecidePlacementAction(activeId, canBid, PlayerManager.GetTotalCardsOnTable())
 			if decision then
-				RoundManager.HandlePlayerAction(activeId, decision.action, decision)
+				local ok = RoundManager.HandlePlayerAction(activeId, decision.action, decision)
+				if not ok and #p.hand > 0 then
+					local cardToPlace = table.find(p.hand, Enums.CardType.Rose) and Enums.CardType.Rose or Enums.CardType.Skull
+					RoundManager.HandlePlayerAction(activeId, Enums.PlayerAction.PlaceCard, { cardType = cardToPlace })
+				end
+			elseif #p.hand > 0 then
+				local cardToPlace = table.find(p.hand, Enums.CardType.Rose) and Enums.CardType.Rose or Enums.CardType.Skull
+				RoundManager.HandlePlayerAction(activeId, Enums.PlayerAction.PlaceCard, { cardType = cardToPlace })
 			end
 		elseif currentGameState == Enums.GameState.Bidding then
 			local decision = BotController.DecideBiddingAction(activeId, highestBid, PlayerManager.GetTotalCardsOnTable())

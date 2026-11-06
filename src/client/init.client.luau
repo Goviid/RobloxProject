@@ -104,7 +104,7 @@ local function buildUI()
 		initHand[i], initHand[j] = initHand[j], initHand[i]
 	end
 	HandBar.UpdateHand(initHand, true, true)
-	ActionBar.UpdateState(true, Enums.GameState.Placement, 0, 0, true, false)
+	ActionBar.UpdateState(true, Enums.GameState.Placement, 0, 0, true, false, false)
 
 	print("[Skulls & Roses] Fresh SkullsGui built and parented successfully.")
 end
@@ -153,9 +153,15 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 		local myHand = if myData and myData.hand then table.clone(myData.hand) else {}
 		local challengerData = payload.challengerId and lastKnownPlayers[tostring(payload.challengerId)]
 
+		-- Calculate turn number: Turn 1 when 0 cards placed, Turn 2 when 1 card placed, etc.
+		local turnNumber = math.max(1, myStackCount + 1)
+		local activePlayerData = payload.activePlayerId and lastKnownPlayers[tostring(payload.activePlayerId)]
+		local activePlayerName = activePlayerData and activePlayerData.name or "Opponent"
+
 		-- 1. Update Table View (seats, stack heights, score gems)
 		CameraController.SetTurnFocus(isMyTurn)
 		TableView.UpdateLayout(lastKnownPlayers, payload.activePlayerId, payload.challengerId)
+		TableView.UpdateTurn(turnNumber, activePlayerName, isMyTurn)
 		TableView.UpdateCenter(
 			payload.gameState,
 			payload.highestBid or 0,
@@ -208,7 +214,6 @@ end)
 -- Banner & Top HUD Notifications
 Network.Notification.OnClientEvent:Connect(function(data: { text: string, style: string? })
 	NotificationBanner.Show(data.text, data.style)
-	TableView.SetAlertText(data.text)
 	ChatBox.AddMessage("SYSTEM", data.text, "#FFD23F")
 	if data.style == "success" or string.find(data.text, "Point scored") then
 		AudioController.PlayPointScored()
