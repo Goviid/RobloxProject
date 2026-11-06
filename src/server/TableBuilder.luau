@@ -472,6 +472,7 @@ local function createPlayerTag(adornee: BasePart, displayName: string, seatIdx: 
 	Instance.new("UICorner", avatarCircle).CornerRadius = UDim.new(1, 0)
 
 	local aIcon = Instance.new("TextLabel")
+	aIcon.Name = "IconLabel"
 	aIcon.Size = UDim2.new(1, 0, 1, 0)
 	aIcon.BackgroundTransparency = 1
 	aIcon.Font = Enum.Font.FredokaOne
@@ -735,6 +736,19 @@ function TableBuilder.UpdateCardCount(seatIndex: number, count: number)
 	local label = cardCountLabels[seatIndex]
 	if label then
 		label.Text = tostring(math.max(0, count))
+	end
+end
+
+function TableBuilder.SetBotEmote(seatIndex: number, emote: string)
+	local bill = seatBillboards[seatIndex]
+	if not bill then return end
+	local capsule = bill:FindFirstChild("TagCapsule") :: Frame?
+	if not capsule then return end
+	local avatarCircle = capsule:FindFirstChild("AvatarCircle") :: Frame?
+	if not avatarCircle then return end
+	local aIcon = avatarCircle:FindFirstChild("IconLabel") or avatarCircle:FindFirstChildWhichIsA("TextLabel")
+	if aIcon and aIcon:IsA("TextLabel") then
+		aIcon.Text = emote
 	end
 end
 

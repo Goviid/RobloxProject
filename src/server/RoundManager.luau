@@ -23,6 +23,7 @@ local highestBidderId: number? = nil
 local cardsFlippedThisRound = 0
 local targetCardsToFlip = 0
 local roundLeaderId: number? = nil -- Starting player for the round
+local currentRoundNumber = 1
 
 local turnTimerThread: thread? = nil
 local isWaitingForAction = false
@@ -59,6 +60,7 @@ function RoundManager.SendStateToPlayer(userId: number)
 
 	local payload = {
 		gameState = currentGameState,
+		roundNumber = currentRoundNumber,
 		activePlayerId = RoundManager.GetActivePlayerId(),
 		challengerId = challengerId,
 		highestBid = highestBid,
@@ -238,7 +240,9 @@ function RoundManager.StartRound(leaderId: number?)
 	-- Determine seat index of starting player
 	if leaderId and PlayerManager.GetPlayer(leaderId) and not PlayerManager.GetPlayer(leaderId).isEliminated then
 		roundLeaderId = leaderId
+		currentRoundNumber += 1
 	else
+		currentRoundNumber = 1
 		-- Prefer human player for round 1 so they can immediately play
 		local human = nil
 		for _, p in ipairs(active) do
@@ -289,9 +293,13 @@ local function onChallengerSuccess()
 	challenger.score += 1
 	broadcastNotification("🎉 " .. challenger.name .. " successfully flipped " .. targetCardsToFlip .. " Roses! Point scored!", "success")
 	if challenger.isBot then
-		TableBuilder.SetBotEmote(challenger.seatIndex, "🎉")
+		pcall(function()
+			TableBuilder.SetBotEmote(challenger.seatIndex, "🎉")
+		end)
 		task.delay(3.0, function()
-			TableBuilder.SetBotEmote(challenger.seatIndex, "🤠")
+			pcall(function()
+				TableBuilder.SetBotEmote(challenger.seatIndex, "🤠")
+			end)
 		end)
 	end
 	broadcastState()
@@ -343,9 +351,13 @@ local function onChallengerFailed(skullOwnerId: number)
 	end
 
 	if challenger.isBot then
-		TableBuilder.SetBotEmote(challenger.seatIndex, "😱")
+		pcall(function()
+			TableBuilder.SetBotEmote(challenger.seatIndex, "😱")
+		end)
 		task.delay(3.0, function()
-			TableBuilder.SetBotEmote(challenger.seatIndex, "🤠")
+			pcall(function()
+				TableBuilder.SetBotEmote(challenger.seatIndex, "🤠")
+			end)
 		end)
 	end
 
@@ -533,6 +545,21 @@ function RoundManager.HandlePlayerAction(userId: number, action: string, data: a
 		if action == Enums.PlayerAction.RevealCard then
 			local targetUserId = tonumber(data.targetUserId)
 			local targetPlayer = PlayerManager.GetPlayer(targetUserId or 0)
+
+			-- If challenger's own pile is already empty, and target player has no cards or was own pile:
+			-- Fallback to finding an opponent with cards in stack (supports the GUI "FLIP OPPONENT" button)
+			if challengerId and #p.playedStack == 0 then
+				if not targetPlayer or #targetPlayer.playedStack == 0 or targetUserId == challengerId then
+					for _, candidate in ipairs(PlayerManager.GetActivePlayers()) do
+						if candidate.userId ~= challengerId and #candidate.playedStack > 0 then
+							targetUserId = candidate.userId
+							targetPlayer = candidate
+							break
+						end
+					end
+				end
+			end
+
 			if not targetPlayer or #targetPlayer.playedStack == 0 then
 				return false, "Target player has no cards to flip."
 			end

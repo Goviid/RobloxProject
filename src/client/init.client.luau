@@ -188,7 +188,8 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 			payload.gameState,
 			payload.highestBid or 0,
 			challengerData and challengerData.name or nil,
-			payload.totalCardsOnTable or 0
+			payload.totalCardsOnTable or 0,
+			payload.roundNumber or 1
 		)
 
 		-- 2. Update Hand Tray (Remains visible across all phases matching reference)

@@ -28,6 +28,7 @@ local maxBid = 1
 local isBidUnlocked = false
 local currentPhase: string = ""
 local isMyTurnCached = false
+local hasCardsInStackCached = false
 
 local onActionCallback: ((action: string, data: any) -> ())? = nil
 
@@ -286,7 +287,10 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 		if currentPhase == Enums.GameState.Revealing and isMyTurnCached then
 			if onActionCallback then
 				local Players = game:GetService("Players")
-				onActionCallback(Enums.PlayerAction.RevealCard, { targetUserId = Players.LocalPlayer.UserId })
+				local myId = Players.LocalPlayer.UserId
+				onActionCallback(Enums.PlayerAction.RevealCard, {
+					targetUserId = if hasCardsInStackCached then myId else nil,
+				})
 			end
 			return
 		end
@@ -358,6 +362,7 @@ function ActionBar.UpdateState(
 
 	currentPhase = gameState
 	isMyTurnCached = isMyTurn
+	hasCardsInStackCached = hasCardsInStack
 
 	local inPlacement = (gameState == Enums.GameState.Placement)
 	local inBidding = (gameState == Enums.GameState.Bidding)

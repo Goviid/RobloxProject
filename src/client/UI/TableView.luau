@@ -173,7 +173,7 @@ function TableView.Create(parent: GuiObject, _onRevealClick: (targetUserId: numb
 	aText.TextSize = 15
 	aText.TextColor3 = Color3.fromRGB(255, 225, 85)
 	aText.TextXAlignment = Enum.TextXAlignment.Left
-	aText.Text = "TURN 1 (15s)"
+	aText.Text = "👤 YOU (15s)"
 	aText.Parent = activePill
 	activePlayerLabel = aText
 	timerLabel = aText
@@ -249,8 +249,11 @@ function TableView.UpdateTurn(turnNumber: number, activePlayerName: string, isMy
 	end
 end
 
-function TableView.UpdateCenter(gameState: string, highestBid: number, challengerName: string?, totalCards: number)
+function TableView.UpdateCenter(gameState: string, highestBid: number, challengerName: string?, totalCards: number, roundNumber: number?)
 	if not centerTitleLabel then return end
+	if roundNumber then
+		currentRoundNumber = roundNumber
+	end
 
 	local phaseNames: { [string]: { name: string, color: string } } = {
 		[Enums.GameState.Lobby] = { name = "WAITING FOR PLAYERS", color = "#50E1F5" },
@@ -258,7 +261,7 @@ function TableView.UpdateCenter(gameState: string, highestBid: number, challenge
 		[Enums.GameState.Bidding] = { name = "BIDDING PHASE", color = "#FFD23F" },
 		[Enums.GameState.Revealing] = { name = "CHALLENGE PHASE", color = "#FF6B6B" },
 		[Enums.GameState.RoundEnd] = { name = "ROUND COMPLETE", color = "#FFD23F" },
-		[Enums.GameState.GameOver] = { name = "MATCH OVER", color = "#FFD23F" },
+		[Enums.GameState.MatchEnd] = { name = "MATCH OVER", color = "#FFD23F" },
 	}
 
 	local pInfo = phaseNames[gameState] or { name = string.upper(gameState), color = "#FFD23F" }
