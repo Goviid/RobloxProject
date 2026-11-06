@@ -25,6 +25,8 @@ local timerFillBar: Frame? = nil
 local currentTimerThread: thread? = nil
 local matchAlertLabel: TextLabel? = nil
 local currentRoundNumber = 1
+local currentActivePlayerName = "Opponent"
+local currentIsMyTurn = false
 
 function TableView.Create(parent: GuiObject, _onRevealClick: (targetUserId: number) -> ()): Frame
 	local container = Instance.new("Frame")
@@ -224,6 +226,9 @@ function TableView.SetAlertText(text: string)
 end
 
 function TableView.UpdateTurn(turnNumber: number, activePlayerName: string, isMyTurn: boolean, pillOverrideText: string?)
+	currentActivePlayerName = activePlayerName
+	currentIsMyTurn = isMyTurn
+
 	if turnPillLabel then
 		if pillOverrideText then
 			turnPillLabel.Text = pillOverrideText
@@ -272,11 +277,14 @@ function TableView.StartTurnTimer(durationSeconds: number)
 
 	timerPill.Visible = true
 	local timeLeft = durationSeconds
-	timerLabel.Text = string.format("⏱️ %ds", math.ceil(timeLeft))
-	timerLabel.TextColor3 = Color3.fromRGB(240, 250, 255)
-	timerStroke.Color = Color3.fromRGB(80, 225, 245)
+	local isMe = currentIsMyTurn
+	local initialText = isMe and string.format("👤 YOU (%ds)", math.ceil(timeLeft)) or string.format("🤖 %s (%ds)", currentActivePlayerName, math.ceil(timeLeft))
+
+	timerLabel.Text = initialText
+	timerLabel.TextColor3 = isMe and Color3.fromRGB(255, 225, 85) or Color3.fromRGB(160, 235, 255)
+	timerStroke.Color = isMe and Color3.fromRGB(255, 215, 65) or Color3.fromRGB(80, 225, 245)
 	timerFillBar.Size = UDim2.new(0.75, 0, 0, 3)
-	timerFillBar.BackgroundColor3 = Color3.fromRGB(80, 225, 245)
+	timerFillBar.BackgroundColor3 = isMe and Color3.fromRGB(255, 215, 65) or Color3.fromRGB(80, 225, 245)
 
 	currentTimerThread = task.spawn(function()
 		local startTime = os.clock()
@@ -286,7 +294,11 @@ function TableView.StartTurnTimer(durationSeconds: number)
 			local ceilRem = math.ceil(rem)
 
 			if timerLabel then
-				timerLabel.Text = string.format("⏱️ %ds", ceilRem)
+				if currentIsMyTurn then
+					timerLabel.Text = string.format("👤 YOU (%ds)", ceilRem)
+				else
+					timerLabel.Text = string.format("🤖 %s (%ds)", currentActivePlayerName, ceilRem)
+				end
 			end
 
 			local alpha = math.clamp(rem / durationSeconds, 0, 1)
@@ -321,10 +333,14 @@ function TableView.StopTurnTimer()
 		currentTimerThread = nil
 	end
 	if timerLabel then
-		timerLabel.Text = "⏱️ --"
+		if currentIsMyTurn then
+			timerLabel.Text = "👤 YOUR TURN"
+		else
+			timerLabel.Text = "🤖 " .. currentActivePlayerName .. "'S TURN"
+		end
 	end
 	if timerStroke then
-		timerStroke.Color = Color3.fromRGB(80, 225, 245)
+		timerStroke.Color = currentIsMyTurn and Color3.fromRGB(255, 215, 65) or Color3.fromRGB(80, 225, 245)
 	end
 	if timerFillBar then
 		timerFillBar.Size = UDim2.new(0, 0, 0, 3)

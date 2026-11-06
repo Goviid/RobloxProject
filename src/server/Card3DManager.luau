@@ -49,6 +49,31 @@ function Card3DManager.SetRevealingEnabled(enabled: boolean)
 			clicker.MaxActivationDistance = enabled and 45 or 0
 		end
 	end
+
+	-- Also enable ClickDetectors on coasters so clicking anywhere on the player's mat flips their top card!
+	for seatIdx = 1, 6 do
+		local mat = TableBuilder.GetCoasterPart(seatIdx)
+		if mat then
+			local clicker = mat:FindFirstChildWhichIsA("ClickDetector")
+			if not clicker and enabled then
+				clicker = Instance.new("ClickDetector")
+				clicker.Parent = mat
+				clicker.MouseClick:Connect(function(clickingPlayer: Player)
+					if roundActionHandler and isRevealingClickEnabled then
+						local targetPlayer = PlayerManager.GetPlayerBySeat(seatIdx)
+						if targetPlayer then
+							roundActionHandler(clickingPlayer.UserId, Enums.PlayerAction.RevealCard, {
+								targetUserId = targetPlayer.userId,
+							})
+						end
+					end
+				end)
+			end
+			if clicker then
+				clicker.MaxActivationDistance = enabled and 45 or 0
+			end
+		end
+	end
 end
 
 -- ============================================================================

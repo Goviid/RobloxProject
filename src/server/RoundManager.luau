@@ -441,7 +441,7 @@ function RoundManager.HandlePlayerAction(userId: number, action: string, data: a
 
 	-- 2. BIDDING PHASE
 	elseif currentGameState == Enums.GameState.Bidding then
-		if action == Enums.PlayerAction.RaiseBid then
+		if action == Enums.PlayerAction.RaiseBid or action == Enums.PlayerAction.StartBid then
 			local bid = tonumber(data.bid)
 			local totalCards = PlayerManager.GetTotalCardsOnTable()
 			if not bid or bid <= highestBid or bid > totalCards then

@@ -79,6 +79,8 @@ function CameraController.Init()
 				item.LocalTransparencyModifier = 1
 				item.CastShadow = false
 				item.CanCollide = false
+				item.CanQuery = false
+				item.CanTouch = false
 			elseif item:IsA("Decal") then
 				item.Transparency = 1
 				item.LocalTransparencyModifier = 1

@@ -17,7 +17,7 @@ function BotController.DecidePlacementAction(botId: number, canBid: boolean, tot
 	local hasSkull = table.find(p.hand, Enums.CardType.Skull) ~= nil
 
 	-- If canBid is true, bot has played at least 1 card. Should they start a bid?
-	if canBid and #p.playedStack >= 2 and totalCardsOnTable >= 3 then
+	if canBid and #p.playedStack >= 1 and totalCardsOnTable >= 3 then
 		-- Count how many roses the bot placed on its own stack
 		local ownRoses = 0
 		for _, card in ipairs(p.playedStack) do
@@ -26,9 +26,9 @@ function BotController.DecidePlacementAction(botId: number, canBid: boolean, tot
 			end
 		end
 
-		-- If bot has 2+ roses and no skull in their own pile, 40% chance to start a bid
+		-- If bot has 1+ roses and no skull in their own pile, 40% chance to start a bid
 		local ownSkullInPile = table.find(p.playedStack, Enums.CardType.Skull) ~= nil
-		if not ownSkullInPile and ownRoses >= 2 and math.random() < 0.40 then
+		if not ownSkullInPile and ownRoses >= 1 and math.random() < 0.40 then
 			local startBid = math.min(ownRoses + 1, totalCardsOnTable)
 			return {
 				action = Enums.PlayerAction.StartBid,

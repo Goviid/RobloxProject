@@ -272,7 +272,10 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 	confirmBtn.MouseButton1Click:Connect(function()
 		modal.Visible = false
 		if onActionCallback then
-			onActionCallback(Enums.PlayerAction.StartBid, { bid = currentBid })
+			local actionToFire = (currentPhase == Enums.GameState.Bidding)
+				and Enums.PlayerAction.RaiseBid
+				or Enums.PlayerAction.StartBid
+			onActionCallback(actionToFire, { bid = currentBid })
 		end
 	end)
 
@@ -280,6 +283,14 @@ function ActionBar.Create(parent: GuiObject, callback: (action: string, data: an
 
 	-- Click Handlers
 	bidButton.MouseButton1Click:Connect(function()
+		if currentPhase == Enums.GameState.Revealing and isMyTurnCached then
+			if onActionCallback then
+				local Players = game:GetService("Players")
+				onActionCallback(Enums.PlayerAction.RevealCard, { targetUserId = Players.LocalPlayer.UserId })
+			end
+			return
+		end
+
 		if not isBidUnlocked then
 			local NotificationBanner = require(script.Parent.NotificationBanner)
 			NotificationBanner.Show("👉 Place your 1st card before starting a bid!", "info")
@@ -419,11 +430,46 @@ function ActionBar.UpdateState(
 			pStroke.Transparency = isMyTurn and 0 or 0.50
 		end
 
-	else
-		-- Other phases (Revealing, RoundEnd): keep stacked layout intact in quiet mode
-		isBidUnlocked = false
-		bidButton.TextTransparency = 0.6
+	elseif gameState == Enums.GameState.Revealing then
+		-- Challenge / Revealing Phase
+		isBidUnlocked = isMyTurn and hasCardsInStack
+		if isMyTurn and hasCardsInStack then
+			bidButton.Text = "FLIP OWN PILE"
+			bidButton.TextColor3 = Color3.fromRGB(255, 80, 100)
+			bidButton.TextTransparency = 0
+			if bStroke then
+				bStroke.Color = Color3.fromRGB(255, 65, 85)
+				bStroke.Transparency = 0
+			end
+		elseif isMyTurn then
+			bidButton.Text = "FLIP OPPONENT"
+			bidButton.TextColor3 = Color3.fromRGB(255, 215, 65)
+			bidButton.TextTransparency = 0.2
+			if bStroke then
+				bStroke.Color = Color3.fromRGB(255, 215, 65)
+				bStroke.Transparency = 0.2
+			end
+		else
+			bidButton.Text = "REVEALING"
+			bidButton.TextTransparency = 0.6
+			if bStroke then bStroke.Transparency = 0.6 end
+		end
+
+		raiseBidButton.Text = "CHALLENGE"
 		raiseBidButton.TextTransparency = 0.6
+		passButton.Text = "PASS"
+		passButton.TextTransparency = 0.6
+		if rStroke then rStroke.Transparency = 0.6 end
+		if pStroke then pStroke.Transparency = 0.6 end
+
+	else
+		-- RoundEnd / Lobby: keep stacked layout in quiet mode
+		isBidUnlocked = false
+		bidButton.Text = "BET"
+		bidButton.TextTransparency = 0.6
+		raiseBidButton.Text = "CHALLENGE"
+		raiseBidButton.TextTransparency = 0.6
+		passButton.Text = "PASS"
 		passButton.TextTransparency = 0.6
 		if bStroke then bStroke.Transparency = 0.6 end
 		if rStroke then rStroke.Transparency = 0.6 end
