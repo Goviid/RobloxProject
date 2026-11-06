@@ -44,41 +44,45 @@ function TableBuilder.Build(modeOverride: string?)
 	arena.Name = "SkullsArena"
 	arena.Parent = Workspace
 
-	-- Hide the default baseplate so arena styling is seamless
+	-- Relocate and neutralize default baseplate so it never causes shadow or Z-fight bugs
 	local baseplate = Workspace:FindFirstChild("Baseplate")
 	if baseplate and baseplate:IsA("BasePart") then
+		baseplate.Position = Vector3.new(0, -500, 0)
 		baseplate.Transparency = 1
+		baseplate.CastShadow = false
+		baseplate.CanCollide = false
 	end
 
 	-- ========================================================================
 	-- MODE A: LOCOFFICIAL LIGHT BLUE VOID (No Table, Cards on Ground)
 	-- ========================================================================
 	if mode == Enums.ArenaMode.Void then
-		-- 1. Lighting: Serene clear light blue void
+		-- 1. Lighting: Soft, even studio ambient without jagged shadows or flicker
 		pcall(function()
-			Lighting.Brightness = 2.0
-			Lighting.Ambient = Color3.fromRGB(155, 215, 255)
-			Lighting.OutdoorAmbient = Color3.fromRGB(145, 205, 250)
+			Lighting.GlobalShadows = false -- Eliminates harsh shadows and light bugs
+			Lighting.Brightness = 1.6
+			Lighting.Ambient = Color3.fromRGB(185, 218, 255)
+			Lighting.OutdoorAmbient = Color3.fromRGB(175, 212, 250)
 			Lighting.ClockTime = 14.0
-			Lighting.GlobalShadows = true
-			Lighting.FogColor = Color3.fromRGB(130, 195, 250)
-			Lighting.FogStart = 90
-			Lighting.FogEnd = 320
+			Lighting.FogColor = Color3.fromRGB(98, 172, 246)
+			Lighting.FogStart = 110
+			Lighting.FogEnd = 380
 
 			local oldCC = Lighting:FindFirstChild("SkullsColorCorrection")
 			if oldCC then oldCC:Destroy() end
 		end)
 
-		-- 2. Void Arena Floor Platform (Smooth pastel light blue)
+		-- 2. Void Arena Floor Platform (Elevated smooth cerulean blue circle)
 		local floor = Instance.new("Part")
 		floor.Name = "VoidArenaFloor"
 		floor.Shape = Enum.PartType.Cylinder
-		floor.Size = Vector3.new(0.4, 56, 56)
-		floor.CFrame = CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, math.rad(90))
+		floor.Size = Vector3.new(0.4, 54, 54)
+		floor.CFrame = CFrame.new(0, 0.20, 0) * CFrame.Angles(0, 0, math.rad(90))
 		floor.Anchored = true
 		floor.CanCollide = true
 		floor.Material = Enum.Material.SmoothPlastic
-		floor.Color = Color3.fromRGB(118, 188, 246)
+		floor.Color = Color3.fromRGB(88, 166, 240)
+		floor.CastShadow = false
 		floor.Parent = arena
 
 		-- Center Swirl Rotation Ring (LOCOfficial style turn swirl)
@@ -86,12 +90,13 @@ function TableBuilder.Build(modeOverride: string?)
 		centerRing.Name = "CenterSwirlRing"
 		centerRing.Shape = Enum.PartType.Cylinder
 		centerRing.Size = Vector3.new(0.04, 16, 16)
-		centerRing.CFrame = CFrame.new(0, 0.22, 0) * CFrame.Angles(0, 0, math.rad(90))
+		centerRing.CFrame = CFrame.new(0, 0.41, 0) * CFrame.Angles(0, 0, math.rad(90))
 		centerRing.Anchored = true
 		centerRing.CanCollide = false
 		centerRing.Material = Enum.Material.SmoothPlastic
 		centerRing.Color = Color3.fromRGB(240, 250, 255)
 		centerRing.Transparency = 0.55
+		centerRing.CastShadow = false
 		centerRing.Parent = arena
 
 		local centerSg = Instance.new("SurfaceGui")
@@ -112,20 +117,21 @@ function TableBuilder.Build(modeOverride: string?)
 		swirlIcon.Text = "↺"
 		swirlIcon.Parent = centerSg
 
-		-- Outer Arena Border Ring
+		-- Outer Arena Border Halo Ring
 		local outerRing = Instance.new("Part")
 		outerRing.Name = "OuterRing"
 		outerRing.Shape = Enum.PartType.Cylinder
-		outerRing.Size = Vector3.new(0.06, 55.5, 55.5)
-		outerRing.CFrame = CFrame.new(0, 0.21, 0) * CFrame.Angles(0, 0, math.rad(90))
+		outerRing.Size = Vector3.new(0.04, 53.6, 53.6)
+		outerRing.CFrame = CFrame.new(0, 0.40, 0) * CFrame.Angles(0, 0, math.rad(90))
 		outerRing.Anchored = true
 		outerRing.CanCollide = false
 		outerRing.Material = Enum.Material.Neon
-		outerRing.Color = Color3.fromRGB(210, 240, 255)
-		outerRing.Transparency = 0.6
+		outerRing.Color = Color3.fromRGB(225, 245, 255)
+		outerRing.Transparency = 0.5
+		outerRing.CastShadow = false
 		outerRing.Parent = arena
 
-		-- 3. Radial Seats: Cards placed on the ground in front of each avatar (No table!)
+		-- 3. Radial Seats: Ground coasters and standing pads
 		local COASTER_DIST = 4.8
 		local STAND_DIST = 9.2
 
@@ -135,7 +141,7 @@ function TableBuilder.Build(modeOverride: string?)
 			local dirZ = math.sin(angle)
 
 			-- Clean Circular Coaster Pad (Clean Circle pile base on the ground)
-			local coasterPos = Vector3.new(dirX * COASTER_DIST, 0.22, dirZ * COASTER_DIST)
+			local coasterPos = Vector3.new(dirX * COASTER_DIST, 0.42, dirZ * COASTER_DIST)
 			local coaster = Instance.new("Part")
 			coaster.Name = "Coaster_" .. seatIdx
 			coaster.Shape = Enum.PartType.Cylinder
@@ -144,7 +150,8 @@ function TableBuilder.Build(modeOverride: string?)
 			coaster.Anchored = true
 			coaster.CanCollide = false
 			coaster.Material = Enum.Material.SmoothPlastic
-			coaster.Color = Color3.fromRGB(90, 160, 225)
+			coaster.Color = Color3.fromRGB(65, 142, 218)
+			coaster.CastShadow = false
 			coaster.Parent = arena
 			coasterParts[seatIdx] = coaster
 
@@ -184,7 +191,7 @@ function TableBuilder.Build(modeOverride: string?)
 			Instance.new("UICorner", innerDot).CornerRadius = UDim.new(1, 0)
 
 			-- Clean White Floor Standing Pad
-			local standPos = Vector3.new(dirX * STAND_DIST, 0.21, dirZ * STAND_DIST)
+			local standPos = Vector3.new(dirX * STAND_DIST, 0.41, dirZ * STAND_DIST)
 			local standPad = Instance.new("Part")
 			standPad.Name = "StandPad_" .. seatIdx
 			standPad.Shape = Enum.PartType.Cylinder
@@ -195,11 +202,12 @@ function TableBuilder.Build(modeOverride: string?)
 			standPad.Material = Enum.Material.Neon
 			standPad.Color = Color3.fromRGB(245, 250, 255)
 			standPad.Transparency = 0.35
+			standPad.CastShadow = false
 			standPad.Parent = arena
 			standPads[seatIdx] = standPad
 
-			-- Standing CFrame (Y=3.2 for HumanoidRootPart, facing arena center)
-			local charStandPos = Vector3.new(standPos.X, 3.2, standPos.Z)
+			-- Standing CFrame (Y=3.4 for HumanoidRootPart, facing arena center)
+			local charStandPos = Vector3.new(standPos.X, 3.4, standPos.Z)
 			local lookTarget = Vector3.new(0, 1.2, 0)
 			standingCFrames[seatIdx] = CFrame.lookAt(charStandPos, lookTarget)
 
@@ -599,6 +607,7 @@ function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 
 	seatBillboards[seatIndex] = createOverheadBillboard(head, botName, true)
 	botDummies[seatIndex] = botModel
+	renderOpponentCards3D(seatIndex, 4)
 	print("[TableBuilder] Spawned standing bot:", botName, "at seat", seatIndex)
 end
 
@@ -668,15 +677,104 @@ function TableBuilder.UpdateScore(seatIndex: number, score: number)
 	end
 end
 
--- Update remaining card count badge [ 4 ]
+-- Standing 3D Card Models for Opponents (LOCOfficial style card back wall)
+local function renderOpponentCards3D(seatIndex: number, count: number)
+	if seatIndex == 1 or not arenaModel then return end
+	local targetCF = standingCFrames[seatIndex]
+	if not targetCF then return end
+
+	local folderName = "OpponentHand_" .. seatIndex
+	local existingFolder = arenaModel:FindFirstChild(folderName)
+	if existingFolder then
+		existingFolder:Destroy()
+	end
+
+	if count <= 0 then return end
+
+	local folder = Instance.new("Folder")
+	folder.Name = folderName
+	folder.Parent = arenaModel
+
+	local CARD_W = 0.95
+	local CARD_H = 1.45
+	local SPACING = 0.75
+	local totalWidth = (count - 1) * SPACING
+	local startX = -totalWidth / 2
+
+	for i = 1, count do
+		local xOff = startX + (i - 1) * SPACING
+		local fanRot = (count > 1) and math.rad(( (i - 1)/(count - 1) - 0.5 ) * 16) or 0
+
+		-- Upright card in front of bot's chest, angled towards center
+		local cardCF = targetCF * CFrame.new(xOff, 0.2, -1.65) * CFrame.Angles(0, fanRot, 0)
+
+		local card = Instance.new("Part")
+		card.Name = "OpponentCard_" .. i
+		card.Size = Vector3.new(CARD_W, CARD_H, 0.04)
+		card.CFrame = cardCF
+		card.Anchored = true
+		card.CanCollide = false
+		card.Material = Enum.Material.SmoothPlastic
+		card.Color = Color3.fromRGB(24, 20, 28)
+		card.CastShadow = false
+		card.Parent = folder
+
+		local sg = Instance.new("SurfaceGui")
+		sg.Name = "CardBackGui"
+		sg.Face = Enum.NormalId.Back -- Faces arena center towards human player
+		sg.CanvasSize = Vector2.new(128, 192)
+		sg.AlwaysOnTop = false
+		sg.Adornee = card
+		sg.Parent = card
+
+		local bg = Instance.new("Frame")
+		bg.Size = UDim2.new(1, 0, 1, 0)
+		bg.BackgroundColor3 = Color3.fromRGB(22, 18, 26)
+		bg.BorderSizePixel = 0
+		bg.Parent = sg
+		Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 10)
+
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = Color3.fromRGB(240, 195, 65)
+		stroke.Thickness = 2.5
+		stroke.Parent = bg
+
+		local innerBorder = Instance.new("Frame")
+		innerBorder.Size = UDim2.new(1, -12, 1, -12)
+		innerBorder.Position = UDim2.new(0, 6, 0, 6)
+		innerBorder.BackgroundTransparency = 1
+		innerBorder.Parent = bg
+		Instance.new("UICorner", innerBorder).CornerRadius = UDim.new(0, 6)
+		local innerStroke = Instance.new("UIStroke")
+		innerStroke.Color = Color3.fromRGB(255, 235, 140)
+		innerStroke.Transparency = 0.5
+		innerStroke.Thickness = 1.2
+		innerStroke.Parent = innerBorder
+
+		local icon = Instance.new("TextLabel")
+		icon.Size = UDim2.new(1, 0, 1, 0)
+		icon.BackgroundTransparency = 1
+		icon.Font = Enum.Font.FredokaOne
+		icon.TextSize = 42
+		icon.TextColor3 = Color3.fromRGB(245, 205, 75)
+		icon.Text = "✦"
+		icon.Parent = bg
+	end
+end
+
+-- Update remaining card count badge [ 4 ] & opponent 3D card hand
 function TableBuilder.UpdateCardCount(seatIndex: number, count: number)
 	local bill = seatBillboards[seatIndex]
-	if not bill then return end
-	local badge = bill:FindFirstChild("CardCountBadge") :: Frame?
-	local num = badge and badge:FindFirstChild("CountNum") :: TextLabel?
-	if num then
-		num.Text = tostring(count)
+	if bill then
+		local badge = bill:FindFirstChild("CardCountBadge") :: Frame?
+		local num = badge and badge:FindFirstChild("CountNum") :: TextLabel?
+		if num then
+			num.Text = tostring(count)
+		end
 	end
+
+	-- Update 3D card wall for opponents (Seats 2..6)
+	renderOpponentCards3D(seatIndex, count)
 end
 
 -- Change bot face emote

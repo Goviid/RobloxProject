@@ -1,24 +1,30 @@
 --!strict
 -- CameraController.luau
--- 3D Tabletop Over-the-Shoulder Camera framing your avatar, the circular table, and opponents (LOCOfficial style)
+-- First-person eye-level camera framing the ground cards, arena center, and opponents (LOCOfficial style)
+-- Completely hides the local player's character model locally while leaving it visible to all other players!
 
 local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local CameraController = {}
 
+local localPlayer = Players.LocalPlayer
+
 local function getCameraConfig(): (Vector3, Vector3)
 	local isTable = (Workspace:GetAttribute("ArenaMode") == "Table")
 	if isTable then
-		return Vector3.new(0, 3.6, 0.8), Vector3.new(0, 8.8, 16.2)
+		-- Classic Parlor Table eye-level framing
+		return Vector3.new(0, 3.4, 0.0), Vector3.new(0, 5.2, 9.4)
 	else
-		-- LOCOfficial Void mode: Eye-level framing of ground cards and opponents
-		return Vector3.new(0, 1.9, 0.6), Vector3.new(0, 6.8, 14.8)
+		-- LOCOfficial Void mode: First-person eye-level framing at Seat 1
+		-- Positioned at player eye level looking forward across the arena into center ground cards and opponents
+		return Vector3.new(0, 1.2, 0.0), Vector3.new(0, 4.4, 9.0)
 	end
 end
 
-local DEFAULT_FOV = 62
+local DEFAULT_FOV = 64
 local isShakeActive = false
 local shakeOffset = Vector3.zero
 local isInitialized = false
@@ -28,12 +34,13 @@ local currentTurnOffset = Vector3.zero
 local currentTargetFOV = DEFAULT_FOV
 
 -- ============================================================================
--- 1. SETUP & PER-FRAME CAMERA LOCK
+-- 1. SETUP & PER-FRAME CAMERA LOCK + LOCAL AVATAR HIDING
 -- ============================================================================
 function CameraController.Init()
 	if isInitialized then return end
 	isInitialized = true
 
+	-- Per-frame camera lock
 	local function lockCamera()
 		local cam = Workspace.CurrentCamera
 		if not cam then return end
@@ -48,25 +55,49 @@ function CameraController.Init()
 		cam.FieldOfView = currentTargetFOV
 	end
 
-	-- Run every frame above Camera priority to smoothly lock the view
+	-- Per-frame local character transparency (Hides model for YOU, friends still see you!)
+	local function hideLocalCharacter()
+		local char = localPlayer.Character
+		if not char then return end
+
+		for _, item in ipairs(char:GetDescendants()) do
+			if item:IsA("BasePart") then
+				item.LocalTransparencyModifier = 1
+			elseif item:IsA("Decal") then
+				item.LocalTransparencyModifier = 1
+			end
+		end
+
+		-- Also hide your own overhead nametag so it doesn't float in front of your eyes
+		local head = char:FindFirstChild("Head")
+		if head then
+			local tag = head:FindFirstChild("PlayerInfoTag") :: BillboardGui?
+			if tag then
+				tag.Enabled = false
+			end
+		end
+	end
+
+	-- Run hideLocalCharacter before Camera, and lockCamera at Camera priority
+	RunService:BindToRenderStep("HideLocalCharacter", Enum.RenderPriority.Camera.Value - 1, hideLocalCharacter)
 	RunService:BindToRenderStep("TabletopCameraLock", Enum.RenderPriority.Camera.Value + 20, lockCamera)
 
-	print("[CameraController] Tabletop over-the-shoulder camera initialized.")
+	print("[CameraController] First-person LOCOfficial camera initialized. Local character hidden from self.")
 end
 
 -- ============================================================================
 -- 2. DYNAMIC CAMERA EFFECTS (Turn Focus & Skull Shake)
 -- ============================================================================
 function CameraController.SetTurnFocus(isMyTurn: boolean)
-	local targetOffset = isMyTurn and Vector3.new(0, -1.0, -1.4) or Vector3.zero
-	local targetFOV = isMyTurn and 59 or DEFAULT_FOV
+	local targetOffset = isMyTurn and Vector3.new(0, -0.6, -0.8) or Vector3.zero
+	local targetFOV = isMyTurn and 61 or DEFAULT_FOV
 
 	local tweenObj = Instance.new("NumberValue")
 	tweenObj.Value = 0
 	local startOffset = currentTurnOffset
 	local startFOV = currentTargetFOV
 
-	local tween = TweenService:Create(tweenObj, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+	local tween = TweenService:Create(tweenObj, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 		Value = 1,
 	})
 

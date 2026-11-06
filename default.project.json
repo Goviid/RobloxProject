@@ -31,15 +31,13 @@
         "$className": "Part",
         "$properties": {
           "Anchored": true,
-          "Color": [
-            0.38823,
-            0.37254,
-            0.38823
-          ],
+          "CastShadow": false,
+          "Transparency": 1,
+          "CanCollide": false,
           "Locked": true,
           "Position": [
             0,
-            -10,
+            -500,
             0
           ],
           "Size": [
@@ -53,18 +51,18 @@
     "Lighting": {
       "$properties": {
         "Ambient": [
-          0.55,
-          0.55,
-          0.55
+          0.72,
+          0.85,
+          1.0
         ],
         "OutdoorAmbient": [
-          0.45,
-          0.45,
-          0.45
+          0.68,
+          0.83,
+          0.98
         ],
-        "Brightness": 2.0,
+        "Brightness": 1.6,
         "ClockTime": 14.0,
-        "GlobalShadows": true,
+        "GlobalShadows": false,
         "Outlines": false,
         "Technology": "ShadowMap"
       }

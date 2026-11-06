@@ -74,6 +74,7 @@ local function buildUI()
 
 		-- Immediate direct placement on card click if it's our turn during Placement phase!
 		if currentGameState == Enums.GameState.Placement and isCurrentPlayerTurn then
+			isCurrentPlayerTurn = false
 			print("[HandBar] Placing card directly on coaster: " .. cardType)
 			AudioController.PlayCardPlace()
 			onSubmitAction(Enums.PlayerAction.PlaceCard, { cardType = cardType })
@@ -124,8 +125,12 @@ end)
 onSubmitAction = function(action: string, data: any)
 	print("[Client] Submitting action: " .. action)
 	local success, err = Network.SubmitAction:InvokeServer(action, data)
-	if not success and err then
-		NotificationBanner.Show(err, "warning")
+	if not success then
+		if err then
+			NotificationBanner.Show(err, "warning")
+		end
+		-- Re-sync state with server if action was rejected
+		Network.RequestState:FireServer()
 	end
 end
 
@@ -141,14 +146,7 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 		local isMyTurn = isCurrentPlayerTurn
 		local myData = lastKnownPlayers[tostring(localPlayer.UserId)]
 		local myStackCount = myData and myData.stackCount or 0
-		local myHand = myData and myData.hand
-		if not myHand or #myHand == 0 then
-			if myStackCount == 0 then
-				myHand = { Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Skull }
-			else
-				myHand = {}
-			end
-		end
+		local myHand = if myData and myData.hand then table.clone(myData.hand) else {}
 		local challengerData = payload.challengerId and lastKnownPlayers[tostring(payload.challengerId)]
 
 		-- 1. Update Table View (seats, stack heights, score gems)

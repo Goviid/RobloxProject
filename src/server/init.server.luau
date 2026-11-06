@@ -82,7 +82,9 @@ local function onPlayerAdded(player: Player)
 	-- Start the game if currently in Lobby
 	if RoundManager.GetGameState() == require(ReplicatedStorage.Shared.Enums).GameState.Lobby then
 		task.delay(1.0, function()
-			RoundManager.StartRound()
+			if RoundManager.GetGameState() == require(ReplicatedStorage.Shared.Enums).GameState.Lobby then
+				RoundManager.StartRound()
+			end
 		end)
 	else
 		RoundManager.SendStateToPlayer(player.UserId)

@@ -252,13 +252,17 @@ local function create25DCard(
 		}):Play()
 	end)
 
-	-- Direct click to place
+	-- Direct click to place (immediately consumes card from hand!)
 	btn.MouseButton1Click:Connect(function()
 		if not isPlayerTurn or not canCurrentlyPlace then return end
+		isPlayerTurn = false -- Prevent double clicks while server processes turn
 		selectedCard = cardType
 
+		local clickedIdx = table.find(cardContainers, container) or index
+		HandBar.ConsumeCard(clickedIdx)
+
 		if onCardClickedCallback then
-			onCardClickedCallback(cardType, index)
+			onCardClickedCallback(cardType, clickedIdx)
 		end
 	end)
 
@@ -266,7 +270,53 @@ local function create25DCard(
 end
 
 -- ============================================================================
--- 2. SETUP FLOATING 2.5D HAND DOCK (Bottom Center)
+-- 2. CONSUME CARD FROM HAND (Smooth fly-off & re-centering animation)
+-- ============================================================================
+function HandBar.ConsumeCard(cardIndex: number)
+	if not dockFrame then return end
+	local targetContainer = cardContainers[cardIndex]
+	if not targetContainer then return end
+
+	-- Optimistically remove from tracking
+	table.remove(cardContainers, cardIndex)
+	table.remove(currentHand, cardIndex)
+
+	-- Exit tween for placed card (lifts up and shrinks out)
+	local exitTween = TweenService:Create(targetContainer, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+		Position = targetContainer.Position + UDim2.new(0, 0, 0, -90),
+		Size = UDim2.new(0, 0, 0, 0),
+	})
+	exitTween:Play()
+	exitTween.Completed:Connect(function()
+		targetContainer:Destroy()
+	end)
+
+	-- Smoothly re-position remaining cards into new centered fan
+	local totalRemaining = #currentHand
+	if totalRemaining == 0 then
+		dockFrame.Visible = false
+		return
+	end
+
+	local totalWidth = (totalRemaining - 1) * CARD_OVERLAP_SPACING
+	local startX = -totalWidth / 2
+
+	for i, container in ipairs(cardContainers) do
+		local xOffset = startX + (i - 1) * CARD_OVERLAP_SPACING
+		local rotAngle = getFannedAngle(i, totalRemaining)
+		local archY = getArchYOffset(i, totalRemaining)
+		local newPos = UDim2.new(0.5, xOffset, 1, RESTING_Y_OFFSET + archY)
+
+		container.ZIndex = 20 + i
+		TweenService:Create(container, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = newPos,
+			Rotation = rotAngle,
+		}):Play()
+	end
+end
+
+-- ============================================================================
+-- 3. SETUP FLOATING 2.5D HAND DOCK (Bottom Center)
 -- ============================================================================
 function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	onCardClickedCallback = onSelect
