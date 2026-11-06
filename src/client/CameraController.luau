@@ -18,13 +18,12 @@ local function getCameraConfig(): (Vector3, Vector3)
 		-- Classic Parlor Table eye-level framing
 		return Vector3.new(0, 3.4, 0.0), Vector3.new(0, 5.2, 9.4)
 	else
-		-- LOCOfficial Void mode: First-person eye-level framing at Seat 1
-		-- Positioned at player eye level looking forward across the arena into center ground cards and opponents
-		return Vector3.new(0, 1.2, 0.0), Vector3.new(0, 4.4, 9.0)
+		-- LOCOfficial elevated void perspective (frames full circular table, all opponents, and center pile)
+		return Vector3.new(0, 1.0, 0.5), Vector3.new(0, 7.2, 14.8)
 	end
 end
 
-local DEFAULT_FOV = 64
+local DEFAULT_FOV = 65
 local isShakeActive = false
 local shakeOffset = Vector3.zero
 local isInitialized = false
@@ -63,8 +62,11 @@ function CameraController.Init()
 		for _, item in ipairs(char:GetDescendants()) do
 			if item:IsA("BasePart") then
 				item.LocalTransparencyModifier = 1
+				item.CastShadow = false
 			elseif item:IsA("Decal") then
 				item.LocalTransparencyModifier = 1
+			elseif item:IsA("ParticleEmitter") or item:IsA("Trail") then
+				item.Enabled = false
 			end
 		end
 

@@ -507,6 +507,62 @@ end
 -- ============================================================================
 -- 4. STANDING 3D CARD MODELS FOR OPPONENTS (LOCOfficial style card back wall)
 -- ============================================================================
+local function populateCardFaceGui(sg: SurfaceGui)
+	local bg = Instance.new("Frame")
+	bg.Size = UDim2.new(1, 0, 1, 0)
+	bg.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
+	bg.BorderSizePixel = 0
+	bg.Parent = sg
+	Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 12)
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(245, 245, 250)
+	stroke.Thickness = 3.0
+	stroke.Parent = bg
+
+	local innerBorder = Instance.new("Frame")
+	innerBorder.Size = UDim2.new(1, -12, 1, -12)
+	innerBorder.Position = UDim2.new(0, 6, 0, 6)
+	innerBorder.BackgroundTransparency = 1
+	innerBorder.Parent = bg
+	Instance.new("UICorner", innerBorder).CornerRadius = UDim.new(0, 8)
+	local innerStroke = Instance.new("UIStroke")
+	innerStroke.Color = Color3.fromRGB(255, 215, 120)
+	innerStroke.Transparency = 0.4
+	innerStroke.Thickness = 1.5
+	innerStroke.Parent = innerBorder
+
+	local centerCircle = Instance.new("Frame")
+	centerCircle.Size = UDim2.new(0, 64, 0, 64)
+	centerCircle.Position = UDim2.new(0.5, -32, 0.5, -38)
+	centerCircle.BackgroundTransparency = 1
+	centerCircle.Parent = bg
+	Instance.new("UICorner", centerCircle).CornerRadius = UDim.new(1, 0)
+	local circleStroke = Instance.new("UIStroke")
+	circleStroke.Color = Color3.fromRGB(245, 205, 80)
+	circleStroke.Thickness = 2.0
+	circleStroke.Parent = centerCircle
+
+	local icon = Instance.new("TextLabel")
+	icon.Size = UDim2.new(1, 0, 1, 0)
+	icon.BackgroundTransparency = 1
+	icon.Font = Enum.Font.FredokaOne
+	icon.TextSize = 38
+	icon.TextColor3 = Color3.fromRGB(245, 205, 75)
+	icon.Text = "💀"
+	icon.Parent = centerCircle
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 0, 20)
+	label.Position = UDim2.new(0, 0, 1, -30)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextSize = 13
+	label.TextColor3 = Color3.fromRGB(245, 245, 250)
+	label.Text = "SKULLS"
+	label.Parent = bg
+end
+
 local function renderOpponentCards3D(seatIndex: number, count: number)
 	if seatIndex == 1 or not arenaModel then return end
 	local targetCF = standingCFrames[seatIndex]
@@ -524,18 +580,19 @@ local function renderOpponentCards3D(seatIndex: number, count: number)
 	folder.Name = folderName
 	folder.Parent = arenaModel
 
-	local CARD_W = 0.95
-	local CARD_H = 1.45
-	local SPACING = 0.75
+	-- Proportional dimensions matching LOCOfficial opponent card walls
+	local CARD_W = 1.10
+	local CARD_H = 1.65
+	local SPACING = 0.82
 	local totalWidth = (count - 1) * SPACING
 	local startX = -totalWidth / 2
 
 	for i = 1, count do
 		local xOff = startX + (i - 1) * SPACING
-		local fanRot = (count > 1) and math.rad(( (i - 1)/(count - 1) - 0.5 ) * 16) or 0
+		local fanRot = (count > 1) and math.rad(( (i - 1)/(count - 1) - 0.5 ) * 14) or 0
 
-		-- Upright card in front of bot's chest, angled towards center
-		local cardCF = targetCF * CFrame.new(xOff, 0.2, -1.65) * CFrame.Angles(0, fanRot, 0)
+		-- Upright vertical card in front of avatar, standing at chest/waist level
+		local cardCF = targetCF * CFrame.new(xOff, -0.6, -1.8) * CFrame.Angles(0, fanRot, 0)
 
 		local card = Instance.new("Part")
 		card.Name = "OpponentCard_" .. i
@@ -544,50 +601,29 @@ local function renderOpponentCards3D(seatIndex: number, count: number)
 		card.Anchored = true
 		card.CanCollide = false
 		card.Material = Enum.Material.SmoothPlastic
-		card.Color = Color3.fromRGB(24, 20, 28)
+		card.Color = Color3.fromRGB(20, 20, 26)
 		card.CastShadow = false
 		card.Parent = folder
 
-		local sg = Instance.new("SurfaceGui")
-		sg.Name = "CardBackGui"
-		sg.Face = Enum.NormalId.Back -- Faces arena center towards human player
-		sg.CanvasSize = Vector2.new(128, 192)
-		sg.AlwaysOnTop = false
-		sg.Adornee = card
-		sg.Parent = card
+		-- Front Face SurfaceGui (points forward towards arena center & local player)
+		local sgFront = Instance.new("SurfaceGui")
+		sgFront.Name = "CardBackGui_Front"
+		sgFront.Face = Enum.NormalId.Front
+		sgFront.CanvasSize = Vector2.new(128, 192)
+		sgFront.AlwaysOnTop = false
+		sgFront.Adornee = card
+		sgFront.Parent = card
+		populateCardFaceGui(sgFront)
 
-		local bg = Instance.new("Frame")
-		bg.Size = UDim2.new(1, 0, 1, 0)
-		bg.BackgroundColor3 = Color3.fromRGB(22, 18, 26)
-		bg.BorderSizePixel = 0
-		bg.Parent = sg
-		Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 10)
-
-		local stroke = Instance.new("UIStroke")
-		stroke.Color = Color3.fromRGB(240, 195, 65)
-		stroke.Thickness = 2.5
-		stroke.Parent = bg
-
-		local innerBorder = Instance.new("Frame")
-		innerBorder.Size = UDim2.new(1, -12, 1, -12)
-		innerBorder.Position = UDim2.new(0, 6, 0, 6)
-		innerBorder.BackgroundTransparency = 1
-		innerBorder.Parent = bg
-		Instance.new("UICorner", innerBorder).CornerRadius = UDim.new(0, 6)
-		local innerStroke = Instance.new("UIStroke")
-		innerStroke.Color = Color3.fromRGB(255, 235, 140)
-		innerStroke.Transparency = 0.5
-		innerStroke.Thickness = 1.2
-		innerStroke.Parent = innerBorder
-
-		local icon = Instance.new("TextLabel")
-		icon.Size = UDim2.new(1, 0, 1, 0)
-		icon.BackgroundTransparency = 1
-		icon.Font = Enum.Font.FredokaOne
-		icon.TextSize = 42
-		icon.TextColor3 = Color3.fromRGB(245, 205, 75)
-		icon.Text = "✦"
-		icon.Parent = bg
+		-- Back Face SurfaceGui (guarantees visibility from all viewing angles)
+		local sgBack = Instance.new("SurfaceGui")
+		sgBack.Name = "CardBackGui_Back"
+		sgBack.Face = Enum.NormalId.Back
+		sgBack.CanvasSize = Vector2.new(128, 192)
+		sgBack.AlwaysOnTop = false
+		sgBack.Adornee = card
+		sgBack.Parent = card
+		populateCardFaceGui(sgBack)
 	end
 end
 
@@ -729,6 +765,22 @@ function TableBuilder.HighlightTurn(activeSeatIndex: number?)
 
 		if turnArrow then
 			turnArrow.Visible = isActive
+		end
+
+		-- LOCOfficial Turn Badge Color Shift: Badge turns glowing orange when it's that player's turn!
+		local badge = bill:FindFirstChild("CardCountBadge") :: Frame?
+		if badge then
+			local num = badge:FindFirstChild("CountNum") :: TextLabel?
+			local bStroke = badge:FindFirstChildWhichIsA("UIStroke") :: UIStroke?
+			if isActive then
+				badge.BackgroundColor3 = Color3.fromRGB(245, 140, 20)
+				if num then num.TextColor3 = Color3.fromRGB(255, 255, 255) end
+				if bStroke then bStroke.Color = Color3.fromRGB(255, 220, 100) end
+			else
+				badge.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+				if num then num.TextColor3 = Color3.fromRGB(30, 35, 45) end
+				if bStroke then bStroke.Color = Color3.fromRGB(180, 205, 235) end
+			end
 		end
 	end
 

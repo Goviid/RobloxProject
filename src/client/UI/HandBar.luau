@@ -328,6 +328,12 @@ function HandBar.ConsumeCard(cardIndex: number)
 	table.remove(cardContainers, cardIndex)
 	table.remove(currentHand, cardIndex)
 
+	local localBadge = dockFrame:FindFirstChild("LocalCardBadge") :: Frame?
+	if localBadge then
+		local num = localBadge:FindFirstChild("CountNum") :: TextLabel?
+		if num then num.Text = tostring(#currentHand) end
+	end
+
 	-- Exit tween for placed card (lifts up and shrinks out)
 	local exitTween = TweenService:Create(targetContainer, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
 		Position = targetContainer.Position + UDim2.new(0, 0, 0, -90),
@@ -415,6 +421,38 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	dock.ZIndex = 20
 	dock.Parent = parent
 
+	-- LOCOfficial Local Player Card Count Badge (pinned directly below hand at bottom center)
+	local localBadge = Instance.new("Frame")
+	localBadge.Name = "LocalCardBadge"
+	localBadge.AnchorPoint = Vector2.new(0.5, 1)
+	localBadge.Size = UDim2.new(0, 26, 0, 32)
+	localBadge.Position = UDim2.new(0.5, 0, 1, -4)
+	localBadge.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	localBadge.BorderSizePixel = 0
+	localBadge.ZIndex = 40
+	localBadge.Parent = dock
+
+	local badgeCorner = Instance.new("UICorner")
+	badgeCorner.CornerRadius = UDim.new(0, 6)
+	badgeCorner.Parent = localBadge
+
+	local badgeStroke = Instance.new("UIStroke")
+	badgeStroke.Name = "BadgeStroke"
+	badgeStroke.Color = Color3.fromRGB(180, 205, 235)
+	badgeStroke.Thickness = 1.5
+	badgeStroke.Parent = localBadge
+
+	local badgeNum = Instance.new("TextLabel")
+	badgeNum.Name = "CountNum"
+	badgeNum.Size = UDim2.new(1, 0, 1, 0)
+	badgeNum.BackgroundTransparency = 1
+	badgeNum.Font = Enum.Font.GothamBold
+	badgeNum.TextSize = 14
+	badgeNum.TextColor3 = Color3.fromRGB(30, 35, 45)
+	badgeNum.Text = "4"
+	badgeNum.ZIndex = 41
+	badgeNum.Parent = localBadge
+
 	dockFrame = dock
 	return dock
 end
@@ -429,6 +467,23 @@ function HandBar.UpdateHand(hand: { string }, isTurn: boolean, canPlace: boolean
 	isPlayerTurn = isTurn
 	canCurrentlyPlace = canPlace
 	dockFrame.Visible = (#hand > 0)
+
+	-- Update LOCOfficial turn color on local player's card count badge
+	local localBadge = dockFrame:FindFirstChild("LocalCardBadge") :: Frame?
+	if localBadge then
+		local num = localBadge:FindFirstChild("CountNum") :: TextLabel?
+		local bStroke = localBadge:FindFirstChild("BadgeStroke") :: UIStroke?
+		if num then num.Text = tostring(#hand) end
+		if isTurn then
+			localBadge.BackgroundColor3 = Color3.fromRGB(245, 140, 20)
+			if num then num.TextColor3 = Color3.fromRGB(255, 255, 255) end
+			if bStroke then bStroke.Color = Color3.fromRGB(255, 220, 100) end
+		else
+			localBadge.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			if num then num.TextColor3 = Color3.fromRGB(30, 35, 45) end
+			if bStroke then bStroke.Color = Color3.fromRGB(180, 205, 235) end
+		end
+	end
 
 	-- Clear old cards
 	for _, c in ipairs(cardContainers) do
