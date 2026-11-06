@@ -80,7 +80,6 @@ local function buildUI()
 				local success, err = onSubmitAction(Enums.PlayerAction.PlaceCard, { cardType = cardType })
 				if success then
 					AudioController.PlayCardPlace()
-					HandBar.ConsumeCard(cardIndex)
 				else
 					NotificationBanner.Show(err or "Not your turn to place a card!", "warning")
 				end
@@ -105,12 +104,8 @@ local function buildUI()
 	-- 7. Match Victory Overlay
 	VictoryModal.Create(screenGui)
 
-	-- 7. Pre-populate initial circular hand & bid controls on startup
+	-- 7. Pre-populate initial circular hand & bid controls on startup (Roses left, Skull right)
 	local initHand = { Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Skull }
-	for i = #initHand, 2, -1 do
-		local j = math.random(1, i)
-		initHand[i], initHand[j] = initHand[j], initHand[i]
-	end
 	HandBar.UpdateHand(initHand, true, true)
 	ActionBar.UpdateState(true, Enums.GameState.Placement, 0, 0, true, false, false)
 
@@ -163,6 +158,9 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 		local myData = lastKnownPlayers[tostring(localPlayer.UserId)] or lastKnownPlayers[localPlayer.UserId]
 		local myStackCount = myData and myData.stackCount or 0
 		local myHand = if myData and myData.hand then table.clone(myData.hand) else {}
+		table.sort(myHand, function(a, b)
+			return a == Enums.CardType.Rose and b == Enums.CardType.Skull
+		end)
 		local challengerData = payload.challengerId and lastKnownPlayers[tostring(payload.challengerId)]
 
 		local activePlayerData = payload.activePlayerId and lastKnownPlayers[tostring(payload.activePlayerId)]

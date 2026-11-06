@@ -546,6 +546,10 @@ function RoundManager.HandlePlayerAction(userId: number, action: string, data: a
 
 			-- Pop top card from target's played stack
 			local revealedCard = table.remove(targetPlayer.playedStack)
+			if not revealedCard then
+				return false, "No cards left in this player's stack."
+			end
+			table.insert(targetPlayer.revealedCards, revealedCard)
 			cardsFlippedThisRound += 1
 
 			Card3DManager.RevealCard3D(targetPlayer.seatIndex, revealedCard)

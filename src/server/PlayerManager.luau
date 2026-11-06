@@ -16,6 +16,7 @@ export type PlayerData = {
 	-- SECRET DATA (Never replicate to other clients!)
 	hand: { string },        -- Available cards in hand
 	playedStack: { string }, -- Cards placed on table face-down (1st placed is index 1, top is #playedStack)
+	revealedCards: { string }, -- Cards revealed during current round (returned to hand at round end)
 }
 
 local PlayerManager = {}
@@ -23,12 +24,11 @@ local players: { [number]: PlayerData } = {}
 local seatOrder: { number } = {} -- Ordered list of userIds by seat (1..6)
 local nextBotId = -100
 
--- Helper: create standard starting hand (shuffled so Skull position is random)
-local function shuffleHand(hand: { string })
-	for i = #hand, 2, -1 do
-		local j = math.random(1, i)
-		hand[i], hand[j] = hand[j], hand[i]
-	end
+-- Helper: stably sort hand (Roses on left, Skull on right)
+local function sortHand(hand: { string })
+	table.sort(hand, function(a, b)
+		return a == Enums.CardType.Rose and b == Enums.CardType.Skull
+	end)
 end
 
 local function createDefaultHand(): { string }
@@ -39,7 +39,7 @@ local function createDefaultHand(): { string }
 	for _ = 1, Constants.SKULLS_PER_PLAYER do
 		table.insert(hand, Enums.CardType.Skull)
 	end
-	shuffleHand(hand)
+	sortHand(hand)
 	return hand
 end
 
@@ -89,6 +89,7 @@ function PlayerManager.AddPlayer(player: Player): PlayerData?
 		hasPassedBid = false,
 		hand = createDefaultHand(),
 		playedStack = {},
+		revealedCards = {},
 	}
 
 	players[player.UserId] = data
@@ -124,6 +125,7 @@ function PlayerManager.AddBot(name: string): PlayerData?
 		hasPassedBid = false,
 		hand = createDefaultHand(),
 		playedStack = {},
+		revealedCards = {},
 	}
 
 	players[botId] = data
@@ -193,12 +195,19 @@ end
 function PlayerManager.ResetRoundState()
 	for _, p in pairs(players) do
 		if not p.isEliminated then
-			-- Return played cards back to hand and reshuffle
+			-- Return played cards back to hand
 			for _, card in ipairs(p.playedStack) do
 				table.insert(p.hand, card)
 			end
 			table.clear(p.playedStack)
-			shuffleHand(p.hand)
+
+			-- Return revealed cards back to hand!
+			for _, card in ipairs(p.revealedCards) do
+				table.insert(p.hand, card)
+			end
+			table.clear(p.revealedCards)
+
+			sortHand(p.hand)
 			p.hasPassedBid = false
 		end
 	end
@@ -211,6 +220,7 @@ function PlayerManager.ResetMatch()
 		p.hasPassedBid = false
 		p.hand = createDefaultHand()
 		p.playedStack = {}
+		p.revealedCards = {}
 	end
 end
 
@@ -232,7 +242,7 @@ function PlayerManager.PlayCard(userId: number, cardType: string): boolean
 	return true
 end
 
--- Permanently discard a card from hand or stack (e.g. after hitting a skull)
+-- Permanently discard a card from hand, stack, or revealed (e.g. after hitting a skull)
 function PlayerManager.DestroyCard(userId: number, cardType: string?): string?
 	local p = players[userId]
 	if not p then return nil end
@@ -241,6 +251,7 @@ function PlayerManager.DestroyCard(userId: number, cardType: string?): string?
 	local allRemaining = {}
 	for _, c in ipairs(p.hand) do table.insert(allRemaining, c) end
 	for _, c in ipairs(p.playedStack) do table.insert(allRemaining, c) end
+	for _, c in ipairs(p.revealedCards) do table.insert(allRemaining, c) end
 
 	if #allRemaining == 0 then
 		p.isEliminated = true
@@ -254,7 +265,7 @@ function PlayerManager.DestroyCard(userId: number, cardType: string?): string?
 		targetCard = allRemaining[randIdx]
 	end
 
-	-- Remove from hand first, or from playedStack
+	-- Remove from hand first, or from playedStack, or from revealedCards
 	local inHand = table.find(p.hand, targetCard)
 	if inHand then
 		table.remove(p.hand, inHand)
@@ -262,11 +273,16 @@ function PlayerManager.DestroyCard(userId: number, cardType: string?): string?
 		local inStack = table.find(p.playedStack, targetCard)
 		if inStack then
 			table.remove(p.playedStack, inStack)
+		else
+			local inRev = table.find(p.revealedCards, targetCard)
+			if inRev then
+				table.remove(p.revealedCards, inRev)
+			end
 		end
 	end
 
 	-- If player now has 0 total cards, they are eliminated
-	if #p.hand + #p.playedStack == 0 then
+	if #p.hand + #p.playedStack + #p.revealedCards == 0 then
 		p.isEliminated = true
 	end
 
@@ -279,6 +295,12 @@ function PlayerManager.GetClientState(forUserId: number?)
 	local sanitizedPlayers = {}
 	for id, p in pairs(players) do
 		local isSelf = (forUserId and forUserId == id)
+		local handToSend = nil
+		if isSelf and p.hand then
+			handToSend = table.clone(p.hand)
+			sortHand(handToSend)
+		end
+
 		sanitizedPlayers[tostring(id)] = {
 			userId = p.userId,
 			name = p.name,
@@ -290,7 +312,7 @@ function PlayerManager.GetClientState(forUserId: number?)
 			handCount = #p.hand,
 			stackCount = #p.playedStack,
 			-- Only the player themselves gets to see the true cards in their hand
-			hand = isSelf and p.hand or nil,
+			hand = handToSend,
 		}
 	end
 	return {

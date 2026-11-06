@@ -34,6 +34,13 @@ function BotController.DecidePlacementAction(botId: number, canBid: boolean, tot
 				action = Enums.PlayerAction.StartBid,
 				bid = startBid,
 			}
+		elseif ownSkullInPile and math.random() < 0.35 then
+			-- Bot bluffed with a skull, 35% chance to start a bluff-bid of 1 or 2
+			local bluffBid = math.min(2, totalCardsOnTable)
+			return {
+				action = Enums.PlayerAction.StartBid,
+				bid = bluffBid,
+			}
 		end
 	end
 

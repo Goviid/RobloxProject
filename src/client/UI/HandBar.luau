@@ -234,6 +234,13 @@ local function createCircularToken(
 		selectedCard = cardType
 		local clickedIdx = table.find(cardContainers, container) or index
 
+		-- Immediate responsive exit tween & prevent accidental double-clicks
+		btn.Active = false
+		local exitTween = TweenService:Create(container, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Position = container.Position + UDim2.new(0, 0, 0, 50),
+		})
+		exitTween:Play()
+
 		if onCardClickedCallback then
 			onCardClickedCallback(cardType, clickedIdx)
 		end
@@ -329,11 +336,17 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	armHolder.Name = "RobloxArmHolder"
 	armHolder.AnchorPoint = Vector2.new(0.5, 1)
 	armHolder.Size = UDim2.new(0, 130, 0, 150)
-	armHolder.Position = UDim2.new(0.5, 75, 1, 38)
-	armHolder.Rotation = -16
+	armHolder.Position = UDim2.new(0.5, 45, 1, 46)
+	armHolder.Rotation = -14
 	armHolder.BackgroundTransparency = 1
-	armHolder.ZIndex = 25
+	armHolder.Active = false
+	armHolder.Selectable = false
+	armHolder.ZIndex = 5
 	armHolder.Parent = dock
+
+	pcall(function()
+		(armHolder :: any).Interactable = false
+	end)
 
 	-- 1. Dark Suit Sleeve
 	local sleeve = Instance.new("Frame")
@@ -342,9 +355,15 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	sleeve.Position = UDim2.new(0.5, -34, 1, -90)
 	sleeve.BackgroundColor3 = Color3.fromRGB(20, 18, 26)
 	sleeve.BorderSizePixel = 0
-	sleeve.ZIndex = 26
+	sleeve.Active = false
+	sleeve.Selectable = false
+	sleeve.ZIndex = 6
 	sleeve.Parent = armHolder
 	Instance.new("UICorner", sleeve).CornerRadius = UDim.new(0, 4)
+
+	pcall(function()
+		(sleeve :: any).Interactable = false
+	end)
 
 	local sleeveStroke = Instance.new("UIStroke")
 	sleeveStroke.Color = Color3.fromRGB(35, 30, 45)
@@ -358,9 +377,15 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	cuff.Position = UDim2.new(0, 0, 0, -12)
 	cuff.BackgroundColor3 = Color3.fromRGB(242, 242, 250)
 	cuff.BorderSizePixel = 0
-	cuff.ZIndex = 27
+	cuff.Active = false
+	cuff.Selectable = false
+	cuff.ZIndex = 7
 	cuff.Parent = sleeve
 	Instance.new("UICorner", cuff).CornerRadius = UDim.new(0, 3)
+
+	pcall(function()
+		(cuff :: any).Interactable = false
+	end)
 
 	-- 3. Blocky Classic Roblox Yellow Hand
 	local hand = Instance.new("Frame")
@@ -369,9 +394,15 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	hand.Position = UDim2.new(0.5, -29, 0, -48)
 	hand.BackgroundColor3 = Color3.fromRGB(245, 205, 55)
 	hand.BorderSizePixel = 0
-	hand.ZIndex = 28
+	hand.Active = false
+	hand.Selectable = false
+	hand.ZIndex = 8
 	hand.Parent = sleeve
 	Instance.new("UICorner", hand).CornerRadius = UDim.new(0, 6)
+
+	pcall(function()
+		(hand :: any).Interactable = false
+	end)
 
 	local handStroke = Instance.new("UIStroke")
 	handStroke.Color = Color3.fromRGB(195, 155, 35)
@@ -384,6 +415,11 @@ end
 
 function HandBar.UpdateHand(hand: { string }, isTurn: boolean, canPlace: boolean)
 	if not dockFrame then return end
+
+	-- Stably sort hand so Roses are consistently on left and Skull on far right
+	table.sort(hand, function(a, b)
+		return a == Enums.CardType.Rose and b == Enums.CardType.Skull
+	end)
 
 	currentHand = table.clone(hand)
 	isPlayerTurn = isTurn
