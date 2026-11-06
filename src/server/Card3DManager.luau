@@ -56,15 +56,15 @@ function Card3DManager.PlaceCard3D(seatIndex: number, stackCount: number)
 
 	local folder = getCardsFolder()
 	local coasterPos = coasterCF.Position
-	local baseY = coasterPos.Y + 0.03
-	local stackY = baseY + 0.06 + (stackCount - 1) * 0.10
+	local baseY = 3.05
+	local stackY = baseY + 0.03 + (stackCount - 1) * 0.06
 
-	-- Target CFrame: Perfectly concentric clean circle (no random skewed jitter!)
+	-- Target CFrame: Perfectly concentric clean circle flush on the mat
 	local targetCF = CFrame.new(coasterPos.X, stackY, coasterPos.Z)
 		* CFrame.Angles(0, 0, math.rad(90))
 
-	-- Spawn slightly above the stack for a snappy physical drop animation
-	local spawnCF = targetCF + Vector3.new(0, 1.2, 0)
+	-- Spawn only slightly above the mat for a snappy physical drop animation
+	local spawnCF = targetCF + Vector3.new(0, 0.15, 0)
 
 	local cardPart = Instance.new("Part")
 	cardPart.Name = "Card3D_Seat" .. seatIndex .. "_Card" .. stackCount

@@ -16,7 +16,7 @@ local INITIAL_MESSAGES = {
 	{ sender = "Bsoninnal89", text = "no", color = "#50E1F5" },
 	{ sender = "BLUFFER_99", text = "skulls & roses", color = "#FFD23F" },
 	{ sender = "BLUFFER_99", text = "Change now rhat k place card!", color = "#FFD23F" },
-	{ sender = "BLUFFER_99", text = "Bet", color = "#FFD23F" },
+	{ sender = "BLUFFER_99", text = "Bid", color = "#FFD23F" },
 	{ sender = "BLUFFER_99", text = "snm", color = "#FFD23F" },
 	{ sender = "BLUFFER_99", text = "PLACE CARD?", color = "#FFD23F" },
 	{ sender = "BLUFFER_99", text = "yes", color = "#FFD23F" },

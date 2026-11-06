@@ -26,36 +26,36 @@ local cardCountLabels: { [number]: TextLabel } = {}
 
 -- Table Seat Coordinates (4-Player Layout: 1=Front/You, 2=Left, 3=Back, 4=Right)
 local SEAT_CONFIGS = {
-	[1] = { -- You (Front - Close-up view)
-		standPos = Vector3.new(0, 3.4, 5.2),
-		lookAt = Vector3.new(0, 2.5, -0.6),
-		pilePos = Vector3.new(-1.8, 3.06, 2.4),
+	[1] = { -- You (Front)
+		standPos = Vector3.new(0, 3.4, 7.8),
+		lookAt = Vector3.new(0, 3.0, 0),
+		pilePos = Vector3.new(-2.2, 3.06, 3.6),
 		isLocal = true,
 		label = "YOUR PILE",
 	},
 	[2] = { -- Left (BLUFFER_99)
-		standPos = Vector3.new(-6.6, 3.4, 0.4),
-		lookAt = Vector3.new(0, 2.8, 0),
-		pilePos = Vector3.new(-3.8, 3.06, 0.6),
-		handPos = Vector3.new(-4.8, 3.3, -1.2),
+		standPos = Vector3.new(-7.8, 3.4, 0.4),
+		lookAt = Vector3.new(0, 3.0, 0),
+		pilePos = Vector3.new(-4.4, 3.06, 0.6),
+		handPos = Vector3.new(-5.6, 3.3, -1.8),
 		handRotY = math.rad(45),
 		isLocal = false,
 		label = "PILE",
 	},
 	[3] = { -- Back (BLUFFE_99)
-		standPos = Vector3.new(0, 3.4, -6.6),
-		lookAt = Vector3.new(0, 2.8, 0),
-		pilePos = Vector3.new(1.6, 3.06, -3.2),
-		handPos = Vector3.new(-1.2, 3.3, -4.6),
+		standPos = Vector3.new(0, 3.4, -7.8),
+		lookAt = Vector3.new(0, 3.0, 0),
+		pilePos = Vector3.new(1.8, 3.06, -3.8),
+		handPos = Vector3.new(-1.6, 3.3, -5.4),
 		handRotY = math.rad(180),
 		isLocal = false,
 		label = "PILE",
 	},
 	[4] = { -- Right (ROSE_KING)
-		standPos = Vector3.new(6.6, 3.4, 0.4),
-		lookAt = Vector3.new(0, 2.8, 0),
-		pilePos = Vector3.new(3.8, 3.06, 0.6),
-		handPos = Vector3.new(4.8, 3.3, -1.2),
+		standPos = Vector3.new(7.8, 3.4, 0.4),
+		lookAt = Vector3.new(0, 3.0, 0),
+		pilePos = Vector3.new(4.4, 3.06, 0.6),
+		handPos = Vector3.new(5.6, 3.3, -1.8),
 		handRotY = math.rad(-45),
 		isLocal = false,
 		label = "PILE",
@@ -197,7 +197,7 @@ function TableBuilder.Build()
 	local pileSpotPart = Instance.new("Part")
 	pileSpotPart.Name = "YourPileSpotlight"
 	pileSpotPart.Size = Vector3.new(1, 1, 1)
-	pileSpotPart.CFrame = CFrame.new(-1.8, 6.2, 2.4)
+	pileSpotPart.CFrame = CFrame.new(-2.2, 6.2, 3.6)
 	pileSpotPart.Anchored = true
 	pileSpotPart.CanCollide = false
 	pileSpotPart.Transparency = 1
@@ -302,55 +302,6 @@ function TableBuilder.Build()
 	particles.EmissionDirection = Enum.NormalId.Right
 	particles.Parent = centerPile
 
-	-- Decorative overlapping card tokens piled in center drop zone
-	local centerCardOffsets = {
-		{ x = -0.6, z = 0.4, rot = 25, isSkull = false },
-		{ x = 0.7, z = -0.3, rot = -40, isSkull = false },
-		{ x = -0.2, z = -0.7, rot = 75, isSkull = true },
-		{ x = 0.4, z = 0.6, rot = -15, isSkull = false },
-		{ x = -0.5, z = -0.2, rot = 110, isSkull = false },
-		{ x = 0.1, z = 0.1, rot = 10, isSkull = true },
-	}
-	for cIdx, cData in ipairs(centerCardOffsets) do
-		local cCard = Instance.new("Part")
-		cCard.Name = "CenterPiledCard_" .. cIdx
-		cCard.Shape = Enum.PartType.Cylinder
-		cCard.Size = Vector3.new(0.05, 1.85, 1.85)
-		cCard.CFrame = CFrame.new(cData.x, 3.03 + (cIdx * 0.04), cData.z)
-			* CFrame.Angles(0, math.rad(cData.rot), math.rad(90))
-		cCard.Anchored = true
-		cCard.CanCollide = false
-		cCard.Material = Enum.Material.SmoothPlastic
-		cCard.Color = cData.isSkull and Color3.fromRGB(26, 22, 32) or Color3.fromRGB(238, 222, 195)
-		cCard.Parent = centerPile
-
-		local cSg = Instance.new("SurfaceGui")
-		cSg.Face = Enum.NormalId.Right
-		cSg.CanvasSize = Vector2.new(128, 128)
-		cSg.Adornee = cCard
-		cSg.Parent = cCard
-
-		local cBg = Instance.new("Frame")
-		cBg.Size = UDim2.new(1, 0, 1, 0)
-		cBg.BackgroundColor3 = cData.isSkull and Color3.fromRGB(26, 22, 32) or Color3.fromRGB(238, 222, 195)
-		cBg.Parent = cSg
-		Instance.new("UICorner", cBg).CornerRadius = UDim.new(1, 0)
-
-		local cStr = Instance.new("UIStroke")
-		cStr.Color = Color3.fromRGB(255, 215, 80)
-		cStr.Thickness = 2.4
-		cStr.Parent = cBg
-
-		local cIco = Instance.new("TextLabel")
-		cIco.Size = UDim2.new(1, 0, 1, 0)
-		cIco.BackgroundTransparency = 1
-		cIco.Font = Enum.Font.FredokaOne
-		cIco.TextSize = 52
-		cIco.TextColor3 = cData.isSkull and Color3.fromRGB(255, 75, 90) or Color3.fromRGB(210, 30, 50)
-		cIco.Text = cData.isSkull and "💀" or "🌹"
-		cIco.Parent = cBg
-	end
-
 	-- 5. Individual Player Mats ("YOUR PILE" and "PILE")
 	for seatIdx, cfg in pairs(SEAT_CONFIGS) do
 		standingCFrames[seatIdx] = CFrame.lookAt(cfg.standPos, cfg.lookAt)
@@ -433,49 +384,6 @@ function TableBuilder.Build()
 		label.TextStrokeColor3 = Color3.fromRGB(15, 15, 20)
 		label.Text = cfg.label
 		label.Parent = matFrame
-
-		-- Pre-populate stacked face-down circular card tokens on Seat 1's "YOUR PILE"
-		if seatIdx == 1 then
-			for s = 1, 3 do
-				local sCard = Instance.new("Part")
-				sCard.Name = "YourPile_PreStackedCard_" .. s
-				sCard.Shape = Enum.PartType.Cylinder
-				sCard.Size = Vector3.new(0.06, 2.2, 2.2)
-				sCard.CFrame = CFrame.new(cfg.pilePos.X, 3.06 + (s - 1) * 0.08, cfg.pilePos.Z)
-					* CFrame.Angles(0, 0, math.rad(90))
-				sCard.Anchored = true
-				sCard.CanCollide = false
-				sCard.Material = Enum.Material.SmoothPlastic
-				sCard.Color = Color3.fromRGB(26, 22, 32)
-				sCard.Parent = mat
-
-				local sSg = Instance.new("SurfaceGui")
-				sSg.Face = Enum.NormalId.Right
-				sSg.CanvasSize = Vector2.new(128, 128)
-				sSg.Adornee = sCard
-				sSg.Parent = sCard
-
-				local sBg = Instance.new("Frame")
-				sBg.Size = UDim2.new(1, 0, 1, 0)
-				sBg.BackgroundColor3 = Color3.fromRGB(26, 22, 32)
-				sBg.Parent = sSg
-				Instance.new("UICorner", sBg).CornerRadius = UDim.new(1, 0)
-
-				local sStr = Instance.new("UIStroke")
-				sStr.Color = Color3.fromRGB(245, 205, 80)
-				sStr.Thickness = 2.4
-				sStr.Parent = sBg
-
-				local sIco = Instance.new("TextLabel")
-				sIco.Size = UDim2.new(1, 0, 1, 0)
-				sIco.BackgroundTransparency = 1
-				sIco.Font = Enum.Font.FredokaOne
-				sIco.TextSize = 50
-				sIco.TextColor3 = Color3.fromRGB(245, 210, 80)
-				sIco.Text = "✦"
-				sIco.Parent = sBg
-			end
-		end
 
 		-- Seat 1 Spawn Location (anchored right at the front seat)
 		if seatIdx == 1 then

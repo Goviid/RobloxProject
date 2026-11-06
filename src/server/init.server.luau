@@ -79,13 +79,9 @@ local function onPlayerAdded(player: Player)
 		spawnTestBots(botsToSpawn)
 	end
 
-	-- Start the game if currently in Lobby
+	-- Start the game immediately if currently in Lobby so player can act without delay
 	if RoundManager.GetGameState() == require(ReplicatedStorage.Shared.Enums).GameState.Lobby then
-		task.delay(1.0, function()
-			if RoundManager.GetGameState() == require(ReplicatedStorage.Shared.Enums).GameState.Lobby then
-				RoundManager.StartRound()
-			end
-		end)
+		RoundManager.StartRound()
 	else
 		RoundManager.SendStateToPlayer(player.UserId)
 	end

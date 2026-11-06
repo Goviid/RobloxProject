@@ -144,7 +144,7 @@ function TableView.Create(parent: GuiObject, _onRevealClick: (targetUserId: numb
 	alertText.TextColor3 = Color3.fromRGB(255, 215, 65) -- Bold Yellow-Gold as requested
 	alertText.TextStrokeTransparency = 0.35
 	alertText.TextStrokeColor3 = Color3.fromRGB(18, 14, 20)
-	alertText.Text = "BLUFFER_99 raised the bid to 3!"
+	alertText.Text = ""
 	alertText.Parent = alertFrame
 	matchAlertLabel = alertText
 
@@ -164,7 +164,7 @@ function TableView.UpdateCenter(gameState: string, highestBid: number, challenge
 	local phaseNames: { [string]: { name: string, color: string } } = {
 		[Enums.GameState.Lobby] = { name = "WAITING FOR PLAYERS", color = "#50E1F5" },
 		[Enums.GameState.Placement] = { name = "PLACEMENT PHASE", color = "#4ECCA3" },
-		[Enums.GameState.Bidding] = { name = "BETTING PHASE", color = "#FFD23F" },
+		[Enums.GameState.Bidding] = { name = "BIDDING PHASE", color = "#FFD23F" },
 		[Enums.GameState.Revealing] = { name = "CHALLENGE PHASE", color = "#FF6B6B" },
 		[Enums.GameState.RoundEnd] = { name = "ROUND COMPLETE", color = "#FFD23F" },
 		[Enums.GameState.GameOver] = { name = "MATCH OVER", color = "#FFD23F" },

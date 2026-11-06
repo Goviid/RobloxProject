@@ -24,11 +24,11 @@ local canCurrentlyPlace = false
 local isPlayerTurn = false
 local selectedCard: string? = nil
 
--- Circular Token Dimensions (Scaled up, positioned higher & prominent matching prompt)
-local CARD_DIAMETER = 168
-local CARD_SPACING = 96
-local RESTING_Y = -65
-local HOVER_LIFT_Y = -125
+-- Circular Token Dimensions (Clean circular tokens docked at bottom center)
+local CARD_DIAMETER = 150
+local CARD_SPACING = 88
+local RESTING_Y = -55
+local HOVER_LIFT_Y = -105
 
 -- Natural fan angles
 local function getFannedAngle(index: number, total: number): number
@@ -86,7 +86,7 @@ local function createCircularToken(
 	promptLabel.TextColor3 = isRose and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 110, 130)
 	promptLabel.TextStrokeTransparency = 0.35
 	promptLabel.TextStrokeColor3 = Color3.fromRGB(15, 15, 20)
-	promptLabel.Text = "PLACE CARD"
+	promptLabel.Text = ""
 	promptLabel.ZIndex = baseZIndex + 4
 	promptLabel.Parent = container
 
@@ -219,7 +219,7 @@ local function createCircularToken(
 			Color = isRose and Color3.fromRGB(255, 225, 130) or Color3.fromRGB(255, 45, 75),
 		}):Play()
 
-		promptLabel.Text = (isPlayerTurn and canCurrentlyPlace) and "PLACE CARD" or (isRose and "ROSE" or "SKULL")
+		promptLabel.Text = ""
 		promptLabel.TextColor3 = isRose and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 100, 120)
 	end)
 
@@ -250,9 +250,37 @@ function HandBar.ConsumeCard(cardIndex: number)
 	table.remove(cardContainers, cardIndex)
 	table.remove(currentHand, cardIndex)
 
-	local exitTween = TweenService:Create(targetContainer, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-		Position = targetContainer.Position + UDim2.new(0, 0, 0, -90),
-		Size = UDim2.new(0, 0, 0, 0),
+	local btn = targetContainer:FindFirstChild("TokenButton") :: ImageButton?
+	local promptLabel = targetContainer:FindFirstChild("PromptLabel") :: TextLabel?
+	local shadow = targetContainer:FindFirstChild("TokenShadow") :: Frame?
+	local icon = btn and btn:FindFirstChild("CenterIcon") :: TextLabel?
+	local stroke = btn and btn:FindFirstChild("TokenStroke") :: UIStroke?
+	local inner = btn and btn:FindFirstChild("InnerRing") :: Frame?
+	local innerStroke = inner and inner:FindFirstChildWhichIsA("UIStroke") :: UIStroke?
+
+	local tweenInfo = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+
+	if btn then
+		TweenService:Create(btn, tweenInfo, { BackgroundTransparency = 1 }):Play()
+	end
+	if shadow then
+		TweenService:Create(shadow, tweenInfo, { BackgroundTransparency = 1 }):Play()
+	end
+	if icon then
+		TweenService:Create(icon, tweenInfo, { TextTransparency = 1 }):Play()
+	end
+	if promptLabel then
+		TweenService:Create(promptLabel, tweenInfo, { TextTransparency = 1 }):Play()
+	end
+	if stroke then
+		TweenService:Create(stroke, tweenInfo, { Transparency = 1 }):Play()
+	end
+	if innerStroke then
+		TweenService:Create(innerStroke, tweenInfo, { Transparency = 1 }):Play()
+	end
+
+	local exitTween = TweenService:Create(targetContainer, tweenInfo, {
+		Position = targetContainer.Position + UDim2.new(0, 0, 0, 60),
 	})
 	exitTween:Play()
 	exitTween.Completed:Connect(function()
@@ -281,7 +309,7 @@ function HandBar.ConsumeCard(cardIndex: number)
 		container:SetAttribute("BaseZIndex", newZ)
 		container.ZIndex = newZ
 
-		TweenService:Create(container, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		TweenService:Create(container, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 			Position = UDim2.new(0.5, xOffset, 1, newY),
 			Rotation = rotAngle,
 		}):Play()
@@ -289,7 +317,7 @@ function HandBar.ConsumeCard(cardIndex: number)
 end
 
 -- ============================================================================
--- 3. SETUP FLOATING HAND DOCK WITH PLAYER'S BLOCKY ROBLOX HAND
+-- 3. SETUP FLOATING HAND DOCK (Locofficial style - cards only, clean fan)
 -- ============================================================================
 function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	onCardClickedCallback = onSelect
@@ -298,84 +326,12 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	local dock = Instance.new("Frame")
 	dock.Name = "FloatingHandDock"
 	dock.AnchorPoint = Vector2.new(0.5, 1)
-	dock.Size = UDim2.new(0, 600, 0, 270)
-	dock.Position = UDim2.new(0.52, 0, 1, 0)
+	dock.Size = UDim2.new(0, 600, 0, 240)
+	dock.Position = UDim2.new(0.5, 0, 1, 0)
 	dock.BackgroundTransparency = 1
 	dock.BorderSizePixel = 0
 	dock.ZIndex = 15
 	dock.Parent = parent
-
-	-- ========================================================================
-	-- PLAYER'S BLOCKY ROBLOX-STYLE HAND (Actively holding the fanned cards)
-	-- ========================================================================
-	local armContainer = Instance.new("Frame")
-	armContainer.Name = "PlayerRobloxArm"
-	armContainer.Size = UDim2.new(0, 160, 0, 180)
-	armContainer.AnchorPoint = Vector2.new(0.5, 1)
-	armContainer.Position = UDim2.new(0.5, 60, 1, 42)
-	armContainer.Rotation = -16
-	armContainer.BackgroundTransparency = 1
-	armContainer.ZIndex = 14
-	armContainer.Parent = dock
-
-	-- Forearm / Sleeve (Dark suit / hoodie sleeve)
-	local sleeve = Instance.new("Frame")
-	sleeve.Name = "Sleeve"
-	sleeve.Size = UDim2.new(0, 110, 0, 140)
-	sleeve.Position = UDim2.new(0.5, -55, 0, 40)
-	sleeve.BackgroundColor3 = Color3.fromRGB(22, 18, 26)
-	sleeve.BorderSizePixel = 0
-	sleeve.ZIndex = 14
-	sleeve.Parent = armContainer
-	Instance.new("UICorner", sleeve).CornerRadius = UDim.new(0, 10)
-
-	local sleeveStroke = Instance.new("UIStroke")
-	sleeveStroke.Color = Color3.fromRGB(38, 30, 44)
-	sleeveStroke.Thickness = 2.0
-	sleeveStroke.Parent = sleeve
-
-	-- Crisp White Shirt Cuff
-	local cuff = Instance.new("Frame")
-	cuff.Name = "Cuff"
-	cuff.Size = UDim2.new(1, 6, 0, 18)
-	cuff.Position = UDim2.new(0, -3, 0, -8)
-	cuff.BackgroundColor3 = Color3.fromRGB(250, 250, 250)
-	cuff.BorderSizePixel = 0
-	cuff.ZIndex = 15
-	cuff.Parent = sleeve
-	Instance.new("UICorner", cuff).CornerRadius = UDim.new(0, 4)
-
-	local cuffStroke = Instance.new("UIStroke")
-	cuffStroke.Color = Color3.fromRGB(210, 210, 215)
-	cuffStroke.Thickness = 1.2
-	cuffStroke.Parent = cuff
-
-	-- Classic Blocky Roblox Hand
-	local hand = Instance.new("Frame")
-	hand.Name = "BlockyHand"
-	hand.Size = UDim2.new(0, 94, 0, 70)
-	hand.Position = UDim2.new(0.5, -47, 0, -66)
-	hand.BackgroundColor3 = Color3.fromRGB(238, 192, 140) -- Natural Roblox skin tone
-	hand.BorderSizePixel = 0
-	hand.ZIndex = 16
-	hand.Parent = sleeve
-	Instance.new("UICorner", hand).CornerRadius = UDim.new(0, 12)
-
-	local handStroke = Instance.new("UIStroke")
-	handStroke.Color = Color3.fromRGB(195, 150, 105)
-	handStroke.Thickness = 1.6
-	handStroke.Parent = hand
-
-	-- Thumb Notch / Palm grip detail
-	local thumb = Instance.new("Frame")
-	thumb.Name = "ThumbGrip"
-	thumb.Size = UDim2.new(0, 28, 0, 42)
-	thumb.Position = UDim2.new(0, -8, 0, 10)
-	thumb.BackgroundColor3 = Color3.fromRGB(222, 175, 125)
-	thumb.BorderSizePixel = 0
-	thumb.ZIndex = 17
-	thumb.Parent = hand
-	Instance.new("UICorner", thumb).CornerRadius = UDim.new(0, 8)
 
 	dockFrame = dock
 	return dock
@@ -388,6 +344,17 @@ function HandBar.UpdateHand(hand: { string }, isTurn: boolean, canPlace: boolean
 	isPlayerTurn = isTurn
 	canCurrentlyPlace = canPlace
 	dockFrame.Visible = (#hand > 0)
+
+	-- If the visual cards count already matches, just reset prompt texts
+	if #cardContainers == #hand and #hand > 0 then
+		for _, c in ipairs(cardContainers) do
+			local pLabel = c:FindFirstChild("PromptLabel") :: TextLabel?
+			if pLabel then
+				pLabel.Text = ""
+			end
+		end
+		return
+	end
 
 	for _, c in ipairs(cardContainers) do
 		c:Destroy()
