@@ -26,7 +26,8 @@ local roundLeaderId: number? = nil -- Starting player for the round
 local currentRoundNumber = 1
 
 local turnTimerThread: thread? = nil
-local isWaitingForAction = false
+local botTurnThread: thread? = nil
+local turnLock = false
 
 local function broadcastState()
 	for _, p in pairs(PlayerManager.GetAllPlayers()) do
@@ -92,7 +93,7 @@ function RoundManager.GetActivePlayerId(): number?
 	return p and p.userId or nil
 end
 
-local function advanceToNextActivePlayer()
+local function advanceToNextActivePlayer(skipPassed: boolean?)
 	local active = PlayerManager.GetActivePlayers()
 	if #active == 0 then return end
 
@@ -106,11 +107,36 @@ local function advanceToNextActivePlayer()
 			end
 		end
 	else
-		curIdx = activePlayerIndex
+		curIdx = math.clamp(activePlayerIndex, 1, #active)
 	end
 
 	local oldIdx = curIdx
-	activePlayerIndex = (curIdx % #active) + 1
+	local count = #active
+	local nextIdx = (curIdx % count) + 1
+
+	if skipPassed then
+		local attempts = 0
+		while attempts < count do
+			local candidate = active[nextIdx]
+			if candidate and not candidate.isEliminated and not candidate.hasPassedBid then
+				break
+			end
+			nextIdx = (nextIdx % count) + 1
+			attempts += 1
+		end
+	else
+		local attempts = 0
+		while attempts < count do
+			local candidate = active[nextIdx]
+			if candidate and not candidate.isEliminated then
+				break
+			end
+			nextIdx = (nextIdx % count) + 1
+			attempts += 1
+		end
+	end
+
+	activePlayerIndex = nextIdx
 	local nextP = active[activePlayerIndex]
 	print(string.format("[Server RoundManager] Advanced turn from index %d (%s) to index %d (%s) [Total active: %d]",
 		oldIdx, curId and tostring(curId) or "nil",
@@ -122,6 +148,13 @@ local function cancelTurnTimer()
 	if turnTimerThread then
 		local thread = turnTimerThread
 		turnTimerThread = nil
+		if coroutine.running() ~= thread then
+			pcall(task.cancel, thread)
+		end
+	end
+	if botTurnThread then
+		local thread = botTurnThread
+		botTurnThread = nil
 		if coroutine.running() ~= thread then
 			pcall(task.cancel, thread)
 		end
@@ -172,10 +205,19 @@ local function checkBotTurn()
 	local activeId = RoundManager.GetActivePlayerId()
 	if not activeId then return end
 	local p = PlayerManager.GetPlayer(activeId)
-	if not p or not p.isBot then return end
+	if not p or not p.isBot or p.isEliminated then return end
+
+	if botTurnThread then
+		local thread = botTurnThread
+		botTurnThread = nil
+		if coroutine.running() ~= thread then
+			pcall(task.cancel, thread)
+		end
+	end
 
 	-- Fast, snappy bot reaction delay (0.4 to 0.7s) to maintain responsive game pacing
-	task.delay(math.random(4, 7) / 10, function()
+	botTurnThread = task.delay(math.random(4, 7) / 10, function()
+		botTurnThread = nil
 		if RoundManager.GetActivePlayerId() ~= activeId then return end
 
 		if currentGameState == Enums.GameState.Placement then
@@ -195,6 +237,8 @@ local function checkBotTurn()
 			local decision = BotController.DecideBiddingAction(activeId, highestBid, PlayerManager.GetTotalCardsOnTable())
 			if decision then
 				RoundManager.HandlePlayerAction(activeId, decision.action, decision)
+			else
+				RoundManager.HandlePlayerAction(activeId, Enums.PlayerAction.Pass, {})
 			end
 		elseif currentGameState == Enums.GameState.Revealing then
 			local targetId = BotController.DecideCardToReveal(activeId, challengerId or activeId)
@@ -377,8 +421,8 @@ local function onChallengerFailed(skullOwnerId: number)
 	end)
 end
 
--- Central Action Handler
-function RoundManager.HandlePlayerAction(userId: number, action: string, data: any): (boolean, string?)
+-- Central Action Handler (Internal)
+function RoundManager._ProcessPlayerAction(userId: number, action: string, data: any): (boolean, string?)
 	local activeId = RoundManager.GetActivePlayerId()
 	local p = PlayerManager.GetPlayer(userId)
 
@@ -478,19 +522,7 @@ function RoundManager.HandlePlayerAction(userId: number, action: string, data: a
 				return true
 			end
 
-			advanceToNextActivePlayer()
-			-- Skip players who have passed
-			local active = PlayerManager.GetActivePlayers()
-			local attempts = 0
-			while attempts < #active do
-				local nextP = active[activePlayerIndex]
-				if not nextP.hasPassedBid then
-					break
-				end
-				advanceToNextActivePlayer()
-				attempts += 1
-			end
-
+			advanceToNextActivePlayer(true)
 			runCurrentTurn()
 			return true
 
@@ -523,18 +555,7 @@ function RoundManager.HandlePlayerAction(userId: number, action: string, data: a
 				return true
 			else
 				-- Pass to next non-passed player
-				advanceToNextActivePlayer()
-				local active = PlayerManager.GetActivePlayers()
-				local attempts = 0
-				while attempts < #active do
-					local nextP = active[activePlayerIndex]
-					if not nextP.hasPassedBid then
-						break
-					end
-					advanceToNextActivePlayer()
-					attempts += 1
-				end
-
+				advanceToNextActivePlayer(true)
 				runCurrentTurn()
 				return true
 			end
@@ -614,6 +635,42 @@ function RoundManager.HandlePlayerAction(userId: number, action: string, data: a
 	end
 
 	return false, "Invalid action for current game state."
+end
+
+-- Public Action Handler with Turn Lock & Resync Protection
+function RoundManager.HandlePlayerAction(userId: number, action: string, data: any): (boolean, string?)
+	local p = PlayerManager.GetPlayer(userId)
+
+	if turnLock then
+		warn(string.format("[Server RoundManager] Rejected '%s' from %d: Action locked/in-progress", action, userId))
+		if p and not p.isBot then
+			RoundManager.SendStateToPlayer(userId)
+		end
+		return false, "Action in progress, please wait."
+	end
+
+	turnLock = true
+	local success, ok, errMsg = pcall(function()
+		return RoundManager._ProcessPlayerAction(userId, action, data)
+	end)
+	turnLock = false
+
+	if not success then
+		warn(string.format("[Server RoundManager] Error processing '%s' from %d: %s", action, userId, tostring(ok)))
+		if p and not p.isBot then
+			RoundManager.SendStateToPlayer(userId)
+		end
+		return false, "An internal error occurred."
+	end
+
+	-- If action failed/rejected, ensure player gets state resynced so hand is restored
+	if not ok then
+		if p and not p.isBot then
+			RoundManager.SendStateToPlayer(userId)
+		end
+	end
+
+	return ok, errMsg
 end
 
 -- Connect 3D table card click detector to RoundManager action arbiter

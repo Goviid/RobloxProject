@@ -16,8 +16,15 @@ function BotController.DecidePlacementAction(botId: number, canBid: boolean, tot
 	local hasRose = table.find(p.hand, Enums.CardType.Rose) ~= nil
 	local hasSkull = table.find(p.hand, Enums.CardType.Skull) ~= nil
 
-	-- If canBid is true, bot has played at least 1 card. Should they start a bid?
-	if canBid and #p.playedStack >= 1 and totalCardsOnTable >= 3 then
+	-- Only consider starting a bid if bot has placed at least 2 cards and table has >= 5 cards,
+	-- OR if the bot has completely run out of cards in hand.
+	-- This ensures players and bots get to place second cards before bidding begins.
+	local shouldConsiderBidding = canBid and (
+		#p.hand == 0 or
+		(#p.playedStack >= 2 and totalCardsOnTable >= 5)
+	)
+
+	if shouldConsiderBidding and #p.playedStack >= 1 then
 		-- Count how many roses the bot placed on its own stack
 		local ownRoses = 0
 		for _, card in ipairs(p.playedStack) do
@@ -26,25 +33,30 @@ function BotController.DecidePlacementAction(botId: number, canBid: boolean, tot
 			end
 		end
 
-		-- If bot has 1+ roses and no skull in their own pile, 40% chance to start a bid
 		local ownSkullInPile = table.find(p.playedStack, Enums.CardType.Skull) ~= nil
-		if not ownSkullInPile and ownRoses >= 1 and math.random() < 0.40 then
-			local startBid = math.min(ownRoses + 1, totalCardsOnTable)
+		if not ownSkullInPile and ownRoses >= 1 and math.random() < 0.35 then
+			local startBid = math.clamp(ownRoses + 1, 1, totalCardsOnTable)
 			return {
 				action = Enums.PlayerAction.StartBid,
 				bid = startBid,
 			}
-		elseif ownSkullInPile and math.random() < 0.35 then
-			-- Bot bluffed with a skull, 35% chance to start a bluff-bid of 1 or 2
-			local bluffBid = math.min(2, totalCardsOnTable)
+		elseif ownSkullInPile and math.random() < 0.25 then
+			-- Bot bluffed with a skull, conservative bluff bid
+			local bluffBid = math.clamp(2, 1, totalCardsOnTable)
 			return {
 				action = Enums.PlayerAction.StartBid,
 				bid = bluffBid,
 			}
+		elseif #p.hand == 0 then
+			-- No cards left in hand, must start a bid!
+			return {
+				action = Enums.PlayerAction.StartBid,
+				bid = math.clamp(ownRoses > 0 and ownRoses or 1, 1, totalCardsOnTable),
+			}
 		end
 	end
 
-	-- Otherwise, place a card if cards remain in hand
+	-- Default / guaranteed placement if cards remain in hand
 	if #p.hand > 0 then
 		local cardToPlay = Enums.CardType.Rose
 		if hasSkull and hasRose then
@@ -63,6 +75,14 @@ function BotController.DecidePlacementAction(botId: number, canBid: boolean, tot
 		return {
 			action = Enums.PlayerAction.StartBid,
 			bid = 1,
+		}
+	end
+
+	-- Guaranteed fallback
+	if #p.hand > 0 then
+		return {
+			action = Enums.PlayerAction.PlaceCard,
+			cardType = p.hand[1],
 		}
 	end
 

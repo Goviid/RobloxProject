@@ -23,6 +23,7 @@ local currentHand: { string } = {}
 local canCurrentlyPlace = false
 local isPlayerTurn = false
 local selectedCard: string? = nil
+local isSubmitting = false
 
 -- Circular Token Dimensions (Clean compact tokens docked at bottom edge)
 local CARD_DIAMETER = 120
@@ -221,9 +222,19 @@ local function createCircularToken(
 		promptLabel.Text = "PLACE CARD"
 	end)
 
-	btn.Activated:Connect(function()
-		print(string.format("[HandBar] Card clicked: %s | canCurrentlyPlace: %s",
-			tostring(cardType), tostring(canCurrentlyPlace)))
+	btn.MouseButton1Click:Connect(function()
+		print(string.format("[HandBar] Card clicked: %s | isPlayerTurn: %s | canCurrentlyPlace: %s | isSubmitting: %s",
+			tostring(cardType), tostring(isPlayerTurn), tostring(canCurrentlyPlace), tostring(isSubmitting)))
+
+		if isSubmitting then
+			return
+		end
+
+		if not isPlayerTurn then
+			local NotificationBanner = require(script.Parent.NotificationBanner)
+			NotificationBanner.Show("⏳ Please wait for your turn to place a card!", "info")
+			return
+		end
 
 		if not canCurrentlyPlace then
 			local NotificationBanner = require(script.Parent.NotificationBanner)
@@ -231,6 +242,7 @@ local function createCircularToken(
 			return
 		end
 
+		isSubmitting = true
 		selectedCard = cardType
 		local clickedIdx = table.find(cardContainers, container) or index
 
@@ -421,10 +433,35 @@ function HandBar.UpdateHand(hand: { string }, isTurn: boolean, canPlace: boolean
 		return a == Enums.CardType.Rose and b == Enums.CardType.Skull
 	end)
 
+	isSubmitting = false
+	local prevHand = currentHand
 	currentHand = table.clone(hand)
 	isPlayerTurn = isTurn
 	canCurrentlyPlace = canPlace
 	dockFrame.Visible = (#hand > 0)
+
+	-- Check if hand content or container count changed
+	local cardsMatch = (#prevHand == #hand and #cardContainers == #hand)
+	if cardsMatch then
+		for i = 1, #hand do
+			if prevHand[i] ~= hand[i] then
+				cardsMatch = false
+				break
+			end
+		end
+	end
+
+	-- If the cards themselves haven't changed, do NOT destroy/recreate DOM elements!
+	-- This preserves hover state and prevents button recreation drops.
+	if cardsMatch and #cardContainers == #hand then
+		for _, container in ipairs(cardContainers) do
+			local btn = container:FindFirstChild("TokenButton") :: ImageButton?
+			if btn then
+				btn.Active = true
+			end
+		end
+		return
+	end
 
 	for _, c in ipairs(cardContainers) do
 		c:Destroy()

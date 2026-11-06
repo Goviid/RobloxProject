@@ -82,10 +82,13 @@ local function buildUI()
 					AudioController.PlayCardPlace()
 				else
 					NotificationBanner.Show(err or "Not your turn to place a card!", "warning")
+					-- Immediately restore hand by requesting ground-truth state from server
+					Network.RequestState:FireServer()
 				end
 			end)
 		else
 			NotificationBanner.Show("Cards can only be placed during Placement Phase!", "warning")
+			Network.RequestState:FireServer()
 		end
 	end)
 
@@ -293,8 +296,9 @@ end)
 
 -- Game Over
 Network.GameOver.OnClientEvent:Connect(function(winnerId: number)
+	local pData = lastKnownPlayers[tostring(winnerId)]
 	local winner = Players:GetPlayerByUserId(winnerId)
-	local name = winner and winner.DisplayName or ("Player " .. winnerId)
+	local name = (pData and pData.name) or (winner and winner.DisplayName) or ("Player " .. winnerId)
 	AudioController.PlayVictory()
 	VictoryModal.Show(name, winnerId == localPlayer.UserId)
 	NotificationBanner.Show("👑 " .. name .. " WINS THE MATCH! 👑", "success")
