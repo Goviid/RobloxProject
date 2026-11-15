@@ -28,7 +28,7 @@ Multiplayer bluffing card game for Roblox (2–6 players, human + bots), Day of 
 
 ## Knowledge graph (Graphify)
 - `graphify-out/graph.json` is committed. **Don't explore by reading every file.** To orient or answer cross-module questions, query the graph first (`python -m graphify query "<question>"`, or `path` / `explain`), then read only the files and line ranges it points to.
-- After a feature lands, run `/graphify . --update` and commit the graph as a separate commit.
+- After a feature lands, run `python scripts/graph_update.py` and commit the graph as a separate commit. Don't use plain `graphify update` / `/graphify . --update`: graphify parses `.luau` with the Lua grammar and drops symbols after Luau type syntax. The script feeds it a Lua-compatible copy (line numbers unchanged). `--full` re-extracts everything; `--check` lists files that still fail to parse.
 
 ## Known issues (as of 2026-11-15)
 - `TableBuilder.Build()` takes no args but `init.server.luau` calls `Build("Table")` / `Build("Void")`; there is no real Void mode.
