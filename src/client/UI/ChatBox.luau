@@ -22,7 +22,7 @@ local INITIAL_MESSAGES = {
 	{ sender = "BLUFFER_99", text = "yes", color = "#FFD23F" },
 }
 
-function ChatBox.Create(parent: GuiObject): Frame
+function ChatBox.Create(parent: Instance): Frame
 	local box = Instance.new("Frame")
 	box.Name = "RobloxChatBox"
 	box.Size = UDim2.new(0, 310, 0, 195)

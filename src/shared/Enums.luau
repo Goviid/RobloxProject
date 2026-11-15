@@ -20,6 +20,7 @@ Enums.GameState = {
 	Placement = "Placement",
 	Bidding = "Bidding",
 	Revealing = "Revealing",
+	Discarding = "Discarding", -- Challenger hit a skull; a card is being chosen for removal
 	RoundEnd = "RoundEnd",
 	MatchEnd = "MatchEnd",
 }

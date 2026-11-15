@@ -41,6 +41,7 @@ The standard game is played with **4 players** (1 human player at **Seat 1**, an
    - If a player scored, they start the next round as Round Leader.
    - If the Challenger hit an opponent's skull, that opponent starts the next round.
    - If the Challenger hit their own skull, the Challenger starts the next round (if not eliminated).
+   - A player who loses their last card is eliminated; the last player with cards left wins the match.
 
 ### 1.3 Target Audience
 Fans of competitive tabletop games, bluffing games, social deduction (Liar's Dice, Coup, Sheriff of Nottingham), and modern digital card games (Uno, Hearthstone, Exploding Kittens) looking for fast-paced, high-stakes psychological bluffing matches on PC, mobile, and console.
@@ -298,8 +299,7 @@ All 3D models (the parlor room, table, felt surface, chairs, mats, cards, and bo
 
 ### 7.2 Known Limitations & TODOs
 1. **Interactive Discard Choice for Skull Penalty**:
-   - *Current State*: When a challenger hits a skull, `PlayerManager.DestroyCard` automatically picks a random card to destroy.
-   - *TODO*: Implement a prompt modal allowing the player to choose which card from their remaining hand they wish to discard.
+   - *Done (2026-11-15)*: Classic rules. A skull hit enters `GameState.Discarding`. Own skull → the challenger picks which of their cards to lose; someone else's skull → that player removes one of the challenger's cards blindly (`UI/DiscardModal.luau`, `BotController.DecideDiscard`). Timeout picks at random; a single remaining card is removed automatically.
 2. **Persistent Progression / DataStore**:
    - *Current State*: Session-only in-memory data.
    - *TODO*: Implement `DataStoreService` to persist player wins, win streaks, games played, and unlockable custom card/coaster skins.

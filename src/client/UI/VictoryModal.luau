@@ -3,14 +3,12 @@
 -- Match celebration popup honoring the winner with animated particles, crown, and score banner (LOCOfficial style)
 
 local TweenService = game:GetService("TweenService")
-local Players = game:GetService("Players")
 local Theme = require(script.Parent.Theme)
 
 local VictoryModal = {}
 local modalFrame: Frame? = nil
 local winnerLabel: TextLabel? = nil
 local subtitleLabel: TextLabel? = nil
-local gemContainer: Frame? = nil
 
 -- Create floating confetti flakes
 local function spawnConfettiBurst(parent: Instance)
@@ -155,17 +153,32 @@ function VictoryModal.Create(parent: Instance): Frame
 	modalFrame = container
 	winnerLabel = winner
 	subtitleLabel = sub
-	gemContainer = gemBox
 
 	return container
 end
 
-function VictoryModal.Show(winnerName: string, isLocalPlayer: boolean)
+local showToken = 0
+
+-- Shows the winner for `duration` seconds with a countdown to the next match.
+function VictoryModal.Show(winnerName: string, isLocalPlayer: boolean, reason: string?, duration: number?)
 	if not modalFrame or not winnerLabel or not subtitleLabel then return end
+	local subtitle = subtitleLabel
+	showToken += 1
+	local token = showToken
+	local holdSeconds = math.max(3, duration or 6)
 
 	winnerLabel.Text = if isLocalPlayer then "🎉 YOU WON THE MATCH! 🎉" else (winnerName .. " WINS THE MATCH!")
 	winnerLabel.TextColor3 = if isLocalPlayer then Theme.Colors.GoldGlow else Theme.Colors.TextPrimary
-	subtitleLabel.Text = "First to 2 Points! Preparing the next game..."
+
+	local reasonText = reason or "Match over!"
+	task.spawn(function()
+		local secondsLeft = math.ceil(holdSeconds)
+		while secondsLeft > 0 and showToken == token do
+			subtitle.Text = reasonText .. "  New game in " .. secondsLeft .. "s"
+			task.wait(1)
+			secondsLeft -= 1
+		end
+	end)
 
 	modalFrame.Visible = true
 	modalFrame.Size = UDim2.new(0, 360, 0, 210)
@@ -178,9 +191,9 @@ function VictoryModal.Show(winnerName: string, isLocalPlayer: boolean)
 
 	spawnConfettiBurst(modalFrame)
 
-	-- Auto-dismiss after 6 seconds
-	task.delay(6.0, function()
-		if not modalFrame then return end
+	-- Auto-dismiss just before the next match starts
+	task.delay(holdSeconds - 0.5, function()
+		if not modalFrame or showToken ~= token then return end
 		local tween = TweenService:Create(modalFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			Size = UDim2.new(0, 340, 0, 200),
 			Position = UDim2.new(0.5, -170, 0.45, -100),

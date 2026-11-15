@@ -28,7 +28,7 @@ local currentRoundNumber = 1
 local currentActivePlayerName = "Opponent"
 local currentIsMyTurn = false
 
-function TableView.Create(parent: GuiObject, _onRevealClick: (targetUserId: number) -> ()): Frame
+function TableView.Create(parent: Instance, _onRevealClick: (targetUserId: number) -> ()): Frame
 	local container = Instance.new("Frame")
 	container.Name = "TopHudContainer"
 	container.AnchorPoint = Vector2.new(0.5, 0)
@@ -260,6 +260,7 @@ function TableView.UpdateCenter(gameState: string, highestBid: number, challenge
 		[Enums.GameState.Placement] = { name = "PLACEMENT PHASE", color = "#4ECCA3" },
 		[Enums.GameState.Bidding] = { name = "BIDDING PHASE", color = "#FFD23F" },
 		[Enums.GameState.Revealing] = { name = "CHALLENGE PHASE", color = "#FF6B6B" },
+		[Enums.GameState.Discarding] = { name = "SKULL PENALTY", color = "#FF6B6B" },
 		[Enums.GameState.RoundEnd] = { name = "ROUND COMPLETE", color = "#FFD23F" },
 		[Enums.GameState.MatchEnd] = { name = "MATCH OVER", color = "#FFD23F" },
 	}

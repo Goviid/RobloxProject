@@ -8,7 +8,7 @@ local PlayerManager = require(script.Parent.PlayerManager)
 local BotController = {}
 
 -- Decide an action during Placement Phase
-function BotController.DecidePlacementAction(botId: number, canBid: boolean, totalCardsOnTable: number)
+function BotController.DecidePlacementAction(botId: number, canBid: boolean, totalCardsOnTable: number): { [string]: any }?
 	local p = PlayerManager.GetPlayer(botId)
 	if not p or p.isEliminated then return nil end
 
@@ -90,7 +90,7 @@ function BotController.DecidePlacementAction(botId: number, canBid: boolean, tot
 end
 
 -- Decide an action during Bidding Phase
-function BotController.DecideBiddingAction(botId: number, currentBid: number, totalCardsOnTable: number)
+function BotController.DecideBiddingAction(botId: number, currentBid: number, totalCardsOnTable: number): { [string]: any }?
 	local p = PlayerManager.GetPlayer(botId)
 	if not p or p.isEliminated or p.hasPassedBid then return nil end
 
@@ -155,6 +155,36 @@ function BotController.DecideCardToReveal(botId: number, challengerId: number): 
 	end
 
 	return nil
+end
+
+-- Decide which card to lose after a failed challenge.
+-- isOwnSkull: the bot is the challenger and sees its own `cards`; it usually keeps its skull
+--   (the only defensive card), but with a single rose left it may keep the rose instead.
+-- otherwise: the bot is the skull owner removing a challenger's card blindly -> random index.
+function BotController.DecideDiscard(isOwnSkull: boolean, cards: { string }?, cardCount: number): { [string]: any }
+	if isOwnSkull and cards then
+		local roses, skulls = 0, 0
+		for _, c in ipairs(cards) do
+			if c == Enums.CardType.Rose then
+				roses += 1
+			else
+				skulls += 1
+			end
+		end
+		local loseSkull: boolean
+		if roses == 0 then
+			loseSkull = true
+		elseif skulls == 0 then
+			loseSkull = false
+		elseif roses == 1 then
+			loseSkull = math.random() < 0.5
+		else
+			loseSkull = math.random() < 0.15
+		end
+		return { cardType = loseSkull and Enums.CardType.Skull or Enums.CardType.Rose }
+	end
+
+	return { index = math.random(1, math.max(1, cardCount)) }
 end
 
 return BotController

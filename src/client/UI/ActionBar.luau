@@ -87,7 +87,7 @@ end
 -- ============================================================================
 -- 1. SETUP ACTION BAR (Bottom-Right stacked pills matching reference mockup)
 -- ============================================================================
-function ActionBar.Create(parent: GuiObject, callback: (action: string, data: any) -> ()): Frame
+function ActionBar.Create(parent: Instance, callback: (action: string, data: any) -> ()): Frame
 	onActionCallback = callback
 
 	-- Root container strictly anchored in the bottom-right corner (never touches cards or center table!)

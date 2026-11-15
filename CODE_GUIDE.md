@@ -53,18 +53,20 @@ F:\RobloxProject\
 * **`DEFAULT_TEST_BOTS = 3`**: Automatically generates 3 AI players in Studio so you can test 4-player matches alone.
 * **`POINTS_TO_WIN = 2`**: Standard Skull rule — first player to win 2 rounds wins the whole match.
 * **`ROSES_PER_PLAYER = 3` & `SKULLS_PER_PLAYER = 1`**: Starting hand configuration (4 cards total).
-* **`TURN_TIMEOUT = 15`**: Seconds allowed per turn before the game takes an automatic action (auto-places or auto-passes) so games never freeze.
+* **`TURN_TIMEOUT = 30`**: Seconds allowed per turn (including the skull-penalty pick) before the game takes an automatic action so games never freeze.
+* **`MATCH_OVER_DELAY = 30`**: How long the winner screen stays up before a new match starts.
+* **`BOT_THINK_DELAY = 5`**: Seconds a bot waits before acting, so humans can follow along.
 * **`SEAT_DISTRIBUTIONS`**: Mathematical circle degrees used by `TableView.luau` to arrange player pods radially around the table.
 
 #### `Enums.luau`
 * **Purpose:** Centralized dictionary of constants to avoid typos and keep states consistent.
 * **`CardType`**: `Rose`, `Skull`, `Unknown` (client placeholder for hidden cards).
-* **`GameState`**: `Lobby` &rarr; `Placement` &rarr; `Bidding` &rarr; `Revealing` &rarr; `RoundEnd` &rarr; `MatchEnd`.
-* **`PlayerAction`**: Commands sent by players through `Network.SubmitAction`: `PlaceCard`, `StartBid`, `RaiseBid`, `Pass`, `RevealCard`.
+* **`GameState`**: `Lobby` &rarr; `Placement` &rarr; `Bidding` &rarr; `Revealing` &rarr; (`Discarding` on a skull hit) &rarr; `RoundEnd` &rarr; `MatchEnd`.
+* **`PlayerAction`**: Commands sent by players through `Network.SubmitAction`: `PlaceCard`, `StartBid`, `RaiseBid`, `Pass`, `RevealCard`, `DiscardCard` (`{ cardType }` on own skull, `{ index }` for a blind pick).
 
 #### `Network.luau`
 * **Purpose:** Manages RemoteEvents and RemoteFunctions automatically in `ReplicatedStorage`.
-* **Server &rarr; Client Events:** `GameStateChanged`, `CardPlayed`, `BidUpdated`, `CardRevealed`, `Notification`, `GameOver`.
+* **Server &rarr; Client Events:** `GameStateChanged`, `CardPlayed`, `BidUpdated`, `CardRevealed`, `CardLost` (sent only to the penalised challenger, with the card type they lost), `Notification`, `GameOver`. `GameStateChanged` carries `discard = { chooserId, victimId, isOwnSkull, cardCount, cards? }` during `Discarding`; `cards` is only sent to a challenger choosing among their own cards.
 * **Client &rarr; Server Function:** `SubmitAction`.
 
 ---
@@ -95,12 +97,14 @@ F:\RobloxProject\
 * **`DecidePlacementAction()`:** 75% chance to play Rose, 25% chance to bluff with a Skull.
 * **`DecideBiddingAction()`:** Calculates calculated risk based on its own placed roses and passes when unsafe.
 * **`DecideCardToReveal()`:** Flips its own stack first (mandatory rule), then picks an opponent's stack.
+* **`DecideDiscard()`:** Skull penalty. Own skull: usually loses a Rose and keeps its Skull (50/50 when down to 1 Rose + Skull). Blind pick from another challenger: random index.
 
 #### `RoundManager.luau`
 * **Purpose:** The referee and state machine that runs the match.
 * **Phases:** Handles mandatory 1st card placement, bidding ladder, and the reveal phase.
-* **Skull Penalties:** When a skull is hit, destroys 1 card and passes leadership to the skull owner.
-* **Turn Timer:** 15-second timer with automatic auto-place or auto-pass fallback.
+* **Skull Penalties:** A skull hit enters `Discarding`; the chooser (challenger on own skull, otherwise the skull owner) becomes the active player and picks the card via `DiscardCard`. The challenger's cards are shuffled once into `pendingDiscard.cards` so a blind index maps to a hidden card. Then leadership goes to the skull owner (or the challenger on own skull).
+* **Turn Timer:** `TURN_TIMEOUT` (30s) with automatic auto-place / auto-pass / random-discard fallback.
+* **Match End (`declareMatchWinner`):** Reached by scoring `POINTS_TO_WIN` or by being the last player with cards left. Fires `GameOver(winnerId, reason, duration)`, holds `MatchEnd` for `MATCH_OVER_DELAY`, then resets the match.
 
 #### `init.server.luau`
 * **Purpose:** Bootstrapper that ties the server together.
@@ -122,7 +126,7 @@ F:\RobloxProject\
 
 #### `UI/NotificationBanner.luau`
 * **Purpose:** Top-center game announcement banner and animated turn timer bar.
-* Features smooth slide/bounce animations and a depleting progress bar for the 15-second turn countdown.
+* Features smooth slide/bounce animations and a depleting progress bar for the turn countdown.
 
 #### `UI/HandBar.luau`
 * **Purpose:** Oversized 2D floating card hand at the bottom of the screen (LOCOfficial style).
@@ -138,6 +142,9 @@ F:\RobloxProject\
 * **Purpose:** Sleek LOCOfficial Top HUD Status Badge & Compact Player Strip.
 * Pinned neatly at the top of the screen to leave the center 3D table completely unobstructed. Shows player names, avatars, stack counts, score gems, and active turn halos.
 * Allows challengers to click player pills (or the physical 3D table cards) to reveal cards.
+
+#### `UI/DiscardModal.luau`
+* **Purpose:** Skull penalty picker, shown only to the chooser. Own skull: the challenger's cards face-up, pick one to lose. Someone else's skull: N face-down cards, the skull owner removes one blindly.
 
 #### `UI/CardRevealModal.luau`
 * **Purpose:** Center-screen card flip popup.

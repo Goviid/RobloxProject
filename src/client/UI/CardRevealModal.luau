@@ -17,7 +17,7 @@ local sourceLabel: TextLabel? = nil
 -- ============================================================================
 -- 1. SETUP (Clean Floating Medallion, No Dark Box!)
 -- ============================================================================
-function CardRevealModal.Create(parent: GuiObject): Frame
+function CardRevealModal.Create(parent: Instance): Frame
 	local container = Instance.new("Frame")
 	container.Name = "CardRevealModal"
 	container.AnchorPoint = Vector2.new(0.5, 0.5)

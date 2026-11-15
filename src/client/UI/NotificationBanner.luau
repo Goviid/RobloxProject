@@ -17,7 +17,7 @@ local fadeThread: thread? = nil
 -- ============================================================================
 -- 1. CREATION & SETUP (Clean floating text, NO black box!)
 -- ============================================================================
-function NotificationBanner.Create(parent: GuiObject): Frame
+function NotificationBanner.Create(parent: Instance): Frame
 	-- Invisible container pinned to top center of screen
 	local container = Instance.new("Frame")
 	container.Name = "NotificationBanner"

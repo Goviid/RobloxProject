@@ -31,7 +31,6 @@ Multiplayer bluffing card game for Roblox (2–6 players, human + bots), Day of 
 - After a feature lands, run `/graphify . --update` and commit the graph as a separate commit.
 
 ## Known issues (as of 2026-11-15)
-- `PlayerManager.DestroyCard` is always called with `nil` from `RoundManager.onChallengerFailed`, so the lost card is random. Players should choose (own skull) / skull owner picks blindly (other's skull).
 - `TableBuilder.Build()` takes no args but `init.server.luau` calls `Build("Table")` / `Build("Void")`; there is no real Void mode.
 - `CardAnimation.PlayCardFly` works but is never called.
 - `scripts/check.sh` reports ~66 pre-existing diagnostics, mostly nil-safety on `FindFirstChild`/`WaitForChild` results (ActionBar, HandBar, Network, Card3DManager, BotController).

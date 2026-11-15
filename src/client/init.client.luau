@@ -15,7 +15,6 @@ local Constants = require(ReplicatedStorage.Shared.Constants)
 local Enums = require(ReplicatedStorage.Shared.Enums)
 local Network = require(ReplicatedStorage.Shared.Network)
 
-local Theme = require(script.UI.Theme)
 local NotificationBanner = require(script.UI.NotificationBanner)
 local TableView = require(script.UI.TableView)
 local HandBar = require(script.UI.HandBar)
@@ -23,6 +22,7 @@ local ActionBar = require(script.UI.ActionBar)
 local ChatBox = require(script.UI.ChatBox)
 local CardRevealModal = require(script.UI.CardRevealModal)
 local VictoryModal = require(script.UI.VictoryModal)
+local DiscardModal = require(script.UI.DiscardModal)
 local CardAnimation = require(script.UI.CardAnimation)
 local CameraController = require(script.CameraController)
 local AudioController = require(script.AudioController)
@@ -42,7 +42,7 @@ AudioController.Init()
 -- 2. SCREEN GUI & MODULAR UI SETUP (Guaranteed persistence on spawn)
 -- ============================================================================
 local screenGui: ScreenGui
-local onSubmitAction: (action: string, data: any) -> ()
+local onSubmitAction: (action: string, data: any) -> (boolean, any)
 local lastKnownPlayers: { [string]: any } = {}
 local currentGameState: string = Enums.GameState.Placement
 local isCurrentPlayerTurn: boolean = true
@@ -106,6 +106,19 @@ local function buildUI()
 
 	-- 7. Match Victory Overlay
 	VictoryModal.Create(screenGui)
+
+	-- 8. Skull penalty picker (own skull: pick your card; other's skull: remove one blindly)
+	DiscardModal.Create(screenGui, function(pick: { [string]: any })
+		AudioController.PlayButtonClick()
+		task.spawn(function()
+			local success = onSubmitAction(Enums.PlayerAction.DiscardCard, pick)
+			if success then
+				DiscardModal.Hide()
+			else
+				DiscardModal.Reset()
+			end
+		end)
+	end)
 
 	-- 7. Pre-populate initial circular hand & bid controls on startup (Roses left, Skull right)
 	local initHand = { Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Skull }
@@ -179,6 +192,8 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 		local pillOverride = nil
 		if payload.gameState == Enums.GameState.Bidding then
 			pillOverride = "BID: " .. tostring(payload.highestBid or 1)
+		elseif payload.gameState == Enums.GameState.Discarding then
+			pillOverride = "SKULL PENALTY"
 		elseif payload.gameState == Enums.GameState.Revealing then
 			pillOverride = "FLIPS: " .. tostring(payload.cardsFlipped or 0) .. "/" .. tostring(payload.targetCards or 1)
 		end
@@ -211,8 +226,21 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 			payload.canStartBid
 		)
 
-		-- 4. Turn Timer Reset & Turn Prompt
-		if payload.gameState == Enums.GameState.Placement or payload.gameState == Enums.GameState.Bidding or payload.gameState == Enums.GameState.Revealing then
+		-- 4. Skull penalty picker (only the chooser gets it)
+		local discard = payload.discard
+		local isMyDiscard = payload.gameState == Enums.GameState.Discarding
+			and discard ~= nil
+			and tonumber(discard.chooserId) == localPlayer.UserId
+		if isMyDiscard then
+			local victimData = lastKnownPlayers[tostring(discard.victimId)]
+			DiscardModal.Show(discard, victimData and victimData.name or "the challenger")
+		else
+			DiscardModal.Hide()
+		end
+
+		-- 5. Turn Timer Reset & Turn Prompt
+		if payload.gameState == Enums.GameState.Placement or payload.gameState == Enums.GameState.Bidding
+			or payload.gameState == Enums.GameState.Revealing or payload.gameState == Enums.GameState.Discarding then
 			TableView.StartTurnTimer(Constants.TURN_TIMEOUT)
 			NotificationBanner.StartTimer(Constants.TURN_TIMEOUT)
 			if isMyTurn then
@@ -226,6 +254,23 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 					else
 						NotificationBanner.Show("YOUR STACK IS CLEAR: Click an OPPONENT'S stack to flip!", "warning")
 					end
+				elseif payload.gameState == Enums.GameState.Discarding and isMyDiscard then
+					if discard.isOwnSkull then
+						NotificationBanner.Show("💀 Choose which of your cards to lose!", "alert")
+					else
+						NotificationBanner.Show("💀 Remove one of the challenger's cards!", "alert")
+					end
+				end
+			elseif payload.gameState == Enums.GameState.Discarding and discard then
+				local chooserData = lastKnownPlayers[tostring(discard.chooserId)]
+				local victimData = lastKnownPlayers[tostring(discard.victimId)]
+				local chooserName = chooserData and chooserData.name or "Opponent"
+				if tonumber(discard.victimId) == localPlayer.UserId then
+					NotificationBanner.Show("💀 " .. chooserName .. " is removing one of your cards...", "alert")
+				elseif discard.isOwnSkull then
+					NotificationBanner.Show(chooserName .. " is choosing a card to lose...", "info")
+				else
+					NotificationBanner.Show(chooserName .. " is removing a card from " .. (victimData and victimData.name or "the challenger") .. "...", "info")
 				end
 			end
 		else
@@ -294,13 +339,20 @@ Network.CardRevealed.OnClientEvent:Connect(function(data: any)
 	NotificationBanner.Show(msg, isSkull and "alert" or "info")
 end)
 
+-- Private: which card I lost to a skull penalty (only the victim receives this)
+Network.CardLost.OnClientEvent:Connect(function(data: any)
+	local cardName = data and data.cardType == Enums.CardType.Skull and "your SKULL 💀" or "a ROSE 🌹"
+	NotificationBanner.Show("You lost " .. cardName .. "!", "alert")
+	ChatBox.AddMessage("SYSTEM", "You lost " .. cardName .. ".", "#FF6B6B")
+end)
+
 -- Game Over
-Network.GameOver.OnClientEvent:Connect(function(winnerId: number)
+Network.GameOver.OnClientEvent:Connect(function(winnerId: number, reason: string?, duration: number?)
 	local pData = lastKnownPlayers[tostring(winnerId)]
 	local winner = Players:GetPlayerByUserId(winnerId)
 	local name = (pData and pData.name) or (winner and winner.DisplayName) or ("Player " .. winnerId)
 	AudioController.PlayVictory()
-	VictoryModal.Show(name, winnerId == localPlayer.UserId)
+	VictoryModal.Show(name, winnerId == localPlayer.UserId, reason, duration)
 	NotificationBanner.Show("👑 " .. name .. " WINS THE MATCH! 👑", "success")
 end)
 

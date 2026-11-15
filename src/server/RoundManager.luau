@@ -25,6 +25,15 @@ local targetCardsToFlip = 0
 local roundLeaderId: number? = nil -- Starting player for the round
 local currentRoundNumber = 1
 
+type PendingDiscard = {
+	victimId: number,      -- challenger who hit the skull
+	chooserId: number,     -- who picks the card (challenger on own skull, else skull owner)
+	skullOwnerId: number,
+	isOwnSkull: boolean,
+	cards: { string },     -- victim's cards, shuffled; SECRET for blind picks
+}
+local pendingDiscard: PendingDiscard? = nil
+
 local turnTimerThread: thread? = nil
 local botTurnThread: thread? = nil
 local turnLock = false
@@ -70,6 +79,7 @@ function RoundManager.SendStateToPlayer(userId: number)
 		targetCards = targetCardsToFlip,
 		totalCardsOnTable = PlayerManager.GetTotalCardsOnTable(),
 		canStartBid = haveAllPlacedFirstCard(),
+		discard = RoundManager.GetDiscardInfo(userId),
 		tableState = PlayerManager.GetClientState(userId),
 	}
 	Network.GameStateChanged:FireClient(playerObj, payload)
@@ -80,6 +90,29 @@ local function broadcastNotification(text: string, style: string?)
 		text = text,
 		style = style or "info", -- "info", "warning", "success", "alert"
 	})
+end
+
+-- Client-safe view of the pending skull penalty. Card types are only sent to the
+-- challenger choosing among their own cards; a blind chooser only gets the count.
+function RoundManager.GetDiscardInfo(forUserId: number): any
+	local discard = pendingDiscard
+	if not discard or currentGameState ~= Enums.GameState.Discarding then return nil end
+	local seesCards = discard.isOwnSkull and forUserId == discard.victimId
+	local cards: { string }? = nil
+	if seesCards then
+		local sorted = table.clone(discard.cards)
+		table.sort(sorted, function(a, b)
+			return a == Enums.CardType.Rose and b == Enums.CardType.Skull
+		end)
+		cards = sorted
+	end
+	return {
+		chooserId = discard.chooserId,
+		victimId = discard.victimId,
+		isOwnSkull = discard.isOwnSkull,
+		cardCount = #discard.cards,
+		cards = cards,
+	}
 end
 
 function RoundManager.GetGameState()
@@ -166,6 +199,16 @@ local runCurrentTurn: () -> ()
 
 local function onTurnTimeout()
 	turnTimerThread = nil -- Timer already executed
+
+	-- Skull penalty: pick a random card for the chooser (works even if they left)
+	local discard = pendingDiscard
+	if currentGameState == Enums.GameState.Discarding and discard then
+		local chooser = PlayerManager.GetPlayer(discard.chooserId)
+		broadcastNotification((chooser and chooser.name or "Player") .. " ran out of time! A random card is removed.", "warning")
+		local index = math.random(1, #discard.cards)
+		RoundManager.HandlePlayerAction(discard.chooserId, Enums.PlayerAction.DiscardCard, { index = index, cardType = discard.cards[index] })
+		return
+	end
 	local activeId = RoundManager.GetActivePlayerId()
 	if not activeId then return end
 	local p = PlayerManager.GetPlayer(activeId)
@@ -215,8 +258,8 @@ local function checkBotTurn()
 		end
 	end
 
-	-- Fast, snappy bot reaction delay (0.4 to 0.7s) to maintain responsive game pacing
-	botTurnThread = task.delay(math.random(4, 7) / 10, function()
+	-- Bots pause before acting so human players can follow what is happening
+	botTurnThread = task.delay(Constants.BOT_THINK_DELAY, function()
 		botTurnThread = nil
 		if RoundManager.GetActivePlayerId() ~= activeId then return end
 
@@ -245,6 +288,13 @@ local function checkBotTurn()
 			if targetId then
 				RoundManager.HandlePlayerAction(activeId, Enums.PlayerAction.RevealCard, { targetUserId = targetId })
 			end
+		elseif currentGameState == Enums.GameState.Discarding then
+			local discard = pendingDiscard
+			if discard and discard.chooserId == activeId then
+				-- Bots only see card types when discarding from their own cards
+				local pick = BotController.DecideDiscard(discard.isOwnSkull, discard.isOwnSkull and discard.cards or nil, #discard.cards)
+				RoundManager.HandlePlayerAction(activeId, Enums.PlayerAction.DiscardCard, pick)
+			end
 		end
 	end)
 end
@@ -263,6 +313,7 @@ end
 -- TRANSITION: Start a brand-new round
 function RoundManager.StartRound(leaderId: number?)
 	cancelTurnTimer()
+	pendingDiscard = nil
 	PlayerManager.ResetRoundState()
 	Card3DManager.ClearAllCards()
 	Card3DManager.SetRevealingEnabled(false)
@@ -282,7 +333,8 @@ function RoundManager.StartRound(leaderId: number?)
 	end
 
 	-- Determine seat index of starting player
-	if leaderId and PlayerManager.GetPlayer(leaderId) and not PlayerManager.GetPlayer(leaderId).isEliminated then
+	local leaderData = leaderId and PlayerManager.GetPlayer(leaderId)
+	if leaderId and leaderData and not leaderData.isEliminated then
 		roundLeaderId = leaderId
 		currentRoundNumber += 1
 	else
@@ -307,7 +359,7 @@ function RoundManager.StartRound(leaderId: number?)
 	end
 
 	currentGameState = Enums.GameState.Placement
-	local leader = PlayerManager.GetPlayer(roundLeaderId)
+	local leader = PlayerManager.GetPlayer(roundLeaderId or 0)
 	broadcastNotification("New Round Started! " .. (leader and leader.name or "Player") .. "'s turn to place.", "info")
 
 	runCurrentTurn()
@@ -322,6 +374,22 @@ local function getActiveBidderCount(): number
 		end
 	end
 	return count
+end
+
+-- End the match: show the winner on every client for MATCH_OVER_DELAY, then start a fresh match
+local function declareMatchWinner(winnerId: number, reason: string)
+	cancelTurnTimer()
+	pendingDiscard = nil
+	currentGameState = Enums.GameState.MatchEnd
+	local winner = PlayerManager.GetPlayer(winnerId)
+	broadcastNotification("👑 " .. (winner and winner.name or "Player") .. " WINS THE MATCH! 👑", "success")
+	Network.GameOver:FireAllClients(winnerId, reason, Constants.MATCH_OVER_DELAY)
+	broadcastState()
+
+	task.delay(Constants.MATCH_OVER_DELAY, function()
+		PlayerManager.ResetMatch()
+		RoundManager.StartRound()
+	end)
 end
 
 -- Resolve Round Success (Challenger flipped target roses)
@@ -350,16 +418,9 @@ local function onChallengerSuccess()
 
 	-- Check Victory
 	if challenger.score >= Constants.POINTS_TO_WIN then
+		local winnerId = challenger.userId
 		task.delay(Constants.ROUND_TRANSITION_DELAY, function()
-			currentGameState = Enums.GameState.MatchEnd
-			broadcastNotification("👑 " .. challenger.name .. " WINS THE MATCH! 👑", "success")
-			Network.GameOver:FireAllClients(challengerId)
-			broadcastState()
-
-			task.delay(Constants.MATCH_OVER_DELAY, function()
-				PlayerManager.ResetMatch()
-				RoundManager.StartRound()
-			end)
+			declareMatchWinner(winnerId, "First to " .. Constants.POINTS_TO_WIN .. " points!")
 		end)
 	else
 		-- Next round starts with the victorious challenger
@@ -369,29 +430,53 @@ local function onChallengerSuccess()
 	end
 end
 
--- Resolve Round Failure (Challenger hit a skull)
-local function onChallengerFailed(skullOwnerId: number)
+-- Skull penalty (classic rules):
+--   own skull       -> the challenger picks which of their own cards to lose (sees them)
+--   another's skull -> the skull owner removes one of the challenger's cards blindly
+-- `cards` is the challenger's full card set (hand + stack + revealed), shuffled once so a
+-- blind index maps to a fixed hidden card. It never leaves the server for a blind pick.
+local function setActivePlayer(userId: number)
+	for idx, player in ipairs(PlayerManager.GetActivePlayers()) do
+		if player.userId == userId then
+			activePlayerIndex = idx
+			return
+		end
+	end
+end
+
+local function finishChallengerFailed(lostCard: string?)
+	local discard = pendingDiscard
+	if not discard then return end
+	pendingDiscard = nil
 	cancelTurnTimer()
-	Card3DManager.SetRevealingEnabled(false)
 	currentGameState = Enums.GameState.RoundEnd
 
-	if not challengerId then return end
-	local challenger = PlayerManager.GetPlayer(challengerId)
-	local skullOwner = PlayerManager.GetPlayer(skullOwnerId)
-	if not challenger or not skullOwner then return end
+	local victimId = discard.victimId
+	local challenger = PlayerManager.GetPlayer(victimId)
+	if not challenger then
+		-- Challenger left mid-penalty: just move on
+		task.delay(Constants.ROUND_TRANSITION_DELAY, function()
+			RoundManager.StartRound(discard.skullOwnerId)
+		end)
+		return
+	end
 
-	local isOwnSkull = (challengerId == skullOwnerId)
-	local lostCard = PlayerManager.DestroyCard(challengerId, nil) -- Discard 1 card
-
-	if isOwnSkull then
-		broadcastNotification("💀 " .. challenger.name .. " hit their OWN Skull! Lost 1 card.", "alert")
+	local chooser = PlayerManager.GetPlayer(discard.chooserId)
+	if discard.isOwnSkull then
+		broadcastNotification("💀 " .. challenger.name .. " discarded a card.", "alert")
 	else
-		broadcastNotification("💀 " .. challenger.name .. " hit " .. skullOwner.name .. "'s Skull! Lost 1 card.", "alert")
+		broadcastNotification("💀 " .. (chooser and chooser.name or "Skull owner") .. " removed one of " .. challenger.name .. "'s cards.", "alert")
+	end
+
+	-- Only the victim learns which card they lost
+	local victimPlayer = Players:GetPlayerByUserId(victimId)
+	if victimPlayer and lostCard then
+		Network.CardLost:FireClient(victimPlayer, { cardType = lostCard })
 	end
 
 	if challenger.isEliminated then
 		broadcastNotification("❌ " .. challenger.name .. " has no cards left and is ELIMINATED!", "alert")
-		Network.PlayerEliminated:FireAllClients(challengerId)
+		Network.PlayerEliminated:FireAllClients(victimId)
 	end
 
 	if challenger.isBot then
@@ -407,17 +492,132 @@ local function onChallengerFailed(skullOwnerId: number)
 
 	broadcastState()
 
+	-- Classic rule: the last player with cards left wins the match
+	local remaining = PlayerManager.GetActivePlayers()
+	if challenger.isEliminated and #remaining == 1 then
+		local lastId = remaining[1].userId
+		task.delay(Constants.ROUND_TRANSITION_DELAY, function()
+			declareMatchWinner(lastId, "Last player standing!")
+		end)
+		return
+	end
+
 	-- Next round leader:
 	-- If challenger hit own skull -> challenger starts next round (if not eliminated).
 	-- If challenger hit someone else's skull -> skull owner starts next round!
-	local nextLeader = isOwnSkull and challengerId or skullOwnerId
-	local leaderData = PlayerManager.GetPlayer(nextLeader)
+	local nextLeader: number? = discard.isOwnSkull and victimId or discard.skullOwnerId
+	local leaderData = PlayerManager.GetPlayer(nextLeader or 0)
 	if not leaderData or leaderData.isEliminated then
 		nextLeader = nil
 	end
 
 	task.delay(Constants.ROUND_TRANSITION_DELAY, function()
 		RoundManager.StartRound(nextLeader)
+	end)
+end
+
+-- Validate and apply a discard pick. `pick` is { cardType = ... } (own skull) or { index = n } (blind).
+local function resolveDiscard(pick: any): (boolean, string?)
+	local discard = pendingDiscard
+	if not discard then return false, "No card to discard right now." end
+
+	local cardType: string?
+	if discard.isOwnSkull then
+		local wanted = type(pick) == "table" and pick.cardType or nil
+		if type(wanted) ~= "string" or not table.find(discard.cards, wanted) then
+			return false, "Pick one of your cards."
+		end
+		cardType = wanted
+	else
+		local index = type(pick) == "table" and tonumber(pick.index) or nil
+		if not index or index ~= math.floor(index) or index < 1 or index > #discard.cards then
+			return false, "Pick one of the face-down cards."
+		end
+		cardType = discard.cards[index]
+	end
+
+	local lostCard = PlayerManager.DestroyCard(discard.victimId, cardType)
+	finishChallengerFailed(lostCard)
+	return true
+end
+
+local function randomDiscardPick(): any
+	local discard = pendingDiscard
+	if not discard then return {} end
+	local index = math.random(1, #discard.cards)
+	return { index = index, cardType = discard.cards[index] }
+end
+
+-- Resolve Round Failure (Challenger hit a skull): enter the discard phase
+local function onChallengerFailed(skullOwnerId: number)
+	cancelTurnTimer()
+	Card3DManager.SetRevealingEnabled(false)
+
+	if not challengerId then return end
+	local challenger = PlayerManager.GetPlayer(challengerId)
+	local skullOwner = PlayerManager.GetPlayer(skullOwnerId)
+	if not challenger or not skullOwner then return end
+
+	local isOwnSkull = (challengerId == skullOwnerId)
+
+	local cards = {}
+	for _, c in ipairs(challenger.hand) do
+		table.insert(cards, c)
+	end
+	for _, c in ipairs(challenger.playedStack) do
+		table.insert(cards, c)
+	end
+	for _, c in ipairs(challenger.revealedCards) do
+		table.insert(cards, c)
+	end
+	for i = #cards, 2, -1 do
+		local j = math.random(1, i)
+		cards[i], cards[j] = cards[j], cards[i]
+	end
+
+	currentGameState = Enums.GameState.Discarding
+	pendingDiscard = {
+		victimId = challengerId,
+		chooserId = skullOwnerId, -- own skull: the challenger themselves
+		skullOwnerId = skullOwnerId,
+		isOwnSkull = isOwnSkull,
+		cards = cards,
+	}
+
+	if challenger.isBot then
+		pcall(function()
+			TableBuilder.SetBotEmote(challenger.seatIndex, "😱")
+		end)
+	end
+
+	-- Nothing to choose with a single card left
+	if #cards <= 1 then
+		if isOwnSkull then
+			broadcastNotification("💀 " .. challenger.name .. " hit their OWN Skull!", "alert")
+		else
+			broadcastNotification("💀 " .. challenger.name .. " hit " .. skullOwner.name .. "'s Skull!", "alert")
+		end
+		local pick = randomDiscardPick()
+		task.delay(Constants.REVEAL_ANIMATION_DELAY, function()
+			if pendingDiscard then
+				RoundManager.HandlePlayerAction(skullOwnerId, Enums.PlayerAction.DiscardCard, pick)
+			end
+		end)
+		return
+	end
+
+	if isOwnSkull then
+		broadcastNotification("💀 " .. challenger.name .. " hit their OWN Skull! They choose a card to lose.", "alert")
+	else
+		broadcastNotification("💀 " .. challenger.name .. " hit " .. skullOwner.name .. "'s Skull! " .. skullOwner.name .. " removes one of their cards blindly.", "alert")
+	end
+
+	-- The chooser takes the turn (timer, bot logic, turn highlight); let the reveal animation play first
+	setActivePlayer(skullOwnerId)
+	task.delay(Constants.REVEAL_ANIMATION_DELAY, function()
+		if currentGameState == Enums.GameState.Discarding then
+			runCurrentTurn()
+		end
 	end)
 end
 
@@ -428,6 +628,16 @@ function RoundManager._ProcessPlayerAction(userId: number, action: string, data:
 
 	print(string.format("[Server RoundManager] Action '%s' from %s (%d) | Active: %s | State: %s",
 		tostring(action), p and p.name or "Unknown", userId, tostring(activeId), currentGameState))
+
+	-- 0. SKULL PENALTY: only the designated chooser may act (they may not be the active player
+	--    if they left mid-pick and the timeout resolves on their behalf)
+	if currentGameState == Enums.GameState.Discarding then
+		local discard = pendingDiscard
+		if action ~= Enums.PlayerAction.DiscardCard or not discard or userId ~= discard.chooserId then
+			return false, "Waiting for a card to be discarded."
+		end
+		return resolveDiscard(data)
+	end
 
 	if userId ~= activeId then
 		warn(string.format("[Server RoundManager] Rejected '%s' from %d: Not your turn (active: %s)",
@@ -613,7 +823,7 @@ function RoundManager._ProcessPlayerAction(userId: number, action: string, data:
 			-- Evaluate Revealed Card
 			if revealedCard == Enums.CardType.Skull then
 				-- SKULL HIT! Challenger fails
-				onChallengerFailed(targetUserId)
+				onChallengerFailed(targetPlayer.userId)
 				return true
 			else
 				-- ROSE FLIPPED!

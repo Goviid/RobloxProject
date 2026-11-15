@@ -20,10 +20,11 @@ local Constants = {
 
 	-- Timers (Seconds)
 	LOBBY_COUNTDOWN = 5,
-	TURN_TIMEOUT = 15,
+	TURN_TIMEOUT = 30,
 	ROUND_TRANSITION_DELAY = 4,
 	REVEAL_ANIMATION_DELAY = 1.2,
-	MATCH_OVER_DELAY = 8,
+	MATCH_OVER_DELAY = 30, -- How long the winner screen stays up before a new match
+	BOT_THINK_DELAY = 5, -- Seconds a bot waits before acting, so humans can follow along
 
 	-- Table Positions (Degrees for radial seat distribution)
 	SEAT_DISTRIBUTIONS = {
