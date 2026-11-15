@@ -1,0 +1,297 @@
+{
+  "communities": {
+    "0": [
+      "script_parent_botcontroller",
+      "script_parent_card3dmanager",
+      "src_server_botcontroller",
+      "src_server_botcontroller_botcontroller_decidebiddingaction",
+      "src_server_botcontroller_botcontroller_decidecardtoreveal",
+      "src_server_botcontroller_botcontroller_decideplacementaction",
+      "src_server_playermanager_playermanager_getactiveplayers",
+      "src_server_playermanager_playermanager_getplayer",
+      "src_server_playermanager_playermanager_gettotalcardsontable",
+      "src_server_playermanager_playermanager_playcard",
+      "src_server_roundmanager",
+      "src_server_roundmanager_advancetonextactiveplayer",
+      "src_server_roundmanager_broadcastnotification",
+      "src_server_roundmanager_broadcaststate",
+      "src_server_roundmanager_cancelturntimer",
+      "src_server_roundmanager_checkbotturn",
+      "src_server_roundmanager_getactivebiddercount",
+      "src_server_roundmanager_haveallplacedfirstcard",
+      "src_server_roundmanager_onchallengerfailed",
+      "src_server_roundmanager_onchallengersuccess",
+      "src_server_roundmanager_onturntimeout",
+      "src_server_roundmanager_roundmanager_getactiveplayerid",
+      "src_server_roundmanager_roundmanager_handleplayeraction",
+      "src_server_roundmanager_roundmanager_processplayeraction",
+      "src_server_roundmanager_roundmanager_sendstatetoplayer",
+      "src_server_roundmanager_roundmanager_startround",
+      "src_server_roundmanager_startturntimer",
+      "src_server_tablebuilder_tablebuilder_setbotemote"
+    ],
+    "1": [
+      "script_parent_theme",
+      "src_client_init_client_buildui",
+      "src_client_ui_cardanimation",
+      "src_client_ui_cardanimation_cardanimation_playcardfly",
+      "src_client_ui_chatbox",
+      "src_client_ui_chatbox_chatbox_addmessage",
+      "src_client_ui_chatbox_chatbox_create",
+      "src_client_ui_handbar",
+      "src_client_ui_handbar_createcirculartoken",
+      "src_client_ui_handbar_getarchy",
+      "src_client_ui_handbar_getfannedangle",
+      "src_client_ui_handbar_handbar_consumecard",
+      "src_client_ui_handbar_handbar_create",
+      "src_client_ui_handbar_handbar_getremainingcardscount",
+      "src_client_ui_handbar_handbar_getselectedcard",
+      "src_client_ui_handbar_handbar_setvisible",
+      "src_client_ui_handbar_handbar_updatehand",
+      "src_client_ui_notificationbanner",
+      "src_client_ui_notificationbanner_notificationbanner_create",
+      "src_client_ui_notificationbanner_notificationbanner_show",
+      "src_client_ui_notificationbanner_notificationbanner_starttimer",
+      "src_client_ui_notificationbanner_notificationbanner_stoptimer",
+      "src_client_ui_tableview_tableview_create",
+      "src_client_ui_victorymodal",
+      "src_client_ui_victorymodal_spawnconfettiburst",
+      "src_client_ui_victorymodal_victorymodal_create",
+      "src_client_ui_victorymodal_victorymodal_show"
+    ],
+    "2": [
+      "replicatedstorage_shared_constants",
+      "replicatedstorage_shared_enums",
+      "replicatedstorage_shared_network",
+      "script_audiocontroller",
+      "script_cameracontroller",
+      "script_parent_playermanager",
+      "script_parent_tablebuilder",
+      "script_playermanager",
+      "script_roundmanager",
+      "script_tablebuilder",
+      "script_ui_actionbar",
+      "script_ui_cardanimation",
+      "script_ui_cardrevealmodal",
+      "script_ui_chatbox",
+      "script_ui_handbar",
+      "script_ui_notificationbanner",
+      "script_ui_tableview",
+      "script_ui_theme",
+      "script_ui_victorymodal",
+      "src_client_init_client",
+      "src_server_card3dmanager",
+      "src_server_card3dmanager_getcardsfolder",
+      "src_server_init_server"
+    ],
+    "3": [
+      "src_server_init_server_onplayeradded",
+      "src_server_init_server_spawntestbots",
+      "src_server_playermanager_playermanager_getallplayers",
+      "src_server_roundmanager_roundmanager_getgamestate",
+      "src_server_tablebuilder",
+      "src_server_tablebuilder_createplayertag",
+      "src_server_tablebuilder_renderopponentfannedhand",
+      "src_server_tablebuilder_tablebuilder_build",
+      "src_server_tablebuilder_tablebuilder_getcoastercframe",
+      "src_server_tablebuilder_tablebuilder_getcoasterpart",
+      "src_server_tablebuilder_tablebuilder_getstandingcframe",
+      "src_server_tablebuilder_tablebuilder_highlightturn",
+      "src_server_tablebuilder_tablebuilder_spawnstandingbot",
+      "src_server_tablebuilder_tablebuilder_standplayer",
+      "src_server_tablebuilder_tablebuilder_updatecardcount",
+      "src_server_tablebuilder_tablebuilder_updatescore"
+    ],
+    "4": [
+      "game_getservice",
+      "script_parent_notificationbanner",
+      "src_client_ui_actionbar",
+      "src_client_ui_cardrevealmodal",
+      "src_client_ui_cardrevealmodal_cardrevealmodal_create",
+      "src_client_ui_cardrevealmodal_cardrevealmodal_showcard",
+      "src_client_ui_tableview",
+      "src_client_ui_tableview_tableview_setalerttext",
+      "src_client_ui_tableview_tableview_startturntimer",
+      "src_client_ui_tableview_tableview_stopturntimer",
+      "src_client_ui_tableview_tableview_updatecenter",
+      "src_client_ui_tableview_tableview_updatelayout",
+      "src_client_ui_tableview_tableview_updateturn"
+    ],
+    "5": [
+      "src_server_init_server_onplayerremoving",
+      "src_server_playermanager",
+      "src_server_playermanager_createdefaulthand",
+      "src_server_playermanager_findopenseat",
+      "src_server_playermanager_playermanager_addbot",
+      "src_server_playermanager_playermanager_addplayer",
+      "src_server_playermanager_playermanager_destroycard",
+      "src_server_playermanager_playermanager_getclientstate",
+      "src_server_playermanager_playermanager_getplayerbyseat",
+      "src_server_playermanager_playermanager_removeplayer",
+      "src_server_playermanager_playermanager_resetmatch",
+      "src_server_playermanager_playermanager_resetroundstate",
+      "src_server_playermanager_sorthand"
+    ],
+    "6": [
+      "src_client_audiocontroller",
+      "src_client_audiocontroller_audiocontroller_init",
+      "src_client_audiocontroller_audiocontroller_playbuttonclick",
+      "src_client_audiocontroller_audiocontroller_playcardflip",
+      "src_client_audiocontroller_audiocontroller_playcardplace",
+      "src_client_audiocontroller_audiocontroller_playpointscored",
+      "src_client_audiocontroller_audiocontroller_playrosereveal",
+      "src_client_audiocontroller_audiocontroller_playskullreveal",
+      "src_client_audiocontroller_audiocontroller_playtimertick",
+      "src_client_audiocontroller_audiocontroller_playvictory",
+      "src_client_audiocontroller_playsound"
+    ],
+    "7": [
+      "src_client_cameracontroller",
+      "src_client_cameracontroller_cameracontroller_init",
+      "src_client_cameracontroller_cameracontroller_setturnfocus",
+      "src_client_cameracontroller_cameracontroller_shakeonskull",
+      "src_client_cameracontroller_getcameraconfig"
+    ],
+    "8": [
+      "src_shared_network",
+      "src_shared_network_getorcreateremoteevent",
+      "src_shared_network_getorcreateremotefunction"
+    ],
+    "9": [
+      "src_client_ui_theme"
+    ],
+    "10": [
+      "src_shared_constants"
+    ],
+    "11": [
+      "src_shared_enums"
+    ]
+  },
+  "cohesion": {
+    "0": 0.21693121693121692,
+    "1": 0.10826210826210826,
+    "2": 0.09486166007905138,
+    "3": 0.175,
+    "4": 0.15384615384615385,
+    "5": 0.2564102564102564,
+    "6": 0.32727272727272727,
+    "7": 0.4,
+    "8": 0.6666666666666666,
+    "9": 1.0,
+    "10": 1.0,
+    "11": 1.0
+  },
+  "gods": [
+    {
+      "id": "src_server_roundmanager_roundmanager_processplayeraction",
+      "label": "RoundManager._ProcessPlayerAction()",
+      "degree": 14
+    },
+    {
+      "id": "src_server_playermanager_playermanager_getplayer",
+      "label": "PlayerManager.GetPlayer()",
+      "degree": 13
+    },
+    {
+      "id": "src_client_init_client_buildui",
+      "label": "buildUI()",
+      "degree": 11
+    },
+    {
+      "id": "src_server_roundmanager_broadcaststate",
+      "label": "broadcastState()",
+      "degree": 11
+    },
+    {
+      "id": "src_server_init_server_onplayeradded",
+      "label": "onPlayerAdded()",
+      "degree": 11
+    },
+    {
+      "id": "src_server_roundmanager_roundmanager_startround",
+      "label": "RoundManager.StartRound()",
+      "degree": 10
+    },
+    {
+      "id": "src_client_audiocontroller_playsound",
+      "label": "playSound()",
+      "degree": 9
+    },
+    {
+      "id": "src_server_roundmanager_roundmanager_sendstatetoplayer",
+      "label": "RoundManager.SendStateToPlayer()",
+      "degree": 9
+    },
+    {
+      "id": "src_server_roundmanager_checkbotturn",
+      "label": "checkBotTurn()",
+      "degree": 9
+    },
+    {
+      "id": "src_server_roundmanager_onchallengersuccess",
+      "label": "onChallengerSuccess()",
+      "degree": 9
+    }
+  ],
+  "surprises": [
+    {
+      "source": "buildUI()",
+      "target": "CardRevealModal.Create()",
+      "source_files": [
+        "src/client/init.client.luau",
+        "src/client/UI/CardRevealModal.luau"
+      ],
+      "confidence": "INFERRED",
+      "relation": "calls",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities; peripheral node `CardRevealModal.Create()` unexpectedly reaches hub `buildUI()`"
+    },
+    {
+      "source": "onChallengerFailed()",
+      "target": "PlayerManager.DestroyCard()",
+      "source_files": [
+        "src/server/RoundManager.luau",
+        "src/server/PlayerManager.luau"
+      ],
+      "confidence": "INFERRED",
+      "relation": "calls",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities; peripheral node `PlayerManager.DestroyCard()` unexpectedly reaches hub `onChallengerFailed()`"
+    },
+    {
+      "source": "broadcastState()",
+      "target": "TableBuilder.HighlightTurn()",
+      "source_files": [
+        "src/server/RoundManager.luau",
+        "src/server/TableBuilder.luau"
+      ],
+      "confidence": "INFERRED",
+      "relation": "calls",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities; peripheral node `TableBuilder.HighlightTurn()` unexpectedly reaches hub `broadcastState()`"
+    },
+    {
+      "source": "broadcastState()",
+      "target": "TableBuilder.UpdateScore()",
+      "source_files": [
+        "src/server/RoundManager.luau",
+        "src/server/TableBuilder.luau"
+      ],
+      "confidence": "INFERRED",
+      "relation": "calls",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities; peripheral node `TableBuilder.UpdateScore()` unexpectedly reaches hub `broadcastState()`"
+    },
+    {
+      "source": "buildUI()",
+      "target": "AudioController.PlayCardPlace()",
+      "source_files": [
+        "src/client/init.client.luau",
+        "src/client/AudioController.luau"
+      ],
+      "confidence": "INFERRED",
+      "relation": "calls",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
+    }
+  ],
+  "tokens": {
+    "input": 0,
+    "output": 0
+  }
+}
