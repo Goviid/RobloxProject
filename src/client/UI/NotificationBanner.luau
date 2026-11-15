@@ -22,7 +22,7 @@ function NotificationBanner.Create(parent: Instance): Frame
 	local container = Instance.new("Frame")
 	container.Name = "NotificationBanner"
 	container.AnchorPoint = Vector2.new(0.5, 0)
-	container.Size = UDim2.new(0, 580, 0, 32)
+	container.Size = UDim2.fromOffset(580, 32)
 	container.Position = UDim2.new(0.5, 0, 0, 58)
 	container.BackgroundTransparency = 1 -- Zero black box!
 	container.BorderSizePixel = 0
@@ -32,8 +32,8 @@ function NotificationBanner.Create(parent: Instance): Frame
 	-- Slightly big, clean display text (semi-transparent)
 	local label = Instance.new("TextLabel")
 	label.Name = "MessageLabel"
-	label.Size = UDim2.new(1, 0, 1, 0)
-	label.Position = UDim2.new(0, 0, 0, 0)
+	label.Size = UDim2.fromScale(1, 1)
+	label.Position = UDim2.fromOffset(0, 0)
 	label.BackgroundTransparency = 1
 	label.Font = Theme.Fonts.Title
 	label.TextSize = 17
@@ -50,7 +50,7 @@ function NotificationBanner.Create(parent: Instance): Frame
 	local track = Instance.new("Frame")
 	track.Name = "TimerTrack"
 	track.AnchorPoint = Vector2.new(0.5, 0)
-	track.Size = UDim2.new(0, 220, 0, 3)
+	track.Size = UDim2.fromOffset(220, 3)
 	track.Position = UDim2.new(0.5, 0, 1, 4)
 	track.BackgroundColor3 = Color3.fromRGB(15, 35, 65)
 	track.BackgroundTransparency = 0.7
@@ -65,7 +65,7 @@ function NotificationBanner.Create(parent: Instance): Frame
 
 	local fill = Instance.new("Frame")
 	fill.Name = "TimerFill"
-	fill.Size = UDim2.new(1, 0, 1, 0)
+	fill.Size = UDim2.fromScale(1, 1)
 	fill.BackgroundColor3 = Color3.fromRGB(255, 215, 75)
 	fill.BackgroundTransparency = 0.2
 	fill.BorderSizePixel = 0
@@ -88,7 +88,9 @@ end
 -- 2. DISPLAY STATUS ANNOUNCEMENT
 -- ============================================================================
 function NotificationBanner.Show(text: string, style: string?)
-	if not messageLabel or not bannerFrame then return end
+	if not messageLabel or not bannerFrame then
+		return
+	end
 
 	local colorsByStyle = {
 		info = Color3.fromRGB(245, 250, 255),
@@ -115,7 +117,9 @@ function NotificationBanner.Show(text: string, style: string?)
 	end
 
 	fadeThread = task.delay(3.5, function()
-		if not messageLabel then return end
+		if not messageLabel then
+			return
+		end
 		TweenService:Create(messageLabel, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			TextTransparency = 0.55,
 		}):Play()
@@ -126,21 +130,24 @@ end
 -- 3. TURN TIMER ANIMATION
 -- ============================================================================
 function NotificationBanner.StartTimer(durationSeconds: number)
-	if not timerBar or not timerTrack then return end
+	if not timerBar or not timerTrack then
+		return
+	end
 
 	if timerTween then
 		timerTween:Cancel()
 	end
 
 	timerTrack.Visible = true
-	timerBar.Size = UDim2.new(1, 0, 1, 0)
+	timerBar.Size = UDim2.fromScale(1, 1)
 	timerBar.BackgroundColor3 = Color3.fromRGB(255, 215, 75)
 
-	timerTween = TweenService:Create(timerBar, TweenInfo.new(durationSeconds, Enum.EasingStyle.Linear), {
-		Size = UDim2.new(0, 0, 1, 0),
+	local tween = TweenService:Create(timerBar, TweenInfo.new(durationSeconds, Enum.EasingStyle.Linear), {
+		Size = UDim2.fromScale(0, 1),
 		BackgroundColor3 = Color3.fromRGB(255, 70, 70),
 	})
-	timerTween:Play()
+	timerTween = tween
+	tween:Play()
 end
 
 function NotificationBanner.StopTimer()
@@ -149,7 +156,7 @@ function NotificationBanner.StopTimer()
 		timerTween = nil
 	end
 	if timerBar then
-		timerBar.Size = UDim2.new(0, 0, 1, 0)
+		timerBar.Size = UDim2.fromScale(0, 1)
 	end
 	if timerTrack then
 		timerTrack.Visible = false

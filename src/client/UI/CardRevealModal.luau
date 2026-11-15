@@ -21,8 +21,8 @@ function CardRevealModal.Create(parent: Instance): Frame
 	local container = Instance.new("Frame")
 	container.Name = "CardRevealModal"
 	container.AnchorPoint = Vector2.new(0.5, 0.5)
-	container.Size = UDim2.new(0, 260, 0, 260)
-	container.Position = UDim2.new(0.5, 0, 0.44, 0)
+	container.Size = UDim2.fromOffset(260, 260)
+	container.Position = UDim2.fromScale(0.5, 0.44)
 	container.BackgroundTransparency = 1 -- Zero black box!
 	container.BorderSizePixel = 0
 	container.Visible = false
@@ -33,7 +33,7 @@ function CardRevealModal.Create(parent: Instance): Frame
 	local source = Instance.new("TextLabel")
 	source.Name = "SourceLabel"
 	source.Size = UDim2.new(1, 0, 0, 24)
-	source.Position = UDim2.new(0, 0, 0, 0)
+	source.Position = UDim2.fromOffset(0, 0)
 	source.BackgroundTransparency = 1
 	source.Font = Enum.Font.FredokaOne
 	source.TextSize = 15
@@ -48,7 +48,7 @@ function CardRevealModal.Create(parent: Instance): Frame
 	local card = Instance.new("Frame")
 	card.Name = "CardFace"
 	card.AnchorPoint = Vector2.new(0.5, 0.5)
-	card.Size = UDim2.new(0, 130, 0, 185)
+	card.Size = UDim2.fromOffset(130, 185)
 	card.Position = UDim2.new(0.5, 0, 0.5, -4)
 	card.BackgroundColor3 = Color3.fromRGB(235, 42, 75)
 	card.BorderSizePixel = 0
@@ -68,8 +68,8 @@ function CardRevealModal.Create(parent: Instance): Frame
 	-- Top-Left Mini Pip
 	local tlPip = Instance.new("Frame")
 	tlPip.Name = "TLPip"
-	tlPip.Size = UDim2.new(0, 24, 0, 26)
-	tlPip.Position = UDim2.new(0, 7, 0, 7)
+	tlPip.Size = UDim2.fromOffset(24, 26)
+	tlPip.Position = UDim2.fromOffset(7, 7)
 	tlPip.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	tlPip.BorderSizePixel = 0
 	tlPip.ZIndex = 52
@@ -78,7 +78,7 @@ function CardRevealModal.Create(parent: Instance): Frame
 
 	local tlIcon = Instance.new("TextLabel")
 	tlIcon.Name = "TLIcon"
-	tlIcon.Size = UDim2.new(1, 0, 1, 0)
+	tlIcon.Size = UDim2.fromScale(1, 1)
 	tlIcon.BackgroundTransparency = 1
 	tlIcon.Font = Enum.Font.FredokaOne
 	tlIcon.TextSize = 14
@@ -89,7 +89,7 @@ function CardRevealModal.Create(parent: Instance): Frame
 	-- Bottom-Right Mini Pip
 	local brPip = Instance.new("Frame")
 	brPip.Name = "BRPip"
-	brPip.Size = UDim2.new(0, 24, 0, 26)
+	brPip.Size = UDim2.fromOffset(24, 26)
 	brPip.Position = UDim2.new(1, -31, 1, -33)
 	brPip.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	brPip.BorderSizePixel = 0
@@ -99,7 +99,7 @@ function CardRevealModal.Create(parent: Instance): Frame
 
 	local brIcon = Instance.new("TextLabel")
 	brIcon.Name = "BRIcon"
-	brIcon.Size = UDim2.new(1, 0, 1, 0)
+	brIcon.Size = UDim2.fromScale(1, 1)
 	brIcon.BackgroundTransparency = 1
 	brIcon.Font = Enum.Font.FredokaOne
 	brIcon.TextSize = 14
@@ -110,7 +110,7 @@ function CardRevealModal.Create(parent: Instance): Frame
 	-- Center White Oval Graphic
 	local centerOval = Instance.new("Frame")
 	centerOval.Name = "CenterOval"
-	centerOval.Size = UDim2.new(0, 84, 0, 96)
+	centerOval.Size = UDim2.fromOffset(84, 96)
 	centerOval.Position = UDim2.new(0.5, -42, 0.5, -48)
 	centerOval.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	centerOval.BorderSizePixel = 0
@@ -122,7 +122,7 @@ function CardRevealModal.Create(parent: Instance): Frame
 	local icon = Instance.new("TextLabel")
 	icon.Name = "Icon"
 	icon.Size = UDim2.new(1, 0, 0, 56)
-	icon.Position = UDim2.new(0, 0, 0, 8)
+	icon.Position = UDim2.fromOffset(0, 8)
 	icon.BackgroundTransparency = 1
 	icon.Font = Enum.Font.FredokaOne
 	icon.TextSize = 56
@@ -170,7 +170,9 @@ end
 -- 2. TRIGGER REVEAL POPUP ANIMATION
 -- ============================================================================
 function CardRevealModal.ShowCard(cardType: string, playerName: string, flippedCount: number, targetCount: number)
-	if not modalContainer or not cardBadge or not iconLabel or not typeLabel or not sourceLabel then return end
+	if not modalContainer or not cardBadge or not iconLabel or not typeLabel or not sourceLabel then
+		return
+	end
 
 	local isSkull = (cardType == Enums.CardType.Skull)
 
@@ -182,7 +184,9 @@ function CardRevealModal.ShowCard(cardType: string, playerName: string, flippedC
 		typeLabel.Text = "💀 SKULL REVEALED!"
 		typeLabel.TextColor3 = Color3.fromRGB(255, 75, 75)
 		local stroke = cardBadge:FindFirstChild("CardStroke") :: UIStroke?
-		if stroke then stroke.Color = Color3.fromRGB(255, 255, 255) end
+		if stroke then
+			stroke.Color = Color3.fromRGB(255, 255, 255)
+		end
 
 		local co = cardBadge:FindFirstChild("CenterOval")
 		if co then
@@ -195,19 +199,25 @@ function CardRevealModal.ShowCard(cardType: string, playerName: string, flippedC
 		local tl = cardBadge:FindFirstChild("TLPip")
 		if tl then
 			local ic = tl:FindFirstChild("TLIcon") :: TextLabel?
-			if ic then ic.Text = "💀" end
+			if ic then
+				ic.Text = "💀"
+			end
 		end
 		local br = cardBadge:FindFirstChild("BRPip")
 		if br then
 			local ic = br:FindFirstChild("BRIcon") :: TextLabel?
-			if ic then ic.Text = "💀" end
+			if ic then
+				ic.Text = "💀"
+			end
 		end
 	else
 		cardBadge.BackgroundColor3 = Color3.fromRGB(235, 42, 75)
 		typeLabel.Text = "🌹 ROSE REVEALED"
 		typeLabel.TextColor3 = Color3.fromRGB(255, 230, 90)
 		local stroke = cardBadge:FindFirstChild("CardStroke") :: UIStroke?
-		if stroke then stroke.Color = Color3.fromRGB(255, 255, 255) end
+		if stroke then
+			stroke.Color = Color3.fromRGB(255, 255, 255)
+		end
 
 		local co = cardBadge:FindFirstChild("CenterOval")
 		if co then
@@ -220,28 +230,34 @@ function CardRevealModal.ShowCard(cardType: string, playerName: string, flippedC
 		local tl = cardBadge:FindFirstChild("TLPip")
 		if tl then
 			local ic = tl:FindFirstChild("TLIcon") :: TextLabel?
-			if ic then ic.Text = "🌹" end
+			if ic then
+				ic.Text = "🌹"
+			end
 		end
 		local br = cardBadge:FindFirstChild("BRPip")
 		if br then
 			local ic = br:FindFirstChild("BRIcon") :: TextLabel?
-			if ic then ic.Text = "🌹" end
+			if ic then
+				ic.Text = "🌹"
+			end
 		end
 	end
 
 	modalContainer.Visible = true
 
 	-- Flip scale animation (horizontal flip effect)
-	cardBadge.Size = UDim2.new(0, 10, 0, 185)
+	cardBadge.Size = UDim2.fromOffset(10, 185)
 	TweenService:Create(cardBadge, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Size = UDim2.new(0, 130, 0, 185),
+		Size = UDim2.fromOffset(130, 185),
 	}):Play()
 
 	-- Auto-dismiss after 2.2 seconds
 	task.delay(2.2, function()
-		if not modalContainer then return end
+		if not modalContainer then
+			return
+		end
 		local fade = TweenService:Create(cardBadge, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			Size = UDim2.new(0, 0, 0, 0),
+			Size = UDim2.fromOffset(0, 0),
 		})
 		fade:Play()
 		fade.Completed:Connect(function()

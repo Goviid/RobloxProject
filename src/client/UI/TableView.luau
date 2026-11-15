@@ -7,14 +7,11 @@
 -- 3. Right Pill: "👤 YOUR TURN" (Gold) or "🤖 {NAME}'S TURN" (Cyan)
 -- 4. Clean, non-overlapping alert line below
 
-local TweenService = game:GetService("TweenService")
 local Enums = require(game:GetService("ReplicatedStorage").Shared.Enums)
 
 local TableView = {}
 
-local containerFrame: Frame? = nil
 local turnPillLabel: TextLabel? = nil
-local turnPillStroke: UIStroke? = nil
 local centerTitleLabel: TextLabel? = nil
 local activePlayerLabel: TextLabel? = nil
 local activePlayerStroke: UIStroke? = nil
@@ -32,7 +29,7 @@ function TableView.Create(parent: Instance, _onRevealClick: (targetUserId: numbe
 	local container = Instance.new("Frame")
 	container.Name = "TopHudContainer"
 	container.AnchorPoint = Vector2.new(0.5, 0)
-	container.Size = UDim2.new(0, 780, 0, 85)
+	container.Size = UDim2.fromOffset(780, 85)
 	container.Position = UDim2.new(0.5, 0, 0, 10)
 	container.BackgroundTransparency = 1
 	container.ZIndex = 20
@@ -46,7 +43,7 @@ function TableView.Create(parent: Instance, _onRevealClick: (targetUserId: numbe
 	local topRow = Instance.new("Frame")
 	topRow.Name = "HeaderRow"
 	topRow.Size = UDim2.new(1, 0, 0, 46)
-	topRow.Position = UDim2.new(0, 0, 0, 0)
+	topRow.Position = UDim2.fromOffset(0, 0)
 	topRow.BackgroundTransparency = 1
 	topRow.Parent = container
 
@@ -61,7 +58,7 @@ function TableView.Create(parent: Instance, _onRevealClick: (targetUserId: numbe
 	-- 1. LEFT PILL: [ 1 TURN ] (Cyan neon rim with player avatar icon matching mockup)
 	local turnPill = Instance.new("Frame")
 	turnPill.Name = "TurnPill"
-	turnPill.Size = UDim2.new(0, 135, 0, 42)
+	turnPill.Size = UDim2.fromOffset(135, 42)
 	turnPill.BackgroundColor3 = Color3.fromRGB(14, 12, 20)
 	turnPill.BackgroundTransparency = 0.20
 	turnPill.BorderSizePixel = 0
@@ -74,10 +71,9 @@ function TableView.Create(parent: Instance, _onRevealClick: (targetUserId: numbe
 	tStroke.Color = Color3.fromRGB(80, 225, 245)
 	tStroke.Thickness = 2.4
 	tStroke.Parent = turnPill
-	turnPillStroke = tStroke
 
 	local tIcon = Instance.new("TextLabel")
-	tIcon.Size = UDim2.new(0, 26, 0, 26)
+	tIcon.Size = UDim2.fromOffset(26, 26)
 	tIcon.Position = UDim2.new(0, 10, 0.5, -13)
 	tIcon.BackgroundTransparency = 1
 	tIcon.Font = Enum.Font.FredokaOne
@@ -89,7 +85,7 @@ function TableView.Create(parent: Instance, _onRevealClick: (targetUserId: numbe
 	local tText = Instance.new("TextLabel")
 	tText.Name = "TurnText"
 	tText.Size = UDim2.new(1, -44, 1, 0)
-	tText.Position = UDim2.new(0, 38, 0, 0)
+	tText.Position = UDim2.fromOffset(38, 0)
 	tText.BackgroundTransparency = 1
 	tText.Font = Enum.Font.FredokaOne
 	tText.TextSize = 16
@@ -102,7 +98,7 @@ function TableView.Create(parent: Instance, _onRevealClick: (targetUserId: numbe
 	-- 2. CENTER PILL: [ ROUND 1: PLACEMENT PHASE ] (Large gold neon banner)
 	local centerPill = Instance.new("Frame")
 	centerPill.Name = "CenterPhasePill"
-	centerPill.Size = UDim2.new(0, 360, 0, 46)
+	centerPill.Size = UDim2.fromOffset(360, 46)
 	centerPill.BackgroundColor3 = Color3.fromRGB(16, 13, 22)
 	centerPill.BackgroundTransparency = 0.15
 	centerPill.BorderSizePixel = 0
@@ -125,7 +121,7 @@ function TableView.Create(parent: Instance, _onRevealClick: (targetUserId: numbe
 
 	local centerLabel = Instance.new("TextLabel")
 	centerLabel.Name = "PhaseLabel"
-	centerLabel.Size = UDim2.new(1, 0, 1, 0)
+	centerLabel.Size = UDim2.fromScale(1, 1)
 	centerLabel.BackgroundTransparency = 1
 	centerLabel.Font = Enum.Font.FredokaOne
 	centerLabel.TextSize = 17
@@ -138,7 +134,7 @@ function TableView.Create(parent: Instance, _onRevealClick: (targetUserId: numbe
 	-- 3. RIGHT PILL: [ TURN 2 / ⏱️ 15s ] (Crimson neon rim with countdown underline)
 	local activePill = Instance.new("Frame")
 	activePill.Name = "ActivePlayerPill"
-	activePill.Size = UDim2.new(0, 165, 0, 42)
+	activePill.Size = UDim2.fromOffset(165, 42)
 	activePill.BackgroundColor3 = Color3.fromRGB(14, 12, 20)
 	activePill.BackgroundTransparency = 0.20
 	activePill.BorderSizePixel = 0
@@ -155,7 +151,7 @@ function TableView.Create(parent: Instance, _onRevealClick: (targetUserId: numbe
 	timerStroke = aStroke
 
 	local aIcon = Instance.new("TextLabel")
-	aIcon.Size = UDim2.new(0, 26, 0, 26)
+	aIcon.Size = UDim2.fromOffset(26, 26)
 	aIcon.Position = UDim2.new(0, 10, 0.5, -13)
 	aIcon.BackgroundTransparency = 1
 	aIcon.Font = Enum.Font.FredokaOne
@@ -167,7 +163,7 @@ function TableView.Create(parent: Instance, _onRevealClick: (targetUserId: numbe
 	local aText = Instance.new("TextLabel")
 	aText.Name = "ActivePlayerText"
 	aText.Size = UDim2.new(1, -44, 1, 0)
-	aText.Position = UDim2.new(0, 38, 0, 0)
+	aText.Position = UDim2.fromOffset(38, 0)
 	aText.BackgroundTransparency = 1
 	aText.Font = Enum.Font.FredokaOne
 	aText.TextSize = 15
@@ -204,7 +200,7 @@ function TableView.Create(parent: Instance, _onRevealClick: (targetUserId: numbe
 
 	local alertText = Instance.new("TextLabel")
 	alertText.Name = "AlertText"
-	alertText.Size = UDim2.new(1, 0, 1, 0)
+	alertText.Size = UDim2.fromScale(1, 1)
 	alertText.BackgroundTransparency = 1
 	alertText.Font = Enum.Font.FredokaOne
 	alertText.TextSize = 16
@@ -215,7 +211,6 @@ function TableView.Create(parent: Instance, _onRevealClick: (targetUserId: numbe
 	alertText.Parent = alertFrame
 	matchAlertLabel = alertText
 
-	containerFrame = container
 	return container
 end
 
@@ -249,8 +244,10 @@ function TableView.UpdateTurn(turnNumber: number, activePlayerName: string, isMy
 	end
 end
 
-function TableView.UpdateCenter(gameState: string, highestBid: number, challengerName: string?, totalCards: number, roundNumber: number?)
-	if not centerTitleLabel then return end
+function TableView.UpdateCenter(gameState: string, _highestBid: number, _challengerName: string?, _totalCards: number, roundNumber: number?)
+	if not centerTitleLabel then
+		return
+	end
 	if roundNumber then
 		currentRoundNumber = roundNumber
 	end
@@ -347,7 +344,7 @@ function TableView.StopTurnTimer()
 		timerStroke.Color = currentIsMyTurn and Color3.fromRGB(255, 215, 65) or Color3.fromRGB(80, 225, 245)
 	end
 	if timerFillBar then
-		timerFillBar.Size = UDim2.new(0, 0, 0, 3)
+		timerFillBar.Size = UDim2.fromOffset(0, 3)
 	end
 end
 

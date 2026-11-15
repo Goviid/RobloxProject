@@ -11,7 +11,7 @@
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Enums = require(ReplicatedStorage.Shared.Enums)
+local Constants = require(ReplicatedStorage.Shared.Constants)
 
 local TableBuilder = {}
 
@@ -23,6 +23,22 @@ local botDummies: { [number]: Model } = {}
 local seatBillboards: { [number]: BillboardGui } = {}
 local opponentHands: { [number]: Model } = {}
 local cardCountLabels: { [number]: TextLabel } = {}
+local scoreLabels: { [number]: TextLabel } = {}
+-- Last known per-seat status, re-applied when a tag is rebuilt (e.g. a player respawns)
+local seatStatus: { [number]: { score: number, cards: number, eliminated: boolean } } = {}
+-- One respawn hook per player, replaced whenever they are re-seated
+local standConnections: { [Player]: RBXScriptConnection } = {}
+
+local function setStandHook(player: Player, place: (char: Model) -> ())
+	local old = standConnections[player]
+	if old then
+		old:Disconnect()
+	end
+	standConnections[player] = player.CharacterAdded:Connect(place)
+	if player.Character then
+		task.spawn(place, player.Character)
+	end
+end
 
 -- Table Seat Coordinates (4-Player Layout: 1=Front/You, 2=Left, 3=Back, 4=Right)
 local SEAT_CONFIGS = {
@@ -30,8 +46,10 @@ local SEAT_CONFIGS = {
 		standPos = Vector3.new(0, 3.4, 7.8),
 		lookAt = Vector3.new(0, 3.0, 0),
 		pilePos = Vector3.new(0, 3.06, 4.4),
+		handPos = Vector3.new(0, 3.3, 5.8),
+		handRotY = 0,
 		isLocal = true,
-		label = "YOUR PILE",
+		label = "PILE", -- each client relabels its own mat "YOUR PILE" locally
 	},
 	[2] = { -- Left (BLUFFER_99) - Centered directly in front
 		standPos = Vector3.new(-7.8, 3.4, 0),
@@ -67,7 +85,9 @@ local SEAT_CONFIGS = {
 -- ============================================================================
 function TableBuilder.Build()
 	local existing = Workspace:FindFirstChild("SkullsArena")
-	if existing then existing:Destroy() end
+	if existing then
+		existing:Destroy()
+	end
 
 	table.clear(standingCFrames)
 	table.clear(pileMats)
@@ -75,6 +95,7 @@ function TableBuilder.Build()
 	table.clear(seatBillboards)
 	table.clear(opponentHands)
 	table.clear(cardCountLabels)
+	table.clear(scoreLabels)
 
 	local arena = Instance.new("Model")
 	arena.Name = "SkullsArena"
@@ -99,9 +120,13 @@ function TableBuilder.Build()
 		Lighting.FogEnd = 1000
 
 		local sky = Lighting:FindFirstChildOfClass("Sky")
-		if sky then sky:Destroy() end
+		if sky then
+			sky:Destroy()
+		end
 		local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-		if atmosphere then atmosphere:Destroy() end
+		if atmosphere then
+			atmosphere:Destroy()
+		end
 	end)
 
 	-- 2. Complete Enclosed Room (No sky visible anywhere)
@@ -343,7 +368,7 @@ function TableBuilder.Build()
 
 		local matFrame = Instance.new("Frame")
 		matFrame.Size = UDim2.new(1, -8, 1, -8)
-		matFrame.Position = UDim2.new(0, 4, 0, 4)
+		matFrame.Position = UDim2.fromOffset(4, 4)
 		matFrame.BackgroundColor3 = Color3.fromRGB(20, 18, 24)
 		matFrame.BorderSizePixel = 0
 		matFrame.Parent = matSg
@@ -359,7 +384,7 @@ function TableBuilder.Build()
 		-- Glowing Neon Ring Drop Zone in center of mat
 		local ring = Instance.new("Frame")
 		ring.Name = "DropZoneRing"
-		ring.Size = UDim2.new(0, 160, 0, 160)
+		ring.Size = UDim2.fromOffset(160, 160)
 		ring.Position = UDim2.new(0.5, -80, 0.5, -92)
 		ring.BackgroundTransparency = 1
 		ring.Parent = matFrame
@@ -426,10 +451,20 @@ end
 -- ============================================================================
 -- 2. CREATE SLEEK FROSTED GLASSPHISM PLAYER NAMETAGS (Matching Reference)
 -- ============================================================================
-local function createPlayerTag(adornee: BasePart, displayName: string, seatIdx: number): BillboardGui
+local applySeatStatus: (seatIdx: number) -> ()
+
+local function createPlayerTag(adornee: BasePart, displayName: string, seatIdx: number, hideFrom: Player?): BillboardGui
+	local old = adornee:FindFirstChild("PlayerInfoTag")
+	if old then
+		old:Destroy()
+	end
+
 	local bill = Instance.new("BillboardGui")
 	bill.Name = "PlayerInfoTag"
-	bill.Size = UDim2.new(0, 220, 0, 48)
+	if hideFrom then
+		bill.PlayerToHideFrom = hideFrom -- your own tag would just block your view
+	end
+	bill.Size = UDim2.fromOffset(220, 56)
 	bill.StudsOffset = Vector3.new(0, 2.8, 0)
 	bill.AlwaysOnTop = true
 	bill.Adornee = adornee
@@ -437,6 +472,7 @@ local function createPlayerTag(adornee: BasePart, displayName: string, seatIdx: 
 
 	-- Gradient theme per seat (matching reference: Left=cyan/yellow, Back=cyan/pink, Right=orange/pink)
 	local gradientColors = {
+		[1] = { ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 235, 150)), ColorSequenceKeypoint.new(1, Color3.fromRGB(245, 215, 80)) },
 		[2] = { ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 225, 245)), ColorSequenceKeypoint.new(1, Color3.fromRGB(245, 235, 100)) },
 		[3] = { ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 220, 245)), ColorSequenceKeypoint.new(1, Color3.fromRGB(245, 110, 180)) },
 		[4] = { ColorSequenceKeypoint.new(0, Color3.fromRGB(250, 140, 50)), ColorSequenceKeypoint.new(1, Color3.fromRGB(245, 95, 145)) },
@@ -445,7 +481,7 @@ local function createPlayerTag(adornee: BasePart, displayName: string, seatIdx: 
 	-- Capsule background
 	local capsule = Instance.new("Frame")
 	capsule.Name = "TagCapsule"
-	capsule.Size = UDim2.new(1, 0, 1, 0)
+	capsule.Size = UDim2.fromScale(1, 1)
 	capsule.BackgroundColor3 = Color3.fromRGB(18, 16, 22)
 	capsule.BackgroundTransparency = 0.25
 	capsule.BorderSizePixel = 0
@@ -465,7 +501,7 @@ local function createPlayerTag(adornee: BasePart, displayName: string, seatIdx: 
 	-- Avatar Icon Circle
 	local avatarCircle = Instance.new("Frame")
 	avatarCircle.Name = "AvatarCircle"
-	avatarCircle.Size = UDim2.new(0, 36, 0, 36)
+	avatarCircle.Size = UDim2.fromOffset(36, 36)
 	avatarCircle.Position = UDim2.new(0, 6, 0.5, -18)
 	avatarCircle.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
 	avatarCircle.Parent = capsule
@@ -473,7 +509,7 @@ local function createPlayerTag(adornee: BasePart, displayName: string, seatIdx: 
 
 	local aIcon = Instance.new("TextLabel")
 	aIcon.Name = "IconLabel"
-	aIcon.Size = UDim2.new(1, 0, 1, 0)
+	aIcon.Size = UDim2.fromScale(1, 1)
 	aIcon.BackgroundTransparency = 1
 	aIcon.Font = Enum.Font.FredokaOne
 	aIcon.TextSize = 20
@@ -484,20 +520,35 @@ local function createPlayerTag(adornee: BasePart, displayName: string, seatIdx: 
 	-- Player Name Label
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "NameLabel"
-	nameLabel.Size = UDim2.new(1, -95, 1, 0)
-	nameLabel.Position = UDim2.new(0, 48, 0, 0)
+	nameLabel.Size = UDim2.new(1, -95, 0.58, 0)
+	nameLabel.Position = UDim2.new(0, 48, 0.06, 0)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Font = Enum.Font.FredokaOne
 	nameLabel.TextSize = 16
 	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	nameLabel.Text = displayName
+	nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	nameLabel.Parent = capsule
+
+	-- Points toward the win, as pips (gold = scored)
+	local scoreLabel = Instance.new("TextLabel")
+	scoreLabel.Name = "ScoreLabel"
+	scoreLabel.Size = UDim2.new(1, -95, 0.36, 0)
+	scoreLabel.Position = UDim2.new(0, 48, 0.58, 0)
+	scoreLabel.BackgroundTransparency = 1
+	scoreLabel.Font = Enum.Font.FredokaOne
+	scoreLabel.TextSize = 13
+	scoreLabel.RichText = true
+	scoreLabel.TextXAlignment = Enum.TextXAlignment.Left
+	scoreLabel.Text = ""
+	scoreLabel.Parent = capsule
+	scoreLabels[seatIdx] = scoreLabel
 
 	-- Locofficial-style Floating Card Count Badge
 	local countBadge = Instance.new("Frame")
 	countBadge.Name = "CardCountBadge"
-	countBadge.Size = UDim2.new(0, 38, 0, 32)
+	countBadge.Size = UDim2.fromOffset(38, 32)
 	countBadge.Position = UDim2.new(1, -44, 0.5, -16)
 	countBadge.BackgroundColor3 = Color3.fromRGB(245, 245, 250)
 	countBadge.BorderSizePixel = 0
@@ -511,7 +562,7 @@ local function createPlayerTag(adornee: BasePart, displayName: string, seatIdx: 
 
 	local cText = Instance.new("TextLabel")
 	cText.Name = "CountText"
-	cText.Size = UDim2.new(1, 0, 1, 0)
+	cText.Size = UDim2.fromScale(1, 1)
 	cText.BackgroundTransparency = 1
 	cText.Font = Enum.Font.FredokaOne
 	cText.TextSize = 17
@@ -520,23 +571,70 @@ local function createPlayerTag(adornee: BasePart, displayName: string, seatIdx: 
 	cText.Parent = countBadge
 	cardCountLabels[seatIdx] = cText
 
+	applySeatStatus(seatIdx)
 	return bill
+end
+
+local function getStatus(seatIdx: number)
+	local status = seatStatus[seatIdx]
+	if not status then
+		status = { score = 0, cards = Constants.CARDS_PER_PLAYER, eliminated = false }
+		seatStatus[seatIdx] = status
+	end
+	return status
+end
+
+local function scorePips(score: number): string
+	local parts = {}
+	for i = 1, Constants.POINTS_TO_WIN do
+		local color = if i <= score then "#FFD23F" else "#5A5560"
+		table.insert(parts, `<font color="{color}">●</font>`)
+	end
+	return table.concat(parts, " ") .. `  <font color="#B4A59B">{score}/{Constants.POINTS_TO_WIN}</font>`
+end
+
+applySeatStatus = function(seatIdx: number)
+	local status = getStatus(seatIdx)
+	local scoreLabel = scoreLabels[seatIdx]
+	if scoreLabel then
+		scoreLabel.Text = if status.eliminated then `<font color="#FF6B6B">ELIMINATED</font>` else scorePips(status.score)
+	end
+	local countLabel = cardCountLabels[seatIdx]
+	if countLabel then
+		countLabel.Text = if status.eliminated then "💀" else tostring(math.max(0, status.cards))
+	end
+	local bill = seatBillboards[seatIdx] or (scoreLabel and scoreLabel:FindFirstAncestorOfClass("BillboardGui"))
+	local capsule = bill and bill:FindFirstChild("TagCapsule") :: Frame?
+	if capsule then
+		capsule.BackgroundTransparency = if status.eliminated then 0.6 else 0.25
+		local nameLabel = capsule:FindFirstChild("NameLabel") :: TextLabel?
+		if nameLabel then
+			nameLabel.TextTransparency = if status.eliminated then 0.5 else 0
+		end
+	end
 end
 
 -- ============================================================================
 -- 3. RENDER OPPONENT FANNED CIRCULAR CARDS (Matching Reference Hands)
 -- ============================================================================
 local function renderOpponentFannedHand(seatIdx: number, cardCount: number)
-	if seatIdx == 1 or not arenaModel then return end
+	-- Rendered for every seat; each client hides its own seat's tokens locally
+	if not arenaModel then
+		return
+	end
 	local cfg = SEAT_CONFIGS[seatIdx]
-	if not cfg or not cfg.handPos then return end
+	if not cfg or not cfg.handPos then
+		return
+	end
 
 	local existing = opponentHands[seatIdx]
 	if existing and existing.Parent then
 		existing:Destroy()
 	end
 
-	if cardCount <= 0 then return end
+	if cardCount <= 0 then
+		return
+	end
 
 	local handModel = Instance.new("Model")
 	handModel.Name = "OpponentHand_" .. seatIdx
@@ -575,7 +673,7 @@ local function renderOpponentFannedHand(seatIdx: number, cardCount: number)
 			sg.Parent = token
 
 			local bg = Instance.new("Frame")
-			bg.Size = UDim2.new(1, 0, 1, 0)
+			bg.Size = UDim2.fromScale(1, 1)
 			bg.BackgroundColor3 = Color3.fromRGB(26, 22, 32)
 			bg.BorderSizePixel = 0
 			bg.Parent = sg
@@ -588,7 +686,7 @@ local function renderOpponentFannedHand(seatIdx: number, cardCount: number)
 
 			local inner = Instance.new("Frame")
 			inner.Size = UDim2.new(1, -12, 1, -12)
-			inner.Position = UDim2.new(0, 6, 0, 6)
+			inner.Position = UDim2.fromOffset(6, 6)
 			inner.BackgroundTransparency = 1
 			inner.Parent = bg
 			Instance.new("UICorner", inner).CornerRadius = UDim.new(1, 0)
@@ -600,7 +698,7 @@ local function renderOpponentFannedHand(seatIdx: number, cardCount: number)
 			innerStroke.Parent = inner
 
 			local icon = Instance.new("TextLabel")
-			icon.Size = UDim2.new(1, 0, 1, 0)
+			icon.Size = UDim2.fromScale(1, 1)
 			icon.BackgroundTransparency = 1
 			icon.Font = Enum.Font.FredokaOne
 			icon.TextSize = 52
@@ -616,7 +714,9 @@ end
 -- ============================================================================
 function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	local cfg = SEAT_CONFIGS[seatIndex]
-	if not cfg or not arenaModel then return end
+	if not cfg or not arenaModel then
+		return
+	end
 
 	if botDummies[seatIndex] and botDummies[seatIndex].Parent then
 		botDummies[seatIndex]:Destroy()
@@ -684,14 +784,22 @@ end
 -- Position human player
 function TableBuilder.StandPlayer(player: Player, seatIndex: number)
 	local cfg = SEAT_CONFIGS[seatIndex]
-	if not cfg then return end
+	if not cfg then
+		return
+	end
 
 	local function setupChar(char: Model)
 		local hrp = char:WaitForChild("HumanoidRootPart", 10) :: Part?
 		local hum = char:WaitForChild("Humanoid", 10) :: Humanoid?
-		if not hrp or not hum then return end
+		if not hrp or not hum then
+			return
+		end
 
 		task.wait(0.1)
+		local head = char:FindFirstChild("Head") :: BasePart?
+		if head then
+			seatBillboards[seatIndex] = createPlayerTag(head, player.DisplayName, seatIndex, player)
+		end
 		local cf = CFrame.lookAt(cfg.standPos, cfg.lookAt)
 		char:PivotTo(cf)
 		hrp.CFrame = cf
@@ -700,10 +808,16 @@ function TableBuilder.StandPlayer(player: Player, seatIndex: number)
 		hum.JumpPower = 0
 	end
 
-	task.spawn(function()
-		if player.Character then setupChar(player.Character) end
-		player.CharacterAdded:Connect(setupChar)
-	end)
+	setStandHook(player, setupChar)
+end
+
+-- Forget a player's respawn hook (they left the game)
+function TableBuilder.ForgetPlayer(player: Player)
+	local conn = standConnections[player]
+	if conn then
+		conn:Disconnect()
+	end
+	standConnections[player] = nil
 end
 
 -- ============================================================================
@@ -727,35 +841,90 @@ function TableBuilder.HighlightTurn(activeSeatIndex: number?)
 	end
 end
 
-function TableBuilder.UpdateScore(_seatIndex: number, _score: number)
-	-- Score managed in top HUD
+function TableBuilder.UpdateScore(seatIndex: number, score: number)
+	getStatus(seatIndex).score = score
+	applySeatStatus(seatIndex)
 end
 
-function TableBuilder.UpdateCardCount(seatIndex: number, count: number)
-	renderOpponentFannedHand(seatIndex, count)
-	local label = cardCountLabels[seatIndex]
-	if label then
-		label.Text = tostring(math.max(0, count))
-	end
+-- handCount drives the fanned tokens; totalCards (hand + table) is what the badge shows,
+-- since that is how many cards the player has left before elimination.
+function TableBuilder.UpdateCardCount(seatIndex: number, handCount: number, totalCards: number?)
+	renderOpponentFannedHand(seatIndex, handCount)
+	getStatus(seatIndex).cards = totalCards or handCount
+	applySeatStatus(seatIndex)
+end
+
+function TableBuilder.SetEliminated(seatIndex: number, eliminated: boolean)
+	getStatus(seatIndex).eliminated = eliminated
+	applySeatStatus(seatIndex)
 end
 
 function TableBuilder.SetBotEmote(seatIndex: number, emote: string)
 	local bill = seatBillboards[seatIndex]
-	if not bill then return end
+	if not bill then
+		return
+	end
 	local capsule = bill:FindFirstChild("TagCapsule") :: Frame?
-	if not capsule then return end
+	if not capsule then
+		return
+	end
 	local avatarCircle = capsule:FindFirstChild("AvatarCircle") :: Frame?
-	if not avatarCircle then return end
+	if not avatarCircle then
+		return
+	end
 	local aIcon = avatarCircle:FindFirstChild("IconLabel") or avatarCircle:FindFirstChildWhichIsA("TextLabel")
 	if aIcon and aIcon:IsA("TextLabel") then
 		aIcon.Text = emote
 	end
 end
 
+-- Empty a seat: remove a bot's dummy, its tag and fanned tokens, and reset the seat's status
+function TableBuilder.ClearSeat(seatIndex: number)
+	local dummy = botDummies[seatIndex]
+	if dummy then
+		dummy:Destroy()
+		botDummies[seatIndex] = nil
+	end
+	local hand = opponentHands[seatIndex]
+	if hand then
+		hand:Destroy()
+		opponentHands[seatIndex] = nil
+	end
+	seatBillboards[seatIndex] = nil
+	scoreLabels[seatIndex] = nil
+	cardCountLabels[seatIndex] = nil
+	seatStatus[seatIndex] = nil
+end
+
+-- Players without a seat (waiting for the next match) stand back from the table
+function TableBuilder.StandSpectator(player: Player)
+	local function place(char: Model)
+		local hrp = char:WaitForChild("HumanoidRootPart", 10) :: BasePart?
+		local hum = char:WaitForChild("Humanoid", 10) :: Humanoid?
+		if not hrp or not hum then
+			return
+		end
+		task.wait(0.1)
+		local head = char:FindFirstChild("Head")
+		local tag = head and head:FindFirstChild("PlayerInfoTag")
+		if tag then
+			tag:Destroy()
+		end
+		local cf = CFrame.lookAt(Vector3.new(0, 3.4, 15), Vector3.new(0, 3.0, 0))
+		char:PivotTo(cf)
+		hrp.Anchored = true
+		hum.WalkSpeed = 0
+		hum.JumpPower = 0
+	end
+	setStandHook(player, place)
+end
+
 -- Accessors
 function TableBuilder.GetCoasterCFrame(seatIndex: number): CFrame?
 	local mat = pileMats[seatIndex]
-	if not mat then return nil end
+	if not mat then
+		return nil
+	end
 	return mat.CFrame * CFrame.new(0, 0.04, 0)
 end
 

@@ -23,8 +23,8 @@ local function spawnConfettiBurst(parent: Instance)
 	for _ = 1, 35 do
 		local flake = Instance.new("Frame")
 		flake.Name = "ConfettiFlake"
-		flake.Size = UDim2.new(0, math.random(8, 14), 0, math.random(8, 14))
-		flake.Position = UDim2.new(math.random(15, 85) / 100, 0, 0.45, 0)
+		flake.Size = UDim2.fromOffset(math.random(8, 14), math.random(8, 14))
+		flake.Position = UDim2.fromScale(math.random(15, 85) / 100, 0.45)
 		flake.BackgroundColor3 = colors[math.random(1, #colors)]
 		flake.BorderSizePixel = 0
 		flake.Rotation = math.random(0, 360)
@@ -39,7 +39,7 @@ local function spawnConfettiBurst(parent: Instance)
 		local targetY = flake.Position.Y.Scale + (math.random(-35, 35) / 100)
 
 		local tween = TweenService:Create(flake, TweenInfo.new(math.random(12, 22) / 10, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Position = UDim2.new(targetX, 0, targetY, 0),
+			Position = UDim2.fromScale(targetX, targetY),
 			Rotation = flake.Rotation + math.random(-180, 180),
 			BackgroundTransparency = 1,
 		})
@@ -53,7 +53,7 @@ end
 function VictoryModal.Create(parent: Instance): Frame
 	local container = Instance.new("Frame")
 	container.Name = "VictoryModal"
-	container.Size = UDim2.new(0, 440, 0, 260)
+	container.Size = UDim2.fromOffset(440, 260)
 	container.Position = UDim2.new(0.5, -220, 0.45, -130)
 	container.BackgroundColor3 = Theme.Colors.PanelBackground
 	container.BackgroundTransparency = 0.08
@@ -75,7 +75,7 @@ function VictoryModal.Create(parent: Instance): Frame
 	local crownIcon = Instance.new("TextLabel")
 	crownIcon.Name = "CrownIcon"
 	crownIcon.Size = UDim2.new(1, 0, 0, 60)
-	crownIcon.Position = UDim2.new(0, 0, 0, 12)
+	crownIcon.Position = UDim2.fromOffset(0, 12)
 	crownIcon.BackgroundTransparency = 1
 	crownIcon.Font = Theme.Fonts.Title
 	crownIcon.TextSize = 52
@@ -87,7 +87,7 @@ function VictoryModal.Create(parent: Instance): Frame
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
 	title.Size = UDim2.new(1, -20, 0, 28)
-	title.Position = UDim2.new(0, 10, 0, 72)
+	title.Position = UDim2.fromOffset(10, 72)
 	title.BackgroundTransparency = 1
 	title.Font = Theme.Fonts.Title
 	title.TextSize = 22
@@ -100,7 +100,7 @@ function VictoryModal.Create(parent: Instance): Frame
 	local winner = Instance.new("TextLabel")
 	winner.Name = "WinnerName"
 	winner.Size = UDim2.new(1, -20, 0, 34)
-	winner.Position = UDim2.new(0, 10, 0, 104)
+	winner.Position = UDim2.fromOffset(10, 104)
 	winner.BackgroundTransparency = 1
 	winner.Font = Theme.Fonts.Header
 	winner.TextSize = 20
@@ -113,7 +113,7 @@ function VictoryModal.Create(parent: Instance): Frame
 	local gemBox = Instance.new("Frame")
 	gemBox.Name = "GemBox"
 	gemBox.Size = UDim2.new(1, 0, 0, 32)
-	gemBox.Position = UDim2.new(0, 0, 0, 146)
+	gemBox.Position = UDim2.fromOffset(0, 146)
 	gemBox.BackgroundTransparency = 1
 	gemBox.ZIndex = 52
 	gemBox.Parent = container
@@ -127,7 +127,7 @@ function VictoryModal.Create(parent: Instance): Frame
 	for i = 1, 2 do
 		local gem = Instance.new("TextLabel")
 		gem.Name = "Gem_" .. i
-		gem.Size = UDim2.new(0, 28, 0, 28)
+		gem.Size = UDim2.fromOffset(28, 28)
 		gem.BackgroundTransparency = 1
 		gem.Font = Theme.Fonts.Title
 		gem.TextSize = 26
@@ -161,7 +161,9 @@ local showToken = 0
 
 -- Shows the winner for `duration` seconds with a countdown to the next match.
 function VictoryModal.Show(winnerName: string, isLocalPlayer: boolean, reason: string?, duration: number?)
-	if not modalFrame or not winnerLabel or not subtitleLabel then return end
+	if not modalFrame or not winnerLabel or not subtitleLabel then
+		return
+	end
 	local subtitle = subtitleLabel
 	showToken += 1
 	local token = showToken
@@ -181,11 +183,11 @@ function VictoryModal.Show(winnerName: string, isLocalPlayer: boolean, reason: s
 	end)
 
 	modalFrame.Visible = true
-	modalFrame.Size = UDim2.new(0, 360, 0, 210)
+	modalFrame.Size = UDim2.fromOffset(360, 210)
 	modalFrame.Position = UDim2.new(0.5, -180, 0.45, -105)
 
 	TweenService:Create(modalFrame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Size = UDim2.new(0, 440, 0, 260),
+		Size = UDim2.fromOffset(440, 260),
 		Position = UDim2.new(0.5, -220, 0.45, -130),
 	}):Play()
 
@@ -193,9 +195,11 @@ function VictoryModal.Show(winnerName: string, isLocalPlayer: boolean, reason: s
 
 	-- Auto-dismiss just before the next match starts
 	task.delay(holdSeconds - 0.5, function()
-		if not modalFrame or showToken ~= token then return end
+		if not modalFrame or showToken ~= token then
+			return
+		end
 		local tween = TweenService:Create(modalFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			Size = UDim2.new(0, 340, 0, 200),
+			Size = UDim2.fromOffset(340, 200),
 			Position = UDim2.new(0.5, -170, 0.45, -100),
 		})
 		tween:Play()

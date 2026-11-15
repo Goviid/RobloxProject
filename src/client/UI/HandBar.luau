@@ -32,15 +32,25 @@ local RESTING_Y = 10
 local HOVER_LIFT_Y = -35
 
 -- Natural fan angles
+-- Read a numeric attribute, falling back when it is missing or not a number
+local function numAttr(inst: Instance, name: string, default: number): number
+	local value = inst:GetAttribute(name)
+	return if type(value) == "number" then value else default
+end
+
 local function getFannedAngle(index: number, total: number): number
-	if total <= 1 then return 0 end
+	if total <= 1 then
+		return 0
+	end
 	local norm = (index - 1) / (total - 1) -- 0.0 to 1.0
 	local maxDeg = if total >= 4 then 10.0 elseif total == 3 then 7.0 else 4.0
 	return (norm - 0.5) * (maxDeg * 2)
 end
 
 local function getArchY(index: number, total: number): number
-	if total <= 1 then return 0 end
+	if total <= 1 then
+		return 0
+	end
 	local centerDist = math.abs((index - 1) - (total - 1) / 2)
 	return centerDist * 6.0
 end
@@ -53,7 +63,7 @@ local function createCircularToken(
 	index: number,
 	totalCards: number,
 	xOffset: number,
-	isPlayable: boolean
+	_isPlayable: boolean
 ): Frame
 	local isRose = (cardType == Enums.CardType.Rose)
 	local rotAngle = getFannedAngle(index, totalCards)
@@ -63,7 +73,7 @@ local function createCircularToken(
 
 	local container = Instance.new("Frame")
 	container.Name = "TokenHolder_" .. index .. "_" .. cardType
-	container.Size = UDim2.new(0, CARD_DIAMETER, 0, CARD_DIAMETER + 26)
+	container.Size = UDim2.fromOffset(CARD_DIAMETER, CARD_DIAMETER + 26)
 	container.AnchorPoint = Vector2.new(0.5, 1)
 	container.Position = UDim2.new(0.5, xOffset, 1, restingYPos)
 	container.Rotation = rotAngle
@@ -79,7 +89,7 @@ local function createCircularToken(
 	local promptLabel = Instance.new("TextLabel")
 	promptLabel.Name = "PromptLabel"
 	promptLabel.Size = UDim2.new(1, 0, 0, 16)
-	promptLabel.Position = UDim2.new(0, 0, 0, 2)
+	promptLabel.Position = UDim2.fromOffset(0, 2)
 	promptLabel.BackgroundTransparency = 1
 	promptLabel.Font = Enum.Font.FredokaOne
 	promptLabel.TextSize = 11
@@ -93,8 +103,8 @@ local function createCircularToken(
 	-- Circular Shadow
 	local shadow = Instance.new("Frame")
 	shadow.Name = "TokenShadow"
-	shadow.Size = UDim2.new(0, CARD_DIAMETER, 0, CARD_DIAMETER)
-	shadow.Position = UDim2.new(0, 0, 0, 26)
+	shadow.Size = UDim2.fromOffset(CARD_DIAMETER, CARD_DIAMETER)
+	shadow.Position = UDim2.fromOffset(0, 26)
 	shadow.BackgroundColor3 = Color3.fromRGB(10, 8, 14)
 	shadow.BackgroundTransparency = 0.65
 	shadow.BorderSizePixel = 0
@@ -105,8 +115,8 @@ local function createCircularToken(
 	-- Circular Button Body
 	local btn = Instance.new("ImageButton")
 	btn.Name = "TokenButton"
-	btn.Size = UDim2.new(0, CARD_DIAMETER, 0, CARD_DIAMETER)
-	btn.Position = UDim2.new(0, 0, 0, 20)
+	btn.Size = UDim2.fromOffset(CARD_DIAMETER, CARD_DIAMETER)
+	btn.Position = UDim2.fromOffset(0, 20)
 	btn.BackgroundColor3 = isRose and Color3.fromRGB(240, 226, 202) or Color3.fromRGB(28, 24, 32)
 	btn.BorderSizePixel = 0
 	btn.AutoButtonColor = false
@@ -143,7 +153,7 @@ local function createCircularToken(
 	local inner = Instance.new("Frame")
 	inner.Name = "InnerRing"
 	inner.Size = UDim2.new(1, -14, 1, -14)
-	inner.Position = UDim2.new(0, 7, 0, 7)
+	inner.Position = UDim2.fromOffset(7, 7)
 	inner.BackgroundTransparency = 1
 	inner.ZIndex = baseZIndex + 2
 	inner.Parent = btn
@@ -158,8 +168,8 @@ local function createCircularToken(
 	-- Center Icon (🌹 or 💀)
 	local icon = Instance.new("TextLabel")
 	icon.Name = "CenterIcon"
-	icon.Size = UDim2.new(1, 0, 1, 0)
-	icon.Position = UDim2.new(0, 0, 0, 0)
+	icon.Size = UDim2.fromScale(1, 1)
+	icon.Position = UDim2.fromOffset(0, 0)
 	icon.BackgroundTransparency = 1
 	icon.Font = Theme.Fonts.Title
 	icon.TextSize = 58
@@ -177,7 +187,7 @@ local function createCircularToken(
 		icon.ZIndex = 63
 		promptLabel.ZIndex = 64
 
-		local curX = container:GetAttribute("RestingX") or xOffset
+		local curX = numAttr(container, "RestingX", xOffset)
 
 		TweenService:Create(container, TweenInfo.new(0.20, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 			Position = UDim2.new(0.5, curX, 1, HOVER_LIFT_Y),
@@ -197,10 +207,10 @@ local function createCircularToken(
 	end)
 
 	btn.MouseLeave:Connect(function()
-		local curX = container:GetAttribute("RestingX") or xOffset
-		local curY = container:GetAttribute("RestingY") or restingYPos
-		local curRot = container:GetAttribute("RestingRot") or rotAngle
-		local curZ = container:GetAttribute("BaseZIndex") or baseZIndex
+		local curX = numAttr(container, "RestingX", xOffset)
+		local curY = numAttr(container, "RestingY", restingYPos)
+		local curRot = numAttr(container, "RestingRot", rotAngle)
+		local curZ = numAttr(container, "BaseZIndex", baseZIndex)
 
 		container.ZIndex = curZ
 		shadow.ZIndex = curZ
@@ -249,7 +259,7 @@ local function createCircularToken(
 		-- Immediate responsive exit tween & prevent accidental double-clicks
 		btn.Active = false
 		local exitTween = TweenService:Create(container, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			Position = container.Position + UDim2.new(0, 0, 0, 50),
+			Position = container.Position + UDim2.fromOffset(0, 50),
 		})
 		exitTween:Play()
 
@@ -265,9 +275,13 @@ end
 -- 2. CONSUME CARD & RE-FAN REMAINING
 -- ============================================================================
 function HandBar.ConsumeCard(cardIndex: number)
-	if not dockFrame then return end
+	if not dockFrame then
+		return
+	end
 	local targetContainer = cardContainers[cardIndex]
-	if not targetContainer then return end
+	if not targetContainer then
+		return
+	end
 
 	table.remove(cardContainers, cardIndex)
 	table.remove(currentHand, cardIndex)
@@ -282,15 +296,27 @@ function HandBar.ConsumeCard(cardIndex: number)
 
 	local tweenInfo = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
-	if btn then TweenService:Create(btn, tweenInfo, { BackgroundTransparency = 1 }):Play() end
-	if shadow then TweenService:Create(shadow, tweenInfo, { BackgroundTransparency = 1 }):Play() end
-	if icon then TweenService:Create(icon, tweenInfo, { TextTransparency = 1 }):Play() end
-	if promptLabel then TweenService:Create(promptLabel, tweenInfo, { TextTransparency = 1 }):Play() end
-	if stroke then TweenService:Create(stroke, tweenInfo, { Transparency = 1 }):Play() end
-	if innerStroke then TweenService:Create(innerStroke, tweenInfo, { Transparency = 1 }):Play() end
+	if btn then
+		TweenService:Create(btn, tweenInfo, { BackgroundTransparency = 1 }):Play()
+	end
+	if shadow then
+		TweenService:Create(shadow, tweenInfo, { BackgroundTransparency = 1 }):Play()
+	end
+	if icon then
+		TweenService:Create(icon, tweenInfo, { TextTransparency = 1 }):Play()
+	end
+	if promptLabel then
+		TweenService:Create(promptLabel, tweenInfo, { TextTransparency = 1 }):Play()
+	end
+	if stroke then
+		TweenService:Create(stroke, tweenInfo, { Transparency = 1 }):Play()
+	end
+	if innerStroke then
+		TweenService:Create(innerStroke, tweenInfo, { Transparency = 1 }):Play()
+	end
 
 	local exitTween = TweenService:Create(targetContainer, tweenInfo, {
-		Position = targetContainer.Position + UDim2.new(0, 0, 0, 50),
+		Position = targetContainer.Position + UDim2.fromOffset(0, 50),
 	})
 	exitTween:Play()
 	exitTween.Completed:Connect(function()
@@ -336,8 +362,8 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	local dock = Instance.new("Frame")
 	dock.Name = "FloatingHandDock"
 	dock.AnchorPoint = Vector2.new(0.5, 1)
-	dock.Size = UDim2.new(0, 520, 0, 180)
-	dock.Position = UDim2.new(0.5, 0, 1, 0)
+	dock.Size = UDim2.fromOffset(520, 180)
+	dock.Position = UDim2.fromScale(0.5, 1)
 	dock.BackgroundTransparency = 1
 	dock.BorderSizePixel = 0
 	dock.ZIndex = 45
@@ -347,7 +373,7 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	local armHolder = Instance.new("Frame")
 	armHolder.Name = "RobloxArmHolder"
 	armHolder.AnchorPoint = Vector2.new(0.5, 1)
-	armHolder.Size = UDim2.new(0, 130, 0, 150)
+	armHolder.Size = UDim2.fromOffset(130, 150)
 	armHolder.Position = UDim2.new(0.5, 45, 1, 46)
 	armHolder.Rotation = -14
 	armHolder.BackgroundTransparency = 1
@@ -363,7 +389,7 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	-- 1. Dark Suit Sleeve
 	local sleeve = Instance.new("Frame")
 	sleeve.Name = "Sleeve"
-	sleeve.Size = UDim2.new(0, 68, 0, 100)
+	sleeve.Size = UDim2.fromOffset(68, 100)
 	sleeve.Position = UDim2.new(0.5, -34, 1, -90)
 	sleeve.BackgroundColor3 = Color3.fromRGB(20, 18, 26)
 	sleeve.BorderSizePixel = 0
@@ -386,7 +412,7 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	local cuff = Instance.new("Frame")
 	cuff.Name = "Cuff"
 	cuff.Size = UDim2.new(1, 0, 0, 14)
-	cuff.Position = UDim2.new(0, 0, 0, -12)
+	cuff.Position = UDim2.fromOffset(0, -12)
 	cuff.BackgroundColor3 = Color3.fromRGB(242, 242, 250)
 	cuff.BorderSizePixel = 0
 	cuff.Active = false
@@ -402,7 +428,7 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	-- 3. Blocky Classic Roblox Yellow Hand
 	local hand = Instance.new("Frame")
 	hand.Name = "BlockyHand"
-	hand.Size = UDim2.new(0, 58, 0, 40)
+	hand.Size = UDim2.fromOffset(58, 40)
 	hand.Position = UDim2.new(0.5, -29, 0, -48)
 	hand.BackgroundColor3 = Color3.fromRGB(245, 205, 55)
 	hand.BorderSizePixel = 0
@@ -426,7 +452,9 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 end
 
 function HandBar.UpdateHand(hand: { string }, isTurn: boolean, canPlace: boolean)
-	if not dockFrame then return end
+	if not dockFrame then
+		return
+	end
 
 	-- Stably sort hand so Roses are consistently on left and Skull on far right
 	table.sort(hand, function(a, b)
@@ -469,7 +497,9 @@ function HandBar.UpdateHand(hand: { string }, isTurn: boolean, canPlace: boolean
 	table.clear(cardContainers)
 
 	local total = #hand
-	if total == 0 then return end
+	if total == 0 then
+		return
+	end
 
 	local totalWidth = (total - 1) * CARD_SPACING
 	local startX = -totalWidth / 2
@@ -483,7 +513,9 @@ function HandBar.UpdateHand(hand: { string }, isTurn: boolean, canPlace: boolean
 end
 
 function HandBar.SetVisible(visible: boolean)
-	if dockFrame then dockFrame.Visible = visible end
+	if dockFrame then
+		dockFrame.Visible = visible
+	end
 end
 
 function HandBar.GetSelectedCard(): string?

@@ -49,13 +49,14 @@ F:\RobloxProject\
 
 #### `Constants.luau`
 * **Purpose:** Single source of truth for all game settings, balance numbers, and layout angles.
-* **`MIN_PLAYERS / MAX_PLAYERS`**: Set to `2` and `6`.
-* **`DEFAULT_TEST_BOTS = 3`**: Automatically generates 3 AI players in Studio so you can test 4-player matches alone.
+* **`MIN_PLAYERS / MAX_PLAYERS`**: `2` and `4` (the 3D table has 4 seats).
+* **`ENABLE_BOTS`**: Lets the lobby host fill empty seats with bots (on by default, so a solo Studio test plays against 3 bots).
+* **`LOBBY_COUNTDOWN = 5`**: Seconds between everyone being ready and the match starting.
 * **`POINTS_TO_WIN = 2`**: Standard Skull rule — first player to win 2 rounds wins the whole match.
 * **`ROSES_PER_PLAYER = 3` & `SKULLS_PER_PLAYER = 1`**: Starting hand configuration (4 cards total).
 * **`TURN_TIMEOUT = 30`**: Seconds allowed per turn (including the skull-penalty pick) before the game takes an automatic action so games never freeze.
 * **`MATCH_OVER_DELAY = 30`**: How long the winner screen stays up before a new match starts.
-* **`BOT_THINK_DELAY = 5`**: Seconds a bot waits before acting, so humans can follow along.
+* **`BOT_THINK_DELAY = 3`**: Seconds a bot waits before acting, so humans can follow along.
 * **`SEAT_DISTRIBUTIONS`**: Mathematical circle degrees used by `TableView.luau` to arrange player pods radially around the table.
 
 #### `Enums.luau`
@@ -66,8 +67,8 @@ F:\RobloxProject\
 
 #### `Network.luau`
 * **Purpose:** Manages RemoteEvents and RemoteFunctions automatically in `ReplicatedStorage`.
-* **Server &rarr; Client Events:** `GameStateChanged`, `CardPlayed`, `BidUpdated`, `CardRevealed`, `CardLost` (sent only to the penalised challenger, with the card type they lost), `Notification`, `GameOver`. `GameStateChanged` carries `discard = { chooserId, victimId, isOwnSkull, cardCount, cards? }` during `Discarding`; `cards` is only sent to a challenger choosing among their own cards.
-* **Client &rarr; Server Function:** `SubmitAction`.
+* **Server &rarr; Client Events:** `GameStateChanged`, `CardPlayed`, `BidUpdated`, `CardRevealed`, `CardLost` (sent only to the penalised challenger, with the card type they lost), `Notification`, `GameOver`, `LobbyState` (`{ inLobby, hostId, addBots, seats, waitingCount, countdown, canStart }`). `GameStateChanged` also carries `isSeated` (false = waiting for the next match) and `discard = { chooserId, victimId, isOwnSkull, cardCount, cards? }` during `Discarding`; `cards` is only sent to a challenger choosing among their own cards.
+* **Client &rarr; Server:** `SubmitAction` (function, in-match actions), `RequestState`, `LobbyAction` (`"ToggleReady"`, `"SetAddBots"` host only, `"Start"` host only).
 
 ---
 
@@ -79,6 +80,7 @@ F:\RobloxProject\
 * **Regular Bright Lighting:** Standard Roblox daytime lighting (`Brightness: 2.0`, `ClockTime: 14.0`, `ShadowMap`, natural ambient fill) with zero dark walls or dim gloom.
 * **Spawn & Positioning:** Placed an invisible `SpawnLocation` directly at Seat 1 and anchors `HumanoidRootPart` with disabled locomotion so the player never spawns in the middle or slides off.
 * **Standing Avatars:** Positions human players and builds stylish custom-suited dummy avatars for bots around the circular table facing inward.
+* **Seat Tags:** Every seat (bots and humans; your own tag is hidden from you) shows name, score pips (`●○ 1/2`), a badge with total cards left (hand + table), and greys out with "ELIMINATED". Driven by `UpdateScore`, `UpdateCardCount(seat, handCount, totalCards)` and `SetEliminated` from `RoundManager.broadcastState`.
 
 #### `Card3DManager.luau`
 * **Purpose:** Manages physical oversized 3D cards placed on the table in front of players (LOCOfficial style).
@@ -106,9 +108,13 @@ F:\RobloxProject\
 * **Turn Timer:** `TURN_TIMEOUT` (30s) with automatic auto-place / auto-pass / random-discard fallback.
 * **Match End (`declareMatchWinner`):** Reached by scoring `POINTS_TO_WIN` or by being the last player with cards left. Fires `GameOver(winnerId, reason, duration)`, holds `MatchEnd` for `MATCH_OVER_DELAY`, then resets the match.
 
+#### `LobbyManager.luau`
+* **Purpose:** Pre-match lobby. Humans take seats 1–4 while in the lobby; anyone joining mid-match (or when the table is full) waits and spectates. Ready check with `LOBBY_COUNTDOWN`; the host (first joined still present) can force-start and toggle bots. Bots fill empty seats at match start and are removed when the match ends (`RoundManager.SetMatchOverHandler(LobbyManager.EnterLobby)`).
+* A player leaving mid-match → `RoundManager.OnPlayerLeft`: the round restarts without them, or the last remaining player wins.
+
 #### `init.server.luau`
 * **Purpose:** Bootstrapper that ties the server together.
-* Connects player join/leave hooks, binds `SubmitAction`, and spawns test bots (*Doña Flor, El Bandido, Don Diego*) for instant solo testing.
+* Builds the table, binds `SubmitAction` / `RequestState`, and routes player join/leave to `LobbyManager`.
 
 ---
 
@@ -143,6 +149,15 @@ F:\RobloxProject\
 * Pinned neatly at the top of the screen to leave the center 3D table completely unobstructed. Shows player names, avatars, stack counts, score gems, and active turn halos.
 * Allows challengers to click player pills (or the physical 3D table cards) to reveal cards.
 
+#### `UI/LobbyPanel.luau`
+* **Purpose:** Lobby screen rendered from `LobbyState`: seat list with ready status, READY toggle, and host-only BOTS ON/OFF and START buttons.
+
+#### `UI/PhaseOverlay.luau`
+* **Purpose:** Round intro card ("ROUND 3 · X starts", shown ~2s when a round's placement begins) and a status pill while not playing (eliminated, or waiting for a seat).
+
+#### `CameraController.luau` (per-seat view)
+* `SetSeat(seatIndex)` rotates the seat-1 camera setup around the table to face it from the local player's seat (angle taken from `PlayerMat_<seat>`). `init.client.luau` also relabels your own mat "YOUR PILE" and hides your own fanned hand tokens locally.
+
 #### `UI/DiscardModal.luau`
 * **Purpose:** Skull penalty picker, shown only to the chooser. Own skull: the challenger's cards face-up, pick one to lose. Someone else's skull: N face-down cards, the skull owner removes one blindly.
 
@@ -152,7 +167,7 @@ F:\RobloxProject\
 
 #### `UI/CardAnimation.luau`
 * **Purpose:** Flying card physics animation (LOCOfficial style).
-* Animates cards physically flying from the bottom floating hand dock onto the 3D table stack with an elastic bounce when played.
+* Animates cards physically flying from the bottom floating hand dock onto the 3D table stack with an elastic bounce when played. Called from `init.client.luau` when your placement is confirmed (target = your `PlayerMat_<seat>` projected to screen) and when you lose a card to a skull penalty (flies off the top).
 
 #### `init.client.luau`
 * **Purpose:** Client entry point. Builds the `ScreenGui`, coordinates all UI components, and binds server events.

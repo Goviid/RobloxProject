@@ -13,7 +13,6 @@ local Enums = require(game:GetService("ReplicatedStorage").Shared.Enums)
 local ActionBar = {}
 
 local rootFrame: Frame? = nil
-local actionRow: Frame? = nil
 local bidButton: TextButton? = nil
 local raiseBidButton: TextButton? = nil
 local passButton: TextButton? = nil
@@ -94,7 +93,7 @@ function ActionBar.Create(parent: Instance, callback: (action: string, data: any
 	local root = Instance.new("Frame")
 	root.Name = "ActionBarRoot"
 	root.AnchorPoint = Vector2.new(1, 1)
-	root.Size = UDim2.new(0, 150, 0, 150)
+	root.Size = UDim2.fromOffset(150, 150)
 	root.Position = UDim2.new(1, -25, 1, -25)
 	root.BackgroundTransparency = 1
 	root.Active = false
@@ -104,11 +103,10 @@ function ActionBar.Create(parent: Instance, callback: (action: string, data: any
 
 	local col = Instance.new("Frame")
 	col.Name = "ActionColumn"
-	col.Size = UDim2.new(1, 0, 1, 0)
+	col.Size = UDim2.fromScale(1, 1)
 	col.BackgroundTransparency = 1
 	col.Active = false
 	col.Parent = root
-	actionRow = col
 
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Vertical
@@ -119,37 +117,40 @@ function ActionBar.Create(parent: Instance, callback: (action: string, data: any
 	layout.Parent = col
 
 	-- 1. Prominent BET Button (Gold/Amber)
-	bidButton = makeActionPill(
+	local bidBtn = makeActionPill(
 		"BidBtn",
 		"BET",
 		Color3.fromRGB(255, 215, 65),
 		UDim2.new(1, 0, 0, 42),
 		col
 	)
-	bidButton.LayoutOrder = 1
-	bidButton.Visible = true
+	bidButton = bidBtn
+	bidBtn.LayoutOrder = 1
+	bidBtn.Visible = true
 
 	-- 2. RAISE BID / CHALLENGE Button (Coral/Salmon Pink)
-	raiseBidButton = makeActionPill(
+	local raiseBtn = makeActionPill(
 		"RaiseBidBtn",
 		"CHALLENGE",
 		Color3.fromRGB(255, 115, 130),
 		UDim2.new(1, 0, 0, 42),
 		col
 	)
-	raiseBidButton.LayoutOrder = 2
-	raiseBidButton.Visible = false
+	raiseBidButton = raiseBtn
+	raiseBtn.LayoutOrder = 2
+	raiseBtn.Visible = false
 
 	-- 3. PASS Button (Mint Green)
-	passButton = makeActionPill(
+	local passBtn = makeActionPill(
 		"PassBtn",
 		"PASS",
 		Color3.fromRGB(78, 204, 163),
 		UDim2.new(1, 0, 0, 42),
 		col
 	)
-	passButton.LayoutOrder = 3
-	passButton.Visible = false
+	passButton = passBtn
+	passBtn.LayoutOrder = 3
+	passBtn.Visible = false
 
 	-- ========================================================================
 	-- 2. BID NUMBER PICKER POPUP MODAL (Floats neatly to the left of the action buttons)
@@ -157,7 +158,7 @@ function ActionBar.Create(parent: Instance, callback: (action: string, data: any
 	local modal = Instance.new("Frame")
 	modal.Name = "BidPickerModal"
 	modal.AnchorPoint = Vector2.new(1, 1)
-	modal.Size = UDim2.new(0, 260, 0, 142)
+	modal.Size = UDim2.fromOffset(260, 142)
 	modal.Position = UDim2.new(1, -185, 1, -25)
 	modal.BackgroundColor3 = Color3.fromRGB(18, 15, 25)
 	modal.BackgroundTransparency = 0.10
@@ -175,7 +176,7 @@ function ActionBar.Create(parent: Instance, callback: (action: string, data: any
 	-- Modal Title
 	local mTitle = Instance.new("TextLabel")
 	mTitle.Size = UDim2.new(1, 0, 0, 26)
-	mTitle.Position = UDim2.new(0, 0, 0, 6)
+	mTitle.Position = UDim2.fromOffset(0, 6)
 	mTitle.BackgroundTransparency = 1
 	mTitle.Font = Enum.Font.FredokaOne
 	mTitle.TextSize = 15
@@ -185,7 +186,7 @@ function ActionBar.Create(parent: Instance, callback: (action: string, data: any
 
 	-- Close 'X' Button
 	local closeBtn = Instance.new("TextButton")
-	closeBtn.Size = UDim2.new(0, 24, 0, 24)
+	closeBtn.Size = UDim2.fromOffset(24, 24)
 	closeBtn.Position = UDim2.new(1, -28, 0, 6)
 	closeBtn.BackgroundColor3 = Color3.fromRGB(30, 24, 38)
 	closeBtn.Font = Enum.Font.FredokaOne
@@ -200,8 +201,8 @@ function ActionBar.Create(parent: Instance, callback: (action: string, data: any
 
 	-- Value Controls: [-]  [ VALUE ]  [+]
 	local minusBtn = Instance.new("TextButton")
-	minusBtn.Size = UDim2.new(0, 38, 0, 38)
-	minusBtn.Position = UDim2.new(0, 18, 0, 36)
+	minusBtn.Size = UDim2.fromOffset(38, 38)
+	minusBtn.Position = UDim2.fromOffset(18, 36)
 	minusBtn.BackgroundColor3 = Color3.fromRGB(32, 26, 42)
 	minusBtn.Font = Enum.Font.FredokaOne
 	minusBtn.TextSize = 22
@@ -212,7 +213,7 @@ function ActionBar.Create(parent: Instance, callback: (action: string, data: any
 
 	local valLabel = Instance.new("TextLabel")
 	valLabel.Size = UDim2.new(1, -120, 0, 38)
-	valLabel.Position = UDim2.new(0, 60, 0, 36)
+	valLabel.Position = UDim2.fromOffset(60, 36)
 	valLabel.BackgroundTransparency = 1
 	valLabel.Font = Enum.Font.FredokaOne
 	valLabel.TextSize = 30
@@ -222,7 +223,7 @@ function ActionBar.Create(parent: Instance, callback: (action: string, data: any
 	bidValueLabel = valLabel
 
 	local plusBtn = Instance.new("TextButton")
-	plusBtn.Size = UDim2.new(0, 38, 0, 38)
+	plusBtn.Size = UDim2.fromOffset(38, 38)
 	plusBtn.Position = UDim2.new(1, -56, 0, 36)
 	plusBtn.BackgroundColor3 = Color3.fromRGB(32, 26, 42)
 	plusBtn.Font = Enum.Font.FredokaOne
@@ -235,7 +236,7 @@ function ActionBar.Create(parent: Instance, callback: (action: string, data: any
 	-- Subtitle: "Cards on Table: X"
 	local subLabel = Instance.new("TextLabel")
 	subLabel.Size = UDim2.new(1, 0, 0, 16)
-	subLabel.Position = UDim2.new(0, 0, 0, 78)
+	subLabel.Position = UDim2.fromOffset(0, 78)
 	subLabel.BackgroundTransparency = 1
 	subLabel.Font = Enum.Font.FredokaOne
 	subLabel.TextSize = 11
@@ -283,7 +284,7 @@ function ActionBar.Create(parent: Instance, callback: (action: string, data: any
 	bidModal = modal
 
 	-- Click Handlers
-	bidButton.MouseButton1Click:Connect(function()
+	bidBtn.MouseButton1Click:Connect(function()
 		if currentPhase == Enums.GameState.Revealing and isMyTurnCached then
 			if onActionCallback then
 				local Players = game:GetService("Players")
@@ -303,7 +304,7 @@ function ActionBar.Create(parent: Instance, callback: (action: string, data: any
 		modal.Visible = not modal.Visible
 	end)
 
-	raiseBidButton.MouseButton1Click:Connect(function()
+	raiseBtn.MouseButton1Click:Connect(function()
 		local inBidding = (currentPhase == Enums.GameState.Bidding)
 		if inBidding and isMyTurnCached then
 			modal.Visible = not modal.Visible
@@ -316,7 +317,7 @@ function ActionBar.Create(parent: Instance, callback: (action: string, data: any
 		end
 	end)
 
-	passButton.MouseButton1Click:Connect(function()
+	passBtn.MouseButton1Click:Connect(function()
 		local inBidding = (currentPhase == Enums.GameState.Bidding)
 		if inBidding and isMyTurnCached then
 			if onActionCallback then
@@ -342,7 +343,7 @@ function ActionBar.UpdateState(
 	gameState: string,
 	highestBid: number,
 	totalCards: number,
-	hasCardsInHand: boolean,
+	_hasCardsInHand: boolean,
 	hasCardsInStack: boolean,
 	canStartBid: boolean?
 )
@@ -457,15 +458,21 @@ function ActionBar.UpdateState(
 		else
 			bidButton.Text = "REVEALING"
 			bidButton.TextTransparency = 0.6
-			if bStroke then bStroke.Transparency = 0.6 end
+			if bStroke then
+				bStroke.Transparency = 0.6
+			end
 		end
 
 		raiseBidButton.Text = "CHALLENGE"
 		raiseBidButton.TextTransparency = 0.6
 		passButton.Text = "PASS"
 		passButton.TextTransparency = 0.6
-		if rStroke then rStroke.Transparency = 0.6 end
-		if pStroke then pStroke.Transparency = 0.6 end
+		if rStroke then
+			rStroke.Transparency = 0.6
+		end
+		if pStroke then
+			pStroke.Transparency = 0.6
+		end
 
 	else
 		-- RoundEnd / Lobby: keep stacked layout in quiet mode
@@ -476,9 +483,15 @@ function ActionBar.UpdateState(
 		raiseBidButton.TextTransparency = 0.6
 		passButton.Text = "PASS"
 		passButton.TextTransparency = 0.6
-		if bStroke then bStroke.Transparency = 0.6 end
-		if rStroke then rStroke.Transparency = 0.6 end
-		if pStroke then pStroke.Transparency = 0.6 end
+		if bStroke then
+			bStroke.Transparency = 0.6
+		end
+		if rStroke then
+			rStroke.Transparency = 0.6
+		end
+		if pStroke then
+			pStroke.Transparency = 0.6
+		end
 	end
 
 	if not isMyTurn and bidModal then

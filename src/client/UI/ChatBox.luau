@@ -2,11 +2,9 @@
 -- ChatBox.luau
 -- Translucent Roblox-Style 2D Chat Box on Top-Left (Matching concept reference Image 4)
 
-local TweenService = game:GetService("TweenService")
 
 local ChatBox = {}
 
-local rootFrame: Frame? = nil
 local scrollFrame: ScrollingFrame? = nil
 
 -- Initial bustling match chat lines matching Image 4
@@ -25,8 +23,8 @@ local INITIAL_MESSAGES = {
 function ChatBox.Create(parent: Instance): Frame
 	local box = Instance.new("Frame")
 	box.Name = "RobloxChatBox"
-	box.Size = UDim2.new(0, 310, 0, 195)
-	box.Position = UDim2.new(0, 16, 0, 16) -- Top-left pinned matching reference
+	box.Size = UDim2.fromOffset(310, 195)
+	box.Position = UDim2.fromOffset(16, 16) -- Top-left pinned matching reference
 	box.BackgroundColor3 = Color3.fromRGB(12, 10, 18)
 	box.BackgroundTransparency = 0.45 -- Translucent Roblox-style
 	box.BorderSizePixel = 0
@@ -44,13 +42,13 @@ function ChatBox.Create(parent: Instance): Frame
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.Name = "MessageScroll"
 	scroll.Size = UDim2.new(1, -12, 1, -40)
-	scroll.Position = UDim2.new(0, 6, 0, 6)
+	scroll.Position = UDim2.fromOffset(6, 6)
 	scroll.BackgroundTransparency = 1
 	scroll.BorderSizePixel = 0
 	scroll.ScrollBarThickness = 3
 	scroll.ScrollBarImageColor3 = Color3.fromRGB(120, 110, 140)
 	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scroll.CanvasSize = UDim2.fromOffset(0, 0)
 	scroll.ZIndex = 31
 	scroll.Parent = box
 	scrollFrame = scroll
@@ -76,7 +74,7 @@ function ChatBox.Create(parent: Instance): Frame
 	local inputPlaceholder = Instance.new("TextLabel")
 	inputPlaceholder.Name = "Placeholder"
 	inputPlaceholder.Size = UDim2.new(1, -12, 1, 0)
-	inputPlaceholder.Position = UDim2.new(0, 8, 0, 0)
+	inputPlaceholder.Position = UDim2.fromOffset(8, 0)
 	inputPlaceholder.BackgroundTransparency = 1
 	inputPlaceholder.Font = Enum.Font.SourceSans
 	inputPlaceholder.TextSize = 13
@@ -91,12 +89,13 @@ function ChatBox.Create(parent: Instance): Frame
 		ChatBox.AddMessage(msg.sender, msg.text, msg.color, idx)
 	end
 
-	rootFrame = box
 	return box
 end
 
 function ChatBox.AddMessage(sender: string, text: string, colorHex: string?, order: number?)
-	if not scrollFrame then return end
+	if not scrollFrame then
+		return
+	end
 
 	local color = colorHex or "#FFD23F"
 	local msgLabel = Instance.new("TextLabel")

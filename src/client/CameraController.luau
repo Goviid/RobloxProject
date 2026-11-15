@@ -20,6 +20,11 @@ local function getCameraConfig(): (Vector3, Vector3)
 	return lookTarget, camPos
 end
 
+-- The camera config above is written for seat 1 (front). Each client rotates it around
+-- the table's vertical axis to face the table from its own seat.
+local seatRotation = CFrame.identity
+local currentSeat: number? = nil
+
 local DEFAULT_FOV = 65
 local isShakeActive = false
 local shakeOffset = Vector3.zero
@@ -33,7 +38,9 @@ local currentTargetFOV = DEFAULT_FOV
 -- 1. SETUP & PER-FRAME CAMERA LOCK + LOCAL AVATAR HIDING
 -- ============================================================================
 function CameraController.Init()
-	if isInitialized then return end
+	if isInitialized then
+		return
+	end
 	isInitialized = true
 
 	-- Sink mouse panning, wheel zooming, and movement controls so camera is 100% rigidly fixed
@@ -56,22 +63,26 @@ function CameraController.Init()
 	-- Per-frame camera lock (Runs at Last priority so Roblox scripts cannot override it)
 	local function lockCamera()
 		local cam = Workspace.CurrentCamera
-		if not cam then return end
+		if not cam then
+			return
+		end
 
 		if cam.CameraType ~= Enum.CameraType.Scriptable then
 			cam.CameraType = Enum.CameraType.Scriptable
 		end
 
 		local lookTarget, defaultCamPos = getCameraConfig()
-		local camPos = defaultCamPos + currentTurnOffset + shakeOffset
-		cam.CFrame = CFrame.lookAt(camPos, lookTarget)
+		local camPos = seatRotation * (defaultCamPos + currentTurnOffset) + shakeOffset
+		cam.CFrame = CFrame.lookAt(camPos, seatRotation * lookTarget)
 		cam.FieldOfView = currentTargetFOV
 	end
 
 	-- Per-frame local character transparency (Locofficial style - completely invisible locally)
 	local function hideLocalCharacter()
 		local char = localPlayer.Character
-		if not char then return end
+		if not char then
+			return
+		end
 
 		for _, item in ipairs(char:GetDescendants()) do
 			if item:IsA("BasePart") then
@@ -84,9 +95,7 @@ function CameraController.Init()
 			elseif item:IsA("Decal") then
 				item.Transparency = 1
 				item.LocalTransparencyModifier = 1
-			elseif item:IsA("ParticleEmitter") or item:IsA("Trail") or item:IsA("Beam") then
-				item.Enabled = false
-			elseif item:IsA("BillboardGui") then
+			elseif item:IsA("ParticleEmitter") or item:IsA("Trail") or item:IsA("Beam") or item:IsA("BillboardGui") then
 				item.Enabled = false
 			end
 		end
@@ -97,7 +106,7 @@ function CameraController.Init()
 	RunService:BindToRenderStep("TabletopCameraLock", Enum.RenderPriority.Last.Value, lockCamera)
 
 	-- Handle character respawn
-	localPlayer.CharacterAdded:Connect(function(char)
+	localPlayer.CharacterAdded:Connect(function(_char)
 		task.wait(0.1)
 		hideLocalCharacter()
 	end)
@@ -108,6 +117,23 @@ end
 -- ============================================================================
 -- 2. DYNAMIC CAMERA EFFECTS (Turn Focus & Skull Shake)
 -- ============================================================================
+-- Face the table from `seatIndex` (nil = default front view, e.g. while waiting for a seat).
+-- The angle comes from that seat's pile mat, so it follows TableBuilder's layout.
+function CameraController.SetSeat(seatIndex: number?)
+	if seatIndex == currentSeat then
+		return
+	end
+	local arena = Workspace:FindFirstChild("SkullsArena")
+	local mat = seatIndex and arena and arena:FindFirstChild("PlayerMat_" .. seatIndex, true)
+	if mat and mat:IsA("BasePart") then
+		currentSeat = seatIndex
+		seatRotation = CFrame.Angles(0, math.atan2(mat.Position.X, mat.Position.Z), 0)
+	elseif seatIndex == nil then
+		currentSeat = nil
+		seatRotation = CFrame.identity
+	end
+end
+
 function CameraController.SetTurnFocus(isMyTurn: boolean)
 	local targetOffset = isMyTurn and Vector3.new(0, -0.6, -0.8) or Vector3.zero
 	local targetFOV = isMyTurn and 61 or DEFAULT_FOV
@@ -129,7 +155,9 @@ function CameraController.SetTurnFocus(isMyTurn: boolean)
 	end)
 
 	tween.Completed:Connect(function()
-		if conn then conn:Disconnect() end
+		if conn then
+			conn:Disconnect()
+		end
 		currentTurnOffset = targetOffset
 		currentTargetFOV = targetFOV
 		tweenObj:Destroy()
@@ -140,7 +168,9 @@ end
 
 function CameraController.ShakeOnSkull()
 	task.spawn(function()
-		if isShakeActive then return end
+		if isShakeActive then
+			return
+		end
 		isShakeActive = true
 
 		local shakes = 8

@@ -16,7 +16,7 @@ Multiplayer bluffing card game for Roblox (2–6 players, human + bots), Day of 
 
 ## Checking code (no Studio needed)
 - `bash scripts/check.sh` — type-checks `src/` with luau-lsp + Roblox definitions. Add `--lint` to also run selene.
-- Run it after every change. Don't introduce new diagnostics; fix existing ones in files you touch.
+- Run it after every change. `bash scripts/check.sh --lint` is clean (0 type diagnostics, 0 selene warnings as of 2026-11-15); keep it that way.
 - Tools are pinned in `rokit.toml` (`rokit install` on a new machine).
 - Claude can't playtest. Runtime behaviour (multiplayer, bots, 3D table, UI) must be verified by the user in Studio — say what to test.
 
@@ -31,6 +31,4 @@ Multiplayer bluffing card game for Roblox (2–6 players, human + bots), Day of 
 - After a feature lands, run `python scripts/graph_update.py` and commit the graph as a separate commit. Don't use plain `graphify update` / `/graphify . --update`: graphify parses `.luau` with the Lua grammar and drops symbols after Luau type syntax. The script feeds it a Lua-compatible copy (line numbers unchanged). `--full` re-extracts everything; `--check` lists files that still fail to parse.
 
 ## Known issues (as of 2026-11-15)
-- `TableBuilder.Build()` takes no args but `init.server.luau` calls `Build("Table")` / `Build("Void")`; there is no real Void mode.
-- `CardAnimation.PlayCardFly` works but is never called.
-- `scripts/check.sh` reports ~66 pre-existing diagnostics, mostly nil-safety on `FindFirstChild`/`WaitForChild` results (ActionBar, HandBar, Network, Card3DManager, BotController).
+- The 3D table has 4 seats, so matches are capped at 4 players (`Constants.MAX_PLAYERS`). More seats need new `SEAT_CONFIGS` entries.

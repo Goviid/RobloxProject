@@ -56,10 +56,14 @@ local function findOpenSeat(isBot: boolean): number?
 				return i
 			end
 		end
-		if not taken[1] then return 1 end
+		if not taken[1] then
+			return 1
+		end
 	else
 		-- Humans prefer seat 1 for direct alignment with the over-the-shoulder camera
-		if not taken[1] then return 1 end
+		if not taken[1] then
+			return 1
+		end
 		for i = 2, Constants.MAX_PLAYERS do
 			if not taken[i] then
 				return i
@@ -169,7 +173,9 @@ function PlayerManager.GetActivePlayers(): { PlayerData }
 	table.sort(sortedIds, function(a, b)
 		local pa = players[a]
 		local pb = players[b]
-		if not pa or not pb then return false end
+		if not pa or not pb then
+			return false
+		end
 		return pa.seatIndex < pb.seatIndex
 	end)
 
@@ -245,24 +251,30 @@ end
 -- Permanently discard a card from hand, stack, or revealed (e.g. after hitting a skull)
 function PlayerManager.DestroyCard(userId: number, cardType: string?): string?
 	local p = players[userId]
-	if not p then return nil end
+	if not p then
+		return nil
+	end
 
 	-- Combine all remaining cards to pick from
 	local allRemaining = {}
-	for _, c in ipairs(p.hand) do table.insert(allRemaining, c) end
-	for _, c in ipairs(p.playedStack) do table.insert(allRemaining, c) end
-	for _, c in ipairs(p.revealedCards) do table.insert(allRemaining, c) end
+	for _, c in ipairs(p.hand) do
+		table.insert(allRemaining, c)
+	end
+	for _, c in ipairs(p.playedStack) do
+		table.insert(allRemaining, c)
+	end
+	for _, c in ipairs(p.revealedCards) do
+		table.insert(allRemaining, c)
+	end
 
 	if #allRemaining == 0 then
 		p.isEliminated = true
 		return nil
 	end
 
-	local targetCard = cardType
-	if not targetCard or not table.find(allRemaining, targetCard) then
-		-- Pick random
-		local randIdx = math.random(1, #allRemaining)
-		targetCard = allRemaining[randIdx]
+	local targetCard: string = allRemaining[math.random(1, #allRemaining)] -- random unless a valid card was chosen
+	if cardType and table.find(allRemaining, cardType) then
+		targetCard = cardType
 	end
 
 	-- Remove from hand first, or from playedStack, or from revealedCards

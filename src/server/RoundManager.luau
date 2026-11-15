@@ -34,6 +34,9 @@ type PendingDiscard = {
 }
 local pendingDiscard: PendingDiscard? = nil
 
+-- Called when a match is over (winner shown) or can't continue; the lobby takes over
+local matchOverHandler: (() -> ())? = nil
+
 local turnTimerThread: thread? = nil
 local botTurnThread: thread? = nil
 local turnLock = false
@@ -41,15 +44,18 @@ local turnLock = false
 local function broadcastState()
 	for _, p in pairs(PlayerManager.GetAllPlayers()) do
 		TableBuilder.UpdateScore(p.seatIndex, p.score)
-		TableBuilder.UpdateCardCount(p.seatIndex, #p.hand)
-		if not p.isBot then
-			RoundManager.SendStateToPlayer(p.userId)
-		end
+		TableBuilder.UpdateCardCount(p.seatIndex, #p.hand, #p.hand + #p.playedStack + #p.revealedCards)
+		TableBuilder.SetEliminated(p.seatIndex, p.isEliminated)
+	end
+	-- Everyone in the server gets state, including players waiting for the next match
+	for _, plr in ipairs(Players:GetPlayers()) do
+		RoundManager.SendStateToPlayer(plr.UserId)
 	end
 
 	local activeId = RoundManager.GetActivePlayerId()
 	local activePlayer = activeId and PlayerManager.GetPlayer(activeId)
-	TableBuilder.HighlightTurn(activePlayer and activePlayer.seatIndex or nil)
+	local inLobby = currentGameState == Enums.GameState.Lobby
+	TableBuilder.HighlightTurn(if not inLobby and activePlayer then activePlayer.seatIndex else nil)
 end
 
 -- Check if everyone has played at least 1 card
@@ -64,12 +70,17 @@ end
 
 function RoundManager.SendStateToPlayer(userId: number)
 	local p = PlayerManager.GetPlayer(userId)
-	if not p or p.isBot then return end
+	if p and p.isBot then
+		return
+	end
 	local playerObj = Players:GetPlayerByUserId(userId)
-	if not playerObj then return end
+	if not playerObj then
+		return
+	end
 
 	local payload = {
 		gameState = currentGameState,
+		isSeated = p ~= nil, -- false: waiting for the next match (spectating)
 		roundNumber = currentRoundNumber,
 		activePlayerId = RoundManager.GetActivePlayerId(),
 		challengerId = challengerId,
@@ -96,7 +107,9 @@ end
 -- challenger choosing among their own cards; a blind chooser only gets the count.
 function RoundManager.GetDiscardInfo(forUserId: number): any
 	local discard = pendingDiscard
-	if not discard or currentGameState ~= Enums.GameState.Discarding then return nil end
+	if not discard or currentGameState ~= Enums.GameState.Discarding then
+		return nil
+	end
 	local seesCards = discard.isOwnSkull and forUserId == discard.victimId
 	local cards: { string }? = nil
 	if seesCards then
@@ -121,14 +134,18 @@ end
 
 function RoundManager.GetActivePlayerId(): number?
 	local active = PlayerManager.GetActivePlayers()
-	if #active == 0 then return nil end
+	if #active == 0 then
+		return nil
+	end
 	local p = active[activePlayerIndex]
 	return p and p.userId or nil
 end
 
 local function advanceToNextActivePlayer(skipPassed: boolean?)
 	local active = PlayerManager.GetActivePlayers()
-	if #active == 0 then return end
+	if #active == 0 then
+		return
+	end
 
 	local curId = RoundManager.GetActivePlayerId()
 	local curIdx = 1
@@ -197,6 +214,18 @@ end
 -- Forward declaration
 local runCurrentTurn: () -> ()
 
+-- Delayed round/match transitions. Bumping the token (new round, lobby, match end)
+-- cancels any transition scheduled before it, so a stale "next round" never fires.
+local transitionToken = 0
+local function scheduleTransition(fn: () -> ())
+	local token = transitionToken
+	task.delay(Constants.ROUND_TRANSITION_DELAY, function()
+		if token == transitionToken then
+			fn()
+		end
+	end)
+end
+
 local function onTurnTimeout()
 	turnTimerThread = nil -- Timer already executed
 
@@ -210,9 +239,13 @@ local function onTurnTimeout()
 		return
 	end
 	local activeId = RoundManager.GetActivePlayerId()
-	if not activeId then return end
+	if not activeId then
+		return
+	end
 	local p = PlayerManager.GetPlayer(activeId)
-	if not p then return end
+	if not p then
+		return
+	end
 
 	broadcastNotification(p.name .. " ran out of time!", "warning")
 
@@ -246,9 +279,13 @@ end
 -- Execute Bot actions if active player is a Bot
 local function checkBotTurn()
 	local activeId = RoundManager.GetActivePlayerId()
-	if not activeId then return end
+	if not activeId then
+		return
+	end
 	local p = PlayerManager.GetPlayer(activeId)
-	if not p or not p.isBot or p.isEliminated then return end
+	if not p or not p.isBot or p.isEliminated then
+		return
+	end
 
 	if botTurnThread then
 		local thread = botTurnThread
@@ -261,7 +298,9 @@ local function checkBotTurn()
 	-- Bots pause before acting so human players can follow what is happening
 	botTurnThread = task.delay(Constants.BOT_THINK_DELAY, function()
 		botTurnThread = nil
-		if RoundManager.GetActivePlayerId() ~= activeId then return end
+		if RoundManager.GetActivePlayerId() ~= activeId then
+			return
+		end
 
 		if currentGameState == Enums.GameState.Placement then
 			local canBid = haveAllPlacedFirstCard()
@@ -301,9 +340,13 @@ end
 
 runCurrentTurn = function()
 	local activeId = RoundManager.GetActivePlayerId()
-	if not activeId then return end
+	if not activeId then
+		return
+	end
 	local p = PlayerManager.GetPlayer(activeId)
-	if not p then return end
+	if not p then
+		return
+	end
 
 	broadcastState()
 	startTurnTimer()
@@ -312,6 +355,7 @@ end
 
 -- TRANSITION: Start a brand-new round
 function RoundManager.StartRound(leaderId: number?)
+	transitionToken += 1
 	cancelTurnTimer()
 	pendingDiscard = nil
 	PlayerManager.ResetRoundState()
@@ -326,9 +370,13 @@ function RoundManager.StartRound(leaderId: number?)
 
 	local active = PlayerManager.GetActivePlayers()
 	if #active < Constants.MIN_PLAYERS then
-		currentGameState = Enums.GameState.Lobby
-		broadcastNotification("Waiting for more players to continue...", "info")
-		broadcastState()
+		broadcastNotification("Not enough players to continue. Back to the lobby.", "info")
+		if matchOverHandler then
+			matchOverHandler()
+		else
+			currentGameState = Enums.GameState.Lobby
+			broadcastState()
+		end
 		return
 	end
 
@@ -378,6 +426,8 @@ end
 
 -- End the match: show the winner on every client for MATCH_OVER_DELAY, then start a fresh match
 local function declareMatchWinner(winnerId: number, reason: string)
+	transitionToken += 1
+	local token = transitionToken
 	cancelTurnTimer()
 	pendingDiscard = nil
 	currentGameState = Enums.GameState.MatchEnd
@@ -387,9 +437,68 @@ local function declareMatchWinner(winnerId: number, reason: string)
 	broadcastState()
 
 	task.delay(Constants.MATCH_OVER_DELAY, function()
-		PlayerManager.ResetMatch()
-		RoundManager.StartRound()
+		if token ~= transitionToken then
+			return
+		end
+		if matchOverHandler then
+			matchOverHandler()
+		else
+			PlayerManager.ResetMatch()
+			RoundManager.StartRound()
+		end
 	end)
+end
+
+-- ============================================================================
+-- MATCH LIFECYCLE (driven by LobbyManager)
+-- ============================================================================
+function RoundManager.SetMatchOverHandler(handler: () -> ())
+	matchOverHandler = handler
+end
+
+function RoundManager.StartMatch()
+	PlayerManager.ResetMatch()
+	RoundManager.StartRound()
+end
+
+-- Stop any match in progress and sit in the Lobby state
+function RoundManager.EnterLobby()
+	transitionToken += 1
+	cancelTurnTimer()
+	pendingDiscard = nil
+	challengerId = nil
+	highestBid = 0
+	highestBidderId = nil
+	cardsFlippedThisRound = 0
+	targetCardsToFlip = 0
+	currentRoundNumber = 1
+	Card3DManager.ClearAllCards()
+	Card3DManager.SetRevealingEnabled(false)
+	currentGameState = Enums.GameState.Lobby
+	broadcastState()
+end
+
+-- A seated player left (already removed from PlayerManager). Keep the match playable.
+function RoundManager.OnPlayerLeft(name: string)
+	if currentGameState == Enums.GameState.Lobby or currentGameState == Enums.GameState.MatchEnd then
+		broadcastState()
+		return
+	end
+	local active = PlayerManager.GetActivePlayers()
+	if #active == 1 then
+		declareMatchWinner(active[1].userId, "Everyone else left!")
+		return
+	end
+	if #active == 0 then
+		if matchOverHandler then
+			matchOverHandler()
+		end
+		return
+	end
+	-- Restart the round without them (cards go back to hands), next player in seat order leads
+	broadcastNotification(name .. " left the game. Restarting the round.", "warning")
+	local leader = active[math.clamp(activePlayerIndex, 1, #active)]
+	RoundManager.StartRound(leader.userId)
 end
 
 -- Resolve Round Success (Challenger flipped target roses)
@@ -398,9 +507,13 @@ local function onChallengerSuccess()
 	Card3DManager.SetRevealingEnabled(false)
 	currentGameState = Enums.GameState.RoundEnd
 
-	if not challengerId then return end
+	if not challengerId then
+		return
+	end
 	local challenger = PlayerManager.GetPlayer(challengerId)
-	if not challenger then return end
+	if not challenger then
+		return
+	end
 
 	challenger.score += 1
 	broadcastNotification("🎉 " .. challenger.name .. " successfully flipped " .. targetCardsToFlip .. " Roses! Point scored!", "success")
@@ -419,13 +532,14 @@ local function onChallengerSuccess()
 	-- Check Victory
 	if challenger.score >= Constants.POINTS_TO_WIN then
 		local winnerId = challenger.userId
-		task.delay(Constants.ROUND_TRANSITION_DELAY, function()
+		scheduleTransition(function()
 			declareMatchWinner(winnerId, "First to " .. Constants.POINTS_TO_WIN .. " points!")
 		end)
 	else
 		-- Next round starts with the victorious challenger
-		task.delay(Constants.ROUND_TRANSITION_DELAY, function()
-			RoundManager.StartRound(challengerId)
+		local nextLeaderId = challengerId
+		scheduleTransition(function()
+			RoundManager.StartRound(nextLeaderId)
 		end)
 	end
 end
@@ -446,7 +560,9 @@ end
 
 local function finishChallengerFailed(lostCard: string?)
 	local discard = pendingDiscard
-	if not discard then return end
+	if not discard then
+		return
+	end
 	pendingDiscard = nil
 	cancelTurnTimer()
 	currentGameState = Enums.GameState.RoundEnd
@@ -455,7 +571,7 @@ local function finishChallengerFailed(lostCard: string?)
 	local challenger = PlayerManager.GetPlayer(victimId)
 	if not challenger then
 		-- Challenger left mid-penalty: just move on
-		task.delay(Constants.ROUND_TRANSITION_DELAY, function()
+		scheduleTransition(function()
 			RoundManager.StartRound(discard.skullOwnerId)
 		end)
 		return
@@ -496,7 +612,7 @@ local function finishChallengerFailed(lostCard: string?)
 	local remaining = PlayerManager.GetActivePlayers()
 	if challenger.isEliminated and #remaining == 1 then
 		local lastId = remaining[1].userId
-		task.delay(Constants.ROUND_TRANSITION_DELAY, function()
+		scheduleTransition(function()
 			declareMatchWinner(lastId, "Last player standing!")
 		end)
 		return
@@ -511,7 +627,7 @@ local function finishChallengerFailed(lostCard: string?)
 		nextLeader = nil
 	end
 
-	task.delay(Constants.ROUND_TRANSITION_DELAY, function()
+	scheduleTransition(function()
 		RoundManager.StartRound(nextLeader)
 	end)
 end
@@ -519,7 +635,9 @@ end
 -- Validate and apply a discard pick. `pick` is { cardType = ... } (own skull) or { index = n } (blind).
 local function resolveDiscard(pick: any): (boolean, string?)
 	local discard = pendingDiscard
-	if not discard then return false, "No card to discard right now." end
+	if not discard then
+		return false, "No card to discard right now."
+	end
 
 	local cardType: string?
 	if discard.isOwnSkull then
@@ -543,7 +661,9 @@ end
 
 local function randomDiscardPick(): any
 	local discard = pendingDiscard
-	if not discard then return {} end
+	if not discard then
+		return {}
+	end
 	local index = math.random(1, #discard.cards)
 	return { index = index, cardType = discard.cards[index] }
 end
@@ -553,10 +673,14 @@ local function onChallengerFailed(skullOwnerId: number)
 	cancelTurnTimer()
 	Card3DManager.SetRevealingEnabled(false)
 
-	if not challengerId then return end
+	if not challengerId then
+		return
+	end
 	local challenger = PlayerManager.GetPlayer(challengerId)
 	local skullOwner = PlayerManager.GetPlayer(skullOwnerId)
-	if not challenger or not skullOwner then return end
+	if not challenger or not skullOwner then
+		return
+	end
 
 	local isOwnSkull = (challengerId == skullOwnerId)
 

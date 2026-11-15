@@ -10,7 +10,9 @@ local BotController = {}
 -- Decide an action during Placement Phase
 function BotController.DecidePlacementAction(botId: number, canBid: boolean, totalCardsOnTable: number): { [string]: any }?
 	local p = PlayerManager.GetPlayer(botId)
-	if not p or p.isEliminated then return nil end
+	if not p or p.isEliminated then
+		return nil
+	end
 
 	-- Count cards in bot's hand
 	local hasRose = table.find(p.hand, Enums.CardType.Rose) ~= nil
@@ -92,7 +94,9 @@ end
 -- Decide an action during Bidding Phase
 function BotController.DecideBiddingAction(botId: number, currentBid: number, totalCardsOnTable: number): { [string]: any }?
 	local p = PlayerManager.GetPlayer(botId)
-	if not p or p.isEliminated or p.hasPassedBid then return nil end
+	if not p or p.isEliminated or p.hasPassedBid then
+		return nil
+	end
 
 	-- Calculate bot's confidence:
 	-- Count own roses placed
@@ -131,9 +135,11 @@ function BotController.DecideBiddingAction(botId: number, currentBid: number, to
 end
 
 -- Decide which player's stack to flip during Revealing Phase
-function BotController.DecideCardToReveal(botId: number, challengerId: number): number?
+function BotController.DecideCardToReveal(_botId: number, challengerId: number): number?
 	local challenger = PlayerManager.GetPlayer(challengerId)
-	if not challenger then return nil end
+	if not challenger then
+		return nil
+	end
 
 	-- 1. RULE: Challenger MUST flip all of their own stack first!
 	if #challenger.playedStack > 0 then

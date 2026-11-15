@@ -15,7 +15,7 @@ function CardAnimation.PlayCardFly(parentGui: Instance, startPos: UDim2, endPos:
 	-- Temp flying card element
 	local flying = Instance.new("Frame")
 	flying.Name = "FlyingCard"
-	flying.Size = UDim2.new(0, 72, 0, 72)
+	flying.Size = UDim2.fromOffset(72, 72)
 	flying.Position = startPos
 	flying.AnchorPoint = Vector2.new(0.5, 0.5)
 	flying.BackgroundColor3 = isRose and Theme.Colors.RosePrimary or Theme.Colors.SkullPrimary
@@ -33,7 +33,7 @@ function CardAnimation.PlayCardFly(parentGui: Instance, startPos: UDim2, endPos:
 	stroke.Parent = flying
 
 	local icon = Instance.new("TextLabel")
-	icon.Size = UDim2.new(1, 0, 1, 0)
+	icon.Size = UDim2.fromScale(1, 1)
 	icon.BackgroundTransparency = 1
 	icon.Font = Theme.Fonts.Title
 	icon.TextSize = 32
@@ -43,7 +43,7 @@ function CardAnimation.PlayCardFly(parentGui: Instance, startPos: UDim2, endPos:
 	-- Arc trajectory tween
 	local tween = TweenService:Create(flying, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Position = endPos,
-		Size = UDim2.new(0, 48, 0, 48),
+		Size = UDim2.fromOffset(48, 48),
 		Rotation = math.random(-25, 25),
 	})
 	tween:Play()

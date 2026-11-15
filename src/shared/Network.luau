@@ -23,12 +23,13 @@ end
 
 local function getOrCreateRemoteEvent(name: string): RemoteEvent
 	if RunService:IsServer() then
-		local event = folder:FindFirstChild(name) :: RemoteEvent?
-		if not event then
-			event = Instance.new("RemoteEvent")
-			event.Name = name
-			event.Parent = folder
+		local existing = folder:FindFirstChild(name)
+		if existing and existing:IsA("RemoteEvent") then
+			return existing
 		end
+		local event = Instance.new("RemoteEvent")
+		event.Name = name
+		event.Parent = folder
 		return event
 	else
 		return folder:WaitForChild(name) :: RemoteEvent
@@ -37,12 +38,13 @@ end
 
 local function getOrCreateRemoteFunction(name: string): RemoteFunction
 	if RunService:IsServer() then
-		local rf = folder:FindFirstChild(name) :: RemoteFunction?
-		if not rf then
-			rf = Instance.new("RemoteFunction")
-			rf.Name = name
-			rf.Parent = folder
+		local existing = folder:FindFirstChild(name)
+		if existing and existing:IsA("RemoteFunction") then
+			return existing
 		end
+		local rf = Instance.new("RemoteFunction")
+		rf.Name = name
+		rf.Parent = folder
 		return rf
 	else
 		return folder:WaitForChild(name) :: RemoteFunction
@@ -60,10 +62,12 @@ local Network = {
 	PlayerEliminated = getOrCreateRemoteEvent("PlayerEliminated"),
 	Notification = getOrCreateRemoteEvent("Notification"),
 	GameOver = getOrCreateRemoteEvent("GameOver"),
+	LobbyState = getOrCreateRemoteEvent("LobbyState"),
 
 	-- Client -> Server Actions
 	SubmitAction = getOrCreateRemoteFunction("SubmitAction"),
 	RequestState = getOrCreateRemoteEvent("RequestState"),
+	LobbyAction = getOrCreateRemoteEvent("LobbyAction"), -- (action: "ToggleReady" | "SetAddBots" | "Start", value: any)
 }
 
 return Network

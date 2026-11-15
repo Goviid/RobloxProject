@@ -142,7 +142,9 @@ end
 -- Show the picker. `victimName` is the challenger who loses the card.
 function DiscardModal.Show(info: DiscardInfo, victimName: string)
 	local frame, row, title, subtitle = root, cardRow, titleLabel, subtitleLabel
-	if not frame or not row or not title or not subtitle then return end
+	if not frame or not row or not title or not subtitle then
+		return
+	end
 
 	hasPicked = false
 	for _, child in ipairs(row:GetChildren()) do
@@ -158,7 +160,9 @@ function DiscardModal.Show(info: DiscardInfo, victimName: string)
 		for i, cardType in ipairs(cards) do
 			local button = makeCardButton(row, i, cardType)
 			button.Activated:Connect(function()
-				if hasPicked or not pickCallback then return end
+				if hasPicked or not pickCallback then
+					return
+				end
 				hasPicked = true
 				pickCallback({ cardType = cardType })
 			end)
@@ -169,7 +173,9 @@ function DiscardModal.Show(info: DiscardInfo, victimName: string)
 		for i = 1, math.max(1, info.cardCount) do
 			local button = makeCardButton(row, i, nil)
 			button.Activated:Connect(function()
-				if hasPicked or not pickCallback then return end
+				if hasPicked or not pickCallback then
+					return
+				end
 				hasPicked = true
 				pickCallback({ index = i })
 			end)

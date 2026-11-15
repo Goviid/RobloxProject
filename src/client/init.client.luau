@@ -23,6 +23,8 @@ local ChatBox = require(script.UI.ChatBox)
 local CardRevealModal = require(script.UI.CardRevealModal)
 local VictoryModal = require(script.UI.VictoryModal)
 local DiscardModal = require(script.UI.DiscardModal)
+local PhaseOverlay = require(script.UI.PhaseOverlay)
+local LobbyPanel = require(script.UI.LobbyPanel)
 local CardAnimation = require(script.UI.CardAnimation)
 local CameraController = require(script.CameraController)
 local AudioController = require(script.AudioController)
@@ -45,6 +47,62 @@ local screenGui: ScreenGui
 local onSubmitAction: (action: string, data: any) -> (boolean, any)
 local lastKnownPlayers: { [string]: any } = {}
 local currentGameState: string = Enums.GameState.Placement
+local previousGameState: string? = nil
+
+-- Screen position of a seat's pile mat on the 3D table (for card fly animations)
+local function getSeatPileScreenPos(seatIndex: number?): UDim2?
+	local camera = workspace.CurrentCamera
+	local arena = workspace:FindFirstChild("SkullsArena")
+	if not camera or not arena or not seatIndex then
+		return nil
+	end
+	local mat = arena:FindFirstChild("PlayerMat_" .. seatIndex, true)
+	if not mat or not mat:IsA("BasePart") then
+		return nil
+	end
+	local point, onScreen = camera:WorldToScreenPoint(mat.Position)
+	if not onScreen then
+		return nil
+	end
+	return UDim2.fromOffset(point.X, point.Y)
+end
+
+local HAND_DOCK_POS = UDim2.fromScale(0.5, 0.86)
+
+-- Per-client view of the shared table: "YOUR PILE" on your own mat, and your own
+-- fanned hand tokens (rendered by the server for everyone else) hidden from you.
+local mySeatIndex: number? = nil
+
+local function hideOwnHandModel(inst: Instance)
+	if mySeatIndex and inst.Name == "OpponentHand_" .. mySeatIndex then
+		inst:Destroy() -- local only; other players still see it
+	end
+end
+
+local function applySeatView(seatIndex: number?)
+	mySeatIndex = seatIndex
+	local arena = workspace:FindFirstChild("SkullsArena")
+	if not arena then
+		return
+	end
+	for i = 1, Constants.MAX_PLAYERS do
+		local mat = arena:FindFirstChild("PlayerMat_" .. i, true)
+		local label = mat and mat:FindFirstChild("MatLabel", true)
+		if label and label:IsA("TextLabel") then
+			label.Text = if i == seatIndex then "YOUR PILE" else "PILE"
+		end
+	end
+	for _, child in ipairs(arena:GetChildren()) do
+		hideOwnHandModel(child)
+	end
+end
+
+task.spawn(function()
+	local arena = workspace:WaitForChild("SkullsArena", 30)
+	if arena then
+		arena.ChildAdded:Connect(hideOwnHandModel)
+	end
+end)
 local isCurrentPlayerTurn: boolean = true
 
 local function buildUI()
@@ -80,6 +138,11 @@ local function buildUI()
 				local success, err = onSubmitAction(Enums.PlayerAction.PlaceCard, { cardType = cardType })
 				if success then
 					AudioController.PlayCardPlace()
+					local myData = lastKnownPlayers[tostring(localPlayer.UserId)]
+					local target = getSeatPileScreenPos(myData and myData.seatIndex)
+					if target then
+						CardAnimation.PlayCardFly(screenGui, HAND_DOCK_POS, target, cardType)
+					end
 				else
 					NotificationBanner.Show(err or "Not your turn to place a card!", "warning")
 					-- Immediately restore hand by requesting ground-truth state from server
@@ -107,7 +170,16 @@ local function buildUI()
 	-- 7. Match Victory Overlay
 	VictoryModal.Create(screenGui)
 
-	-- 8. Skull penalty picker (own skull: pick your card; other's skull: remove one blindly)
+	-- 8. Round intro card + "you're out" pill
+	PhaseOverlay.Create(screenGui)
+
+	-- 8b. Pre-match lobby
+	LobbyPanel.Create(screenGui, function(action: string, value: any)
+		AudioController.PlayButtonClick()
+		Network.LobbyAction:FireServer(action, value)
+	end)
+
+	-- 9. Skull penalty picker (own skull: pick your card; other's skull: remove one blindly)
 	DiscardModal.Create(screenGui, function(pick: { [string]: any })
 		AudioController.PlayButtonClick()
 		task.spawn(function()
@@ -199,6 +271,9 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 		end
 
 		-- 1. Update Table View (seats, stack heights, score gems)
+		local seatIndex = myData and tonumber(myData.seatIndex) or nil
+		CameraController.SetSeat(seatIndex)
+		applySeatView(seatIndex)
 		CameraController.SetTurnFocus(isMyTurn)
 		TableView.UpdateLayout(lastKnownPlayers, payload.activePlayerId, payload.challengerId)
 		TableView.UpdateTurn(turnNumber, activePlayerName, isMyTurn, pillOverride)
@@ -226,7 +301,32 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 			payload.canStartBid
 		)
 
-		-- 4. Skull penalty picker (only the chooser gets it)
+		-- 4. Round intro card when a new round's placement begins; spectating pill when eliminated
+		if payload.gameState == Enums.GameState.Placement and previousGameState ~= Enums.GameState.Placement then
+			PhaseOverlay.ShowRound(payload.roundNumber or 1, activePlayerName, isMyTurn)
+		end
+		previousGameState = payload.gameState
+		local inLobby = payload.gameState == Enums.GameState.Lobby
+		local spectateMessage: string? = nil
+		if not inLobby and payload.gameState ~= Enums.GameState.MatchEnd then
+			if payload.isSeated == false then
+				spectateMessage = "👀 Match in progress. You'll get a seat next match"
+			elseif myData and myData.isEliminated then
+				spectateMessage = "💀 You're out. Watching the rest of the match"
+			end
+		end
+		PhaseOverlay.SetSpectating(spectateMessage)
+
+		-- The lobby panel replaces the in-game controls
+		if inLobby then
+			HandBar.SetVisible(false)
+		end
+		local actionRoot = screenGui:FindFirstChild("ActionBarRoot", true)
+		if actionRoot and actionRoot:IsA("GuiObject") then
+			actionRoot.Visible = not inLobby and payload.isSeated ~= false
+		end
+
+		-- 4b. Skull penalty picker (only the chooser gets it)
 		local discard = payload.discard
 		local isMyDiscard = payload.gameState == Enums.GameState.Discarding
 			and discard ~= nil
@@ -303,7 +403,7 @@ Network.BidUpdated.OnClientEvent:Connect(function(bidderId: number, bid: number)
 end)
 
 -- Card Played SFX / Alert
-Network.CardPlayed.OnClientEvent:Connect(function(playerId: number, stackCount: number)
+Network.CardPlayed.OnClientEvent:Connect(function(playerId: number, _stackCount: number)
 	AudioController.PlayCardPlace()
 	local p = lastKnownPlayers[tostring(playerId)]
 	local pName = p and p.name or ("Player " .. playerId)
@@ -343,7 +443,16 @@ end)
 Network.CardLost.OnClientEvent:Connect(function(data: any)
 	local cardName = data and data.cardType == Enums.CardType.Skull and "your SKULL 💀" or "a ROSE 🌹"
 	NotificationBanner.Show("You lost " .. cardName .. "!", "alert")
+	-- The lost card flies off the top of the screen
+	if data and data.cardType then
+		CardAnimation.PlayCardFly(screenGui, HAND_DOCK_POS, UDim2.fromScale(0.5, -0.15), data.cardType)
+	end
 	ChatBox.AddMessage("SYSTEM", "You lost " .. cardName .. ".", "#FF6B6B")
+end)
+
+-- Lobby (seats, ready check, countdown, host controls)
+Network.LobbyState.OnClientEvent:Connect(function(state: any)
+	LobbyPanel.Update(state, localPlayer.UserId)
 end)
 
 -- Game Over

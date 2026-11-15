@@ -65,10 +65,14 @@ local activeSounds: { [string]: Sound } = {}
 -- Safely plays a sound with volume and slight organic pitch variation
 local function playSound(name: string)
 	local config = SOUND_CONFIGS[name]
-	if not config then return end
+	if not config then
+		return
+	end
 
 	local sound = activeSounds[name]
-	if not sound then return end
+	if not sound then
+		return
+	end
 
 	pcall(function()
 		-- Subtle pitch variation for organic tabletop feel
@@ -84,13 +88,15 @@ local function playSound(name: string)
 end
 
 function AudioController.Init()
-	if soundFolder then return end
+	if soundFolder then
+		return
+	end
 
 	local folder = Instance.new("Folder")
 	folder.Name = "SkullsAudioFolder"
 	folder.Parent = SoundService
 
-	for name, config in pairs(SOUND_CONFIGS) do
+	for name: string, config in pairs(SOUND_CONFIGS) do
 		local snd = Instance.new("Sound")
 		snd.Name = name .. "SFX"
 		snd.SoundId = config.id

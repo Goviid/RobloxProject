@@ -6,6 +6,7 @@ local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Enums = require(ReplicatedStorage.Shared.Enums)
+local Constants = require(ReplicatedStorage.Shared.Constants)
 local TableBuilder = require(script.Parent.TableBuilder)
 local PlayerManager = require(script.Parent.PlayerManager)
 
@@ -13,13 +14,14 @@ local Card3DManager = {}
 
 -- Container folder inside Workspace.SkullsArena
 local function getCardsFolder(): Folder
-	local arena = Workspace:WaitForChild("SkullsArena", 5) :: Model?
-	local folder = arena and arena:FindFirstChild("TableCardStacks") :: Folder?
-	if not folder then
-		folder = Instance.new("Folder")
-		folder.Name = "TableCardStacks"
-		folder.Parent = arena or Workspace
+	local arena = Workspace:WaitForChild("SkullsArena", 5)
+	local existing = arena and arena:FindFirstChild("TableCardStacks")
+	if existing and existing:IsA("Folder") then
+		return existing
 	end
+	local folder = Instance.new("Folder")
+	folder.Name = "TableCardStacks"
+	folder.Parent = arena or Workspace
 	return folder
 end
 
@@ -51,14 +53,15 @@ function Card3DManager.SetRevealingEnabled(enabled: boolean)
 	end
 
 	-- Also enable ClickDetectors on coasters so clicking anywhere on the player's mat flips their top card!
-	for seatIdx = 1, 6 do
+	for seatIdx = 1, Constants.MAX_PLAYERS do
 		local mat = TableBuilder.GetCoasterPart(seatIdx)
 		if mat then
 			local clicker = mat:FindFirstChildWhichIsA("ClickDetector")
 			if not clicker and enabled then
-				clicker = Instance.new("ClickDetector")
-				clicker.Parent = mat
-				clicker.MouseClick:Connect(function(clickingPlayer: Player)
+				local newClicker = Instance.new("ClickDetector")
+				newClicker.Parent = mat
+				clicker = newClicker
+				newClicker.MouseClick:Connect(function(clickingPlayer: Player)
 					if roundActionHandler and isRevealingClickEnabled then
 						local targetPlayer = PlayerManager.GetPlayerBySeat(seatIdx)
 						if targetPlayer then
@@ -81,7 +84,9 @@ end
 -- ============================================================================
 function Card3DManager.PlaceCard3D(seatIndex: number, stackCount: number)
 	local coasterCF = TableBuilder.GetCoasterCFrame(seatIndex)
-	if not coasterCF then return end
+	if not coasterCF then
+		return
+	end
 
 	-- Clean up any initial decorative placeholder tokens on first placement
 	if stackCount == 1 then
@@ -130,7 +135,7 @@ function Card3DManager.PlaceCard3D(seatIndex: number, stackCount: number)
 	-- Clean Circular Card Back Face
 	local bg = Instance.new("Frame")
 	bg.Name = "CardBackFace"
-	bg.Size = UDim2.new(1, 0, 1, 0)
+	bg.Size = UDim2.fromScale(1, 1)
 	bg.BackgroundColor3 = Color3.fromRGB(28, 24, 34)
 	bg.BorderSizePixel = 0
 	bg.Parent = sg
@@ -140,7 +145,7 @@ function Card3DManager.PlaceCard3D(seatIndex: number, stackCount: number)
 	local outerBorder = Instance.new("Frame")
 	outerBorder.Name = "OuterBorder"
 	outerBorder.Size = UDim2.new(1, -10, 1, -10)
-	outerBorder.Position = UDim2.new(0, 5, 0, 5)
+	outerBorder.Position = UDim2.fromOffset(5, 5)
 	outerBorder.BackgroundTransparency = 1
 	outerBorder.Parent = bg
 	Instance.new("UICorner", outerBorder).CornerRadius = UDim.new(1, 0)
@@ -154,7 +159,7 @@ function Card3DManager.PlaceCard3D(seatIndex: number, stackCount: number)
 	local innerRing = Instance.new("Frame")
 	innerRing.Name = "InnerRing"
 	innerRing.Size = UDim2.new(1, -26, 1, -26)
-	innerRing.Position = UDim2.new(0, 13, 0, 13)
+	innerRing.Position = UDim2.fromOffset(13, 13)
 	innerRing.BackgroundTransparency = 1
 	innerRing.Parent = bg
 	Instance.new("UICorner", innerRing).CornerRadius = UDim.new(1, 0)
@@ -168,7 +173,7 @@ function Card3DManager.PlaceCard3D(seatIndex: number, stackCount: number)
 	-- Center Stylized Medallion Emblem
 	local patternIcon = Instance.new("TextLabel")
 	patternIcon.Name = "Icon"
-	patternIcon.Size = UDim2.new(1, 0, 1, 0)
+	patternIcon.Size = UDim2.fromScale(1, 1)
 	patternIcon.BackgroundTransparency = 1
 	patternIcon.Font = Enum.Font.FredokaOne
 	patternIcon.TextSize = 78
@@ -204,15 +209,21 @@ end
 -- ============================================================================
 function Card3DManager.RevealCard3D(seatIndex: number, cardType: string)
 	local stack = seatStacks[seatIndex]
-	if not stack or #stack == 0 then return end
+	if not stack or #stack == 0 then
+		return
+	end
 
 	local cardPart = table.remove(stack)
-	if not cardPart or not cardPart.Parent then return end
+	if not cardPart or not cardPart.Parent then
+		return
+	end
 	table.insert(revealedCards, cardPart)
 
 	-- Disable ClickDetector once card is revealed
 	local clicker = cardPart:FindFirstChildWhichIsA("ClickDetector")
-	if clicker then clicker.MaxActivationDistance = 0 end
+	if clicker then
+		clicker.MaxActivationDistance = 0
+	end
 
 	local isSkull = (cardType == Enums.CardType.Skull)
 	local currentCF = cardPart.CFrame
@@ -275,7 +286,7 @@ function Card3DManager.ClearAllCards()
 			end)
 		end
 	end
-	for seatIdx = 1, 6 do
+	for seatIdx = 1, Constants.MAX_PLAYERS do
 		table.clear(seatStacks[seatIdx])
 	end
 	table.clear(revealedCards)
