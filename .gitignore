@@ -16,3 +16,8 @@ Thumbs.db
 Desktop.ini
 .DS_Store
 *.tmp
+
+# Roblox type definitions (downloaded by scripts/check.sh)
+.luau-types/
+# Graphify per-query stamp (changes on every query)
+graphify-out/cache/last_query_stamp
