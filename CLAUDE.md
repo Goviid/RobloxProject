@@ -20,8 +20,14 @@ Multiplayer bluffing card game for Roblox (2–6 players, human + bots), Day of 
 - Tools are pinned in `rokit.toml` (`rokit install` on a new machine).
 - Claude can't playtest. Runtime behaviour (multiplayer, bots, 3D table, UI) must be verified by the user in Studio — say what to test.
 
+## Roblox Studio MCP (built-in server, `Roblox_Studio`)
+- Connects to whichever place is open in Studio (the "Skulls & Roses" place, synced by Rojo).
+- **Never edit scripts through MCP** — Rojo overwrites them. All code changes go through `src/`.
+- Use MCP to read the hierarchy, run checks and inspect runtime state. Ask before running anything that changes the place; prefer doing state-changing tests during a playtest.
+- The third-party "MCP Server" plugin (Chrrxs `robloxstudio-mcp`) is used by Antigravity. Leave it installed; its `ConnectFail` lines in Output are expected when Antigravity isn't running.
+
 ## Knowledge graph (Graphify)
-- `graphify-out/graph.json` is committed. Use `/graphify query`, `path`, `explain` for cross-module questions.
+- `graphify-out/graph.json` is committed. **Don't explore by reading every file.** To orient or answer cross-module questions, query the graph first (`python -m graphify query "<question>"`, or `path` / `explain`), then read only the files and line ranges it points to.
 - After a feature lands, run `/graphify . --update` and commit the graph as a separate commit.
 
 ## Known issues (as of 2026-11-15)
