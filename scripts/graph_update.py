@@ -156,8 +156,10 @@ def luau_to_lua(text: str) -> str:
             word = m.group(0)
             prev = src[i - 1] if i > 0 else ""
             if prev not in ".:":
-                if word == "local":
-                    in_local = True
+                if word in ("local", "for"):
+                    in_local = True  # names may carry `: Type` until `=` / `in`
+                elif word == "in":
+                    in_local = False
                 elif word == "function":
                     nxt = src.find("(", m.end())
                     if nxt >= 0:
@@ -215,7 +217,20 @@ def luau_to_lua(text: str) -> str:
         ),
         result,
     )
-    return result
+    # Multi-line if-expressions:  `x = if a` / `then b` / `else c`  ->  `x = (a)` / `and b` / `or c`
+    lines = result.split("\n")
+    pending = False
+    for idx, line in enumerate(lines):
+        m = re.match(r"^(.*(?:=|\(|,|return)\s*)if\b(.*)$", line)
+        if m and not re.search(r"\bthen\b", m.group(2)) and not re.match(r"^\s*(if|elseif)\b", line):
+            lines[idx] = f"{m.group(1)}({m.group(2).rstrip()})"
+            pending = True
+        elif pending and re.match(r"^\s*then\b", line):
+            lines[idx] = re.sub(r"^(\s*)then\b", r"\1and", line)
+        elif pending and re.match(r"^\s*else\b", line):
+            lines[idx] = re.sub(r"^(\s*)else\b", r"\1or", line)
+            pending = False
+    return "\n".join(lines)
 
 
 def _luau_files() -> list[Path]:
