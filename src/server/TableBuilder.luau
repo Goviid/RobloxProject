@@ -14,6 +14,7 @@ local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Constants = require(ReplicatedStorage.Shared.Constants)
 local CardArt = require(ReplicatedStorage.Shared.CardArt)
+local Theme = require(ReplicatedStorage.Shared.Theme)
 
 local TableBuilder = {}
 
@@ -25,6 +26,7 @@ local botDummies: { [number]: Model } = {}
 local seatBillboards: { [number]: BillboardGui } = {}
 local opponentHands: { [number]: Model } = {}
 local seatCardSets: { [number]: string } = {} -- CardArt set per seat (card backs)
+local pileCounters: { [number]: BillboardGui } = {} -- "N cards" label beside each pile
 local cardCountLabels: { [number]: TextLabel } = {}
 local scoreLabels: { [number]: TextLabel } = {}
 -- Last known per-seat status, re-applied when a tag is rebuilt (e.g. a player respawns)
@@ -99,6 +101,7 @@ function TableBuilder.Build()
 	table.clear(opponentHands)
 	table.clear(cardCountLabels)
 	table.clear(scoreLabels)
+	table.clear(pileCounters)
 
 	local arena = Instance.new("Model")
 	arena.Name = "SkullsArena"
@@ -408,7 +411,7 @@ function TableBuilder.Build()
 		label.Font = Enum.Font.FredokaOne
 		label.TextSize = 22
 		label.TextColor3 = Color3.fromRGB(255, 255, 255)
-		label.TextStrokeTransparency = 0.35
+		label.TextStrokeTransparency = 0.15
 		label.TextStrokeColor3 = Color3.fromRGB(15, 15, 20)
 		label.Text = cfg.label
 		label.Parent = matFrame
@@ -473,13 +476,6 @@ local function createPlayerTag(adornee: BasePart, displayName: string, seatIdx: 
 	bill.Adornee = adornee
 	bill.Parent = adornee
 
-	-- Gradient theme per seat (matching reference: Left=cyan/yellow, Back=cyan/pink, Right=orange/pink)
-	local gradientColors = {
-		[1] = { ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 235, 150)), ColorSequenceKeypoint.new(1, Color3.fromRGB(245, 215, 80)) },
-		[2] = { ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 225, 245)), ColorSequenceKeypoint.new(1, Color3.fromRGB(245, 235, 100)) },
-		[3] = { ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 220, 245)), ColorSequenceKeypoint.new(1, Color3.fromRGB(245, 110, 180)) },
-		[4] = { ColorSequenceKeypoint.new(0, Color3.fromRGB(250, 140, 50)), ColorSequenceKeypoint.new(1, Color3.fromRGB(245, 95, 145)) },
-	}
 
 	-- Capsule background
 	local capsule = Instance.new("Frame")
@@ -497,8 +493,9 @@ local function createPlayerTag(adornee: BasePart, displayName: string, seatIdx: 
 	stroke.Color = Color3.fromRGB(255, 255, 255)
 	stroke.Parent = capsule
 
+	-- Outline runs from the player's card colour into gold (set in applySeatStatus)
 	local grad = Instance.new("UIGradient")
-	grad.Color = ColorSequence.new(gradientColors[seatIdx] or gradientColors[2])
+	grad.Name = "TagGradient"
 	grad.Parent = stroke
 
 	-- Avatar Icon Circle
@@ -527,7 +524,8 @@ local function createPlayerTag(adornee: BasePart, displayName: string, seatIdx: 
 	nameLabel.Position = UDim2.new(0, 48, 0.06, 0)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Font = Enum.Font.FredokaOne
-	nameLabel.TextSize = 16
+	nameLabel.TextSize = Theme.TextSize.Label
+	Theme.Outline(nameLabel, 0.6)
 	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	nameLabel.Text = displayName
@@ -541,36 +539,54 @@ local function createPlayerTag(adornee: BasePart, displayName: string, seatIdx: 
 	scoreLabel.Position = UDim2.new(0, 48, 0.58, 0)
 	scoreLabel.BackgroundTransparency = 1
 	scoreLabel.Font = Enum.Font.FredokaOne
-	scoreLabel.TextSize = 13
+	scoreLabel.TextSize = 15
+	Theme.Outline(scoreLabel, 0.6)
 	scoreLabel.RichText = true
 	scoreLabel.TextXAlignment = Enum.TextXAlignment.Left
 	scoreLabel.Text = ""
 	scoreLabel.Parent = capsule
 	scoreLabels[seatIdx] = scoreLabel
 
-	-- Locofficial-style Floating Card Count Badge
+	-- Lives: one small card shape per card the player still owns (hand + table), so it
+	-- can't be confused with the pile counter's number. A skull replaces them when out.
 	local countBadge = Instance.new("Frame")
 	countBadge.Name = "CardCountBadge"
-	countBadge.Size = UDim2.fromOffset(38, 32)
-	countBadge.Position = UDim2.new(1, -44, 0.5, -16)
-	countBadge.BackgroundColor3 = Color3.fromRGB(245, 245, 250)
+	countBadge.Size = UDim2.fromOffset(44, 32)
+	countBadge.Position = UDim2.new(1, -50, 0.5, -16)
+	countBadge.BackgroundColor3 = Theme.Colors.Backing
 	countBadge.BorderSizePixel = 0
 	countBadge.Parent = capsule
 	Instance.new("UICorner", countBadge).CornerRadius = UDim.new(0, 8)
 
-	local bStroke = Instance.new("UIStroke")
-	bStroke.Color = Color3.fromRGB(25, 20, 32)
-	bStroke.Thickness = 1.6
-	bStroke.Parent = countBadge
+	local lives = Instance.new("Frame")
+	lives.Name = "Lives"
+	lives.Size = UDim2.fromScale(1, 1)
+	lives.BackgroundTransparency = 1
+	lives.Parent = countBadge
+	local livesLayout = Instance.new("UIListLayout")
+	livesLayout.FillDirection = Enum.FillDirection.Horizontal
+	livesLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	livesLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	livesLayout.Padding = UDim.new(0, 2)
+	livesLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	livesLayout.Parent = lives
+	for i = 1, Constants.CARDS_PER_PLAYER do
+		local pip = Instance.new("Frame")
+		pip.Name = "Life" .. i
+		pip.LayoutOrder = i
+		pip.Size = UDim2.fromOffset(7, 16)
+		pip.BorderSizePixel = 0
+		pip.Parent = lives
+		Instance.new("UICorner", pip).CornerRadius = UDim.new(0, 2)
+	end
 
 	local cText = Instance.new("TextLabel")
 	cText.Name = "CountText"
 	cText.Size = UDim2.fromScale(1, 1)
 	cText.BackgroundTransparency = 1
-	cText.Font = Enum.Font.FredokaOne
-	cText.TextSize = 17
-	cText.TextColor3 = Color3.fromRGB(20, 18, 25)
-	cText.Text = "4"
+	cText.Font = Theme.Fonts.Title
+	cText.TextSize = Theme.TextSize.Label
+	cText.Text = ""
 	cText.Parent = countBadge
 	cardCountLabels[seatIdx] = cText
 
@@ -604,10 +620,30 @@ applySeatStatus = function(seatIdx: number)
 	end
 	local countLabel = cardCountLabels[seatIdx]
 	if countLabel then
-		countLabel.Text = if status.eliminated then "💀" else tostring(math.max(0, status.cards))
+		countLabel.Text = if status.eliminated then "💀" else ""
+		local badge = countLabel.Parent
+		local lives = badge and badge:FindFirstChild("Lives")
+		if lives and lives:IsA("Frame") then
+			lives.Visible = not status.eliminated
+			local accent = CardArt.Get(seatCardSets[seatIdx]).accent
+			for i = 1, Constants.CARDS_PER_PLAYER do
+				local pip = lives:FindFirstChild("Life" .. i)
+				if pip and pip:IsA("Frame") then
+					local alive = i <= status.cards
+					pip.BackgroundColor3 = if alive then accent:Lerp(Color3.new(1, 1, 1), 0.35) else Theme.Colors.PanelBorder
+					pip.BackgroundTransparency = if alive then 0 else 0.3
+				end
+			end
+		end
 	end
 	local bill = seatBillboards[seatIdx] or (scoreLabel and scoreLabel:FindFirstAncestorOfClass("BillboardGui"))
 	local capsule = bill and bill:FindFirstChild("TagCapsule") :: Frame?
+	local tagStroke = capsule and capsule:FindFirstChild("TagStroke")
+	local tagGradient = tagStroke and tagStroke:FindFirstChild("TagGradient")
+	if tagGradient and tagGradient:IsA("UIGradient") then
+		local accent = CardArt.Get(seatCardSets[seatIdx]).accent
+		tagGradient.Color = ColorSequence.new(accent, Theme.Colors.Gold)
+	end
 	if capsule then
 		capsule.BackgroundTransparency = if status.eliminated then 0.6 else 0.25
 		local nameLabel = capsule:FindFirstChild("NameLabel") :: TextLabel?
@@ -857,10 +893,108 @@ function TableBuilder.UpdateCardCount(seatIndex: number, handCount: number, tota
 	applySeatStatus(seatIndex)
 end
 
+-- ============================================================================
+-- PILE COUNTERS: how many face-down cards are in each pile (public information)
+-- ============================================================================
+local function getPileCounter(seatIndex: number): BillboardGui?
+	local existing = pileCounters[seatIndex]
+	if existing and existing.Parent then
+		return existing
+	end
+	local mat = pileMats[seatIndex]
+	if not mat then
+		return nil
+	end
+
+	-- Just outside the pile, on the owner's side, so cards never cover it
+	local flat = Vector3.new(mat.Position.X, 0, mat.Position.Z)
+	local outward = if flat.Magnitude > 0 then flat.Unit else Vector3.new(0, 0, 1)
+
+	local bill = Instance.new("BillboardGui")
+	bill.Name = "PileCount_" .. seatIndex
+	bill.Adornee = mat
+	bill.Size = UDim2.fromOffset(72, 34)
+	bill.StudsOffsetWorldSpace = outward * 2.1 + Vector3.new(0, 0.5, 0)
+	bill.AlwaysOnTop = true
+	bill.LightInfluence = 0
+	bill.MaxDistance = 80
+	bill.Enabled = false
+	bill.Parent = mat
+
+	local pill = Instance.new("Frame")
+	pill.Name = "Pill"
+	pill.AnchorPoint = Vector2.new(0.5, 0.5)
+	pill.Position = UDim2.fromScale(0.5, 0.5)
+	pill.Size = UDim2.fromScale(1, 1)
+	pill.BackgroundColor3 = Theme.Colors.Backing
+	pill.BorderSizePixel = 0
+	pill.Parent = bill
+	Instance.new("UICorner", pill).CornerRadius = Theme.CornerRadius.Circular
+	local stroke = Instance.new("UIStroke")
+	stroke.Name = "PillStroke"
+	stroke.Thickness = 1.5
+	stroke.Parent = pill
+	-- Clients enlarge this locally on hover; the server never touches it
+	local hover = Instance.new("UIScale")
+	hover.Name = "HoverScale"
+	hover.Parent = pill
+
+	local icon = Instance.new("ImageLabel")
+	icon.Name = "BackIcon"
+	icon.AnchorPoint = Vector2.new(0, 0.5)
+	icon.Position = UDim2.new(0, 6, 0.5, 0)
+	icon.Size = UDim2.fromOffset(24, 24)
+	icon.BackgroundTransparency = 1
+	icon.Parent = pill
+
+	local count = Instance.new("TextLabel")
+	count.Name = "Count"
+	count.Position = UDim2.fromOffset(32, 0)
+	count.Size = UDim2.new(1, -36, 1, 0)
+	count.BackgroundTransparency = 1
+	count.Font = Theme.Fonts.Title
+	count.TextXAlignment = Enum.TextXAlignment.Center
+	count.Text = "0"
+	count.Parent = pill
+	Theme.Outline(count, 0.6)
+
+	pileCounters[seatIndex] = bill
+	return bill
+end
+
+-- `emphasis`: bidding / challenge, when pile sizes drive decisions
+function TableBuilder.UpdatePileCount(seatIndex: number, count: number, emphasis: boolean)
+	local bill = getPileCounter(seatIndex)
+	if not bill then
+		return
+	end
+	bill.Enabled = count > 0
+	local pill = bill:FindFirstChild("Pill")
+	if not pill or not pill:IsA("Frame") then
+		return
+	end
+	pill.BackgroundTransparency = if emphasis then 0.05 else 0.35
+	local stroke = pill:FindFirstChild("PillStroke")
+	if stroke and stroke:IsA("UIStroke") then
+		stroke.Color = if emphasis then Theme.Colors.Gold else Theme.Colors.PanelBorder
+	end
+	local icon = pill:FindFirstChild("BackIcon")
+	if icon and icon:IsA("ImageLabel") then
+		icon.Image = CardArt.Back(seatCardSets[seatIndex])
+	end
+	local label = pill:FindFirstChild("Count")
+	if label and label:IsA("TextLabel") then
+		label.Text = tostring(count)
+		label.TextSize = if emphasis then Theme.TextSize.Heading else Theme.TextSize.Label
+		label.TextColor3 = if emphasis then Theme.Colors.TextGold else Theme.Colors.TextSecondary
+	end
+end
+
 -- Which card art set a seat uses (backs on its hand tokens); applied on the next render
 function TableBuilder.SetSeatCardSet(seatIndex: number, setId: string?)
-	if setId then
+	if setId and seatCardSets[seatIndex] ~= setId then
 		seatCardSets[seatIndex] = setId
+		applySeatStatus(seatIndex) -- recolour the name tag
 	end
 end
 

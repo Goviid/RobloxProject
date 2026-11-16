@@ -7,7 +7,7 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Enums = require(ReplicatedStorage.Shared.Enums)
 local CardArt = require(ReplicatedStorage.Shared.CardArt)
-local Theme = require(script.Parent.Theme)
+local Theme = require(game:GetService("ReplicatedStorage").Shared.Theme)
 
 local CardRevealModal = {}
 

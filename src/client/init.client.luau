@@ -76,7 +76,10 @@ local function getSeatPileScreenPos(seatIndex: number?): UDim2?
 	if not onScreen then
 		return nil
 	end
-	return UDim2.fromOffset(point.X, point.Y)
+	-- Undo the screen scale so the offset lands on the pile
+	local scaleObj = screenGui and screenGui:FindFirstChild("ScreenScale")
+	local scale = if scaleObj and scaleObj:IsA("UIScale") then scaleObj.Scale else 1
+	return UDim2.fromOffset(point.X / scale, point.Y / scale)
 end
 
 local HAND_DOCK_POS = UDim2.fromScale(0.5, 0.86)
@@ -115,6 +118,51 @@ task.spawn(function()
 		arena.ChildAdded:Connect(hideOwnHandModel)
 	end
 end)
+
+-- Hovering a pile (its mat or any of its cards) enlarges that pile's card counter.
+-- Mouse only; the counters are readable without it.
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local hoveredPileSeat: number? = nil
+local hoverRayParams = RaycastParams.new()
+hoverRayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+local function setPileHover(seatIndex: number?, hovered: boolean)
+	if not seatIndex then
+		return
+	end
+	local arena = workspace:FindFirstChild("SkullsArena")
+	local bill = arena and arena:FindFirstChild("PileCount_" .. seatIndex, true)
+	local pill = bill and bill:FindFirstChild("Pill")
+	local scale = pill and pill:FindFirstChild("HoverScale")
+	if scale and scale:IsA("UIScale") then
+		TweenService:Create(scale, TweenInfo.new(0.12), { Scale = if hovered then 1.35 else 1 }):Play()
+	end
+end
+
+UserInputService.InputChanged:Connect(function(input: InputObject)
+	if input.UserInputType ~= Enum.UserInputType.MouseMovement then
+		return
+	end
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return
+	end
+	hoverRayParams.FilterDescendantsInstances = if localPlayer.Character then { localPlayer.Character } else {}
+	local mouse = UserInputService:GetMouseLocation()
+	local ray = camera:ViewportPointToRay(mouse.X, mouse.Y)
+	local hit = workspace:Raycast(ray.Origin, ray.Direction * 200, hoverRayParams)
+	local seat: number? = nil
+	if hit then
+		local name = hit.Instance.Name
+		seat = tonumber(string.match(name, "^PlayerMat_(%d+)$") or string.match(name, "^Card3D_Seat(%d+)_"))
+	end
+	if seat ~= hoveredPileSeat then
+		setPileHover(hoveredPileSeat, false)
+		hoveredPileSeat = seat
+		setPileHover(seat, true)
+	end
+end)
 local isCurrentPlayerTurn: boolean = true
 
 local function buildUI()
@@ -129,6 +177,24 @@ local function buildUI()
 	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	screenGui.IgnoreGuiInset = false
 	screenGui.Parent = playerGui
+
+	-- Big monitors: Roblox draws UI in real pixels, so scale it up on large screens
+	-- (never below the designed size). Small screens are handled in the layout itself.
+	local uiScale = Instance.new("UIScale")
+	uiScale.Name = "ScreenScale"
+	uiScale.Parent = screenGui
+	local function updateScale()
+		local camera = workspace.CurrentCamera
+		if camera then
+			local vp = camera.ViewportSize
+			uiScale.Scale = math.clamp(math.min(vp.X / 1600, vp.Y / 900), 1, 1.5)
+		end
+	end
+	updateScale()
+	local cam = workspace.CurrentCamera
+	if cam then
+		cam:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
+	end
 
 	-- 1. Top Banner & Timer
 	NotificationBanner.Create(screenGui)
@@ -449,7 +515,7 @@ Network.CardPlayed.OnClientEvent:Connect(function(playerId: number, _stackCount:
 	AudioController.PlayCardPlace()
 	local p = lastKnownPlayers[tostring(playerId)]
 	local pName = p and p.name or ("Player " .. playerId)
-	ChatBox.AddMessage(pName, "placed a card face-down.", "#4ECCA3")
+	ChatBox.AddMessage(pName, "placed a card face-down.", "#3CBE5A")
 end)
 
 -- Card Revealed (Card flipped by Challenger)

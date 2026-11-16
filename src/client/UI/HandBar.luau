@@ -93,9 +93,9 @@ local function createCircularToken(
 	promptLabel.Position = UDim2.fromOffset(0, 2)
 	promptLabel.BackgroundTransparency = 1
 	promptLabel.Font = Enum.Font.FredokaOne
-	promptLabel.TextSize = 11
+	promptLabel.TextSize = 14
 	promptLabel.TextColor3 = isRose and Color3.fromRGB(255, 235, 160) or Color3.fromRGB(255, 120, 135)
-	promptLabel.TextStrokeTransparency = 0.35
+	promptLabel.TextStrokeTransparency = 0.15
 	promptLabel.TextStrokeColor3 = Color3.fromRGB(15, 15, 20)
 	promptLabel.Text = "PLACE CARD"
 	promptLabel.ZIndex = baseZIndex + 4
@@ -287,7 +287,7 @@ function HandBar.ConsumeCard(cardIndex: number)
 	local btn = targetContainer:FindFirstChild("TokenButton") :: ImageButton?
 	local promptLabel = targetContainer:FindFirstChild("PromptLabel") :: TextLabel?
 	local shadow = targetContainer:FindFirstChild("TokenShadow") :: Frame?
-	local icon = btn and btn:FindFirstChild("CenterIcon") :: TextLabel?
+	local icon = btn and btn:FindFirstChild("CenterIcon") :: ImageLabel?
 	local stroke = btn and btn:FindFirstChild("TokenStroke") :: UIStroke?
 	local inner = btn and btn:FindFirstChild("InnerRing") :: Frame?
 	local innerStroke = inner and inner:FindFirstChildWhichIsA("UIStroke") :: UIStroke?
@@ -301,7 +301,7 @@ function HandBar.ConsumeCard(cardIndex: number)
 		TweenService:Create(shadow, tweenInfo, { BackgroundTransparency = 1 }):Play()
 	end
 	if icon then
-		TweenService:Create(icon, tweenInfo, { TextTransparency = 1 }):Play()
+		TweenService:Create(icon, tweenInfo, { ImageTransparency = 1 }):Play()
 	end
 	if promptLabel then
 		TweenService:Create(promptLabel, tweenInfo, { TextTransparency = 1 }):Play()

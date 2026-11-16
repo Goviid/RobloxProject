@@ -47,6 +47,10 @@ local function broadcastState()
 		TableBuilder.UpdateScore(p.seatIndex, p.score)
 		TableBuilder.UpdateCardCount(p.seatIndex, #p.hand, #p.hand + #p.playedStack + #p.revealedCards)
 		TableBuilder.SetEliminated(p.seatIndex, p.isEliminated)
+		local emphasis = currentGameState == Enums.GameState.Bidding
+			or currentGameState == Enums.GameState.Revealing
+			or currentGameState == Enums.GameState.Discarding
+		TableBuilder.UpdatePileCount(p.seatIndex, if p.isEliminated then 0 else #p.playedStack, emphasis)
 	end
 	-- Everyone in the server gets state, including players waiting for the next match
 	for _, plr in ipairs(Players:GetPlayers()) do

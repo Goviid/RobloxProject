@@ -3,7 +3,7 @@
 -- Match celebration popup honoring the winner with animated particles, crown, and score banner (LOCOfficial style)
 
 local TweenService = game:GetService("TweenService")
-local Theme = require(script.Parent.Theme)
+local Theme = require(game:GetService("ReplicatedStorage").Shared.Theme)
 
 local VictoryModal = {}
 local modalFrame: Frame? = nil
@@ -144,7 +144,7 @@ function VictoryModal.Create(parent: Instance): Frame
 	sub.Position = UDim2.new(0, 10, 1, -38)
 	sub.BackgroundTransparency = 1
 	sub.Font = Theme.Fonts.Body
-	sub.TextSize = 13
+	sub.TextSize = Theme.TextSize.Small
 	sub.TextColor3 = Theme.Colors.TextSecondary
 	sub.Text = "Preparing the next match..."
 	sub.ZIndex = 52

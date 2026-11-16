@@ -5,7 +5,7 @@
 --   * Spectating pill shown while the local player is eliminated
 
 local TweenService = game:GetService("TweenService")
-local Theme = require(script.Parent.Theme)
+local Theme = require(game:GetService("ReplicatedStorage").Shared.Theme)
 
 local PhaseOverlay = {}
 

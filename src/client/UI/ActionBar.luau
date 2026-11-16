@@ -144,7 +144,7 @@ function ActionBar.Create(parent: Instance, callback: (action: string, data: any
 	local passBtn = makeActionPill(
 		"PassBtn",
 		"PASS",
-		Color3.fromRGB(78, 204, 163),
+		Color3.fromRGB(60, 190, 90),
 		UDim2.new(1, 0, 0, 42),
 		col
 	)
@@ -190,7 +190,7 @@ function ActionBar.Create(parent: Instance, callback: (action: string, data: any
 	closeBtn.Position = UDim2.new(1, -28, 0, 6)
 	closeBtn.BackgroundColor3 = Color3.fromRGB(30, 24, 38)
 	closeBtn.Font = Enum.Font.FredokaOne
-	closeBtn.TextSize = 13
+	closeBtn.TextSize = 14
 	closeBtn.TextColor3 = Color3.fromRGB(200, 200, 215)
 	closeBtn.Text = "✕"
 	closeBtn.Parent = modal
@@ -239,7 +239,7 @@ function ActionBar.Create(parent: Instance, callback: (action: string, data: any
 	subLabel.Position = UDim2.fromOffset(0, 78)
 	subLabel.BackgroundTransparency = 1
 	subLabel.Font = Enum.Font.FredokaOne
-	subLabel.TextSize = 11
+	subLabel.TextSize = 14
 	subLabel.TextColor3 = Color3.fromRGB(180, 185, 200)
 	subLabel.Text = "Cards on Table: 4"
 	subLabel.Parent = modal
@@ -383,7 +383,7 @@ function ActionBar.UpdateState(
 
 		bidButton.Text = isBidUnlocked and "BET" or (totalCards >= 4 and "BET (Turn)" or "BET (Turn 2+)")
 		bidButton.TextColor3 = isBidUnlocked and Color3.fromRGB(255, 215, 65) or Color3.fromRGB(160, 150, 110)
-		bidButton.TextTransparency = isBidUnlocked and 0 or 0.35
+		bidButton.TextTransparency = isBidUnlocked and 0 or 0.3
 		if bStroke then
 			bStroke.Color = isBidUnlocked and Color3.fromRGB(255, 215, 65) or Color3.fromRGB(120, 110, 60)
 			bStroke.Transparency = isBidUnlocked and 0 or 0.4
@@ -392,15 +392,15 @@ function ActionBar.UpdateState(
 		-- Dim CHALLENGE & PASS during placement
 		raiseBidButton.Text = "CHALLENGE"
 		raiseBidButton.TextColor3 = Color3.fromRGB(255, 115, 130)
-		raiseBidButton.TextTransparency = 0.55
+		raiseBidButton.TextTransparency = 0.3
 		if rStroke then
 			rStroke.Color = Color3.fromRGB(160, 65, 75)
 			rStroke.Transparency = 0.60
 		end
 
 		passButton.Text = "PASS"
-		passButton.TextColor3 = Color3.fromRGB(78, 204, 163)
-		passButton.TextTransparency = 0.55
+		passButton.TextColor3 = Color3.fromRGB(60, 190, 90)
+		passButton.TextTransparency = 0.3
 		if pStroke then
 			pStroke.Color = Color3.fromRGB(45, 120, 95)
 			pStroke.Transparency = 0.60
@@ -411,7 +411,7 @@ function ActionBar.UpdateState(
 		isBidUnlocked = false
 		bidButton.Text = "BET"
 		bidButton.TextColor3 = Color3.fromRGB(160, 150, 110)
-		bidButton.TextTransparency = 0.55
+		bidButton.TextTransparency = 0.3
 		if bStroke then
 			bStroke.Color = Color3.fromRGB(110, 100, 60)
 			bStroke.Transparency = 0.60
@@ -421,7 +421,7 @@ function ActionBar.UpdateState(
 		local canChallenge = isMyTurn and (highestBid < totalCards)
 		raiseBidButton.Text = (highestBid + 1 >= totalCards) and "CHALLENGE" or "RAISE BID"
 		raiseBidButton.TextColor3 = Color3.fromRGB(255, 115, 130)
-		raiseBidButton.TextTransparency = canChallenge and 0 or 0.45
+		raiseBidButton.TextTransparency = canChallenge and 0 or 0.3
 		if rStroke then
 			rStroke.Color = canChallenge and Color3.fromRGB(255, 115, 130) or Color3.fromRGB(160, 65, 75)
 			rStroke.Transparency = canChallenge and 0 or 0.50
@@ -429,10 +429,10 @@ function ActionBar.UpdateState(
 
 		-- Active PASS
 		passButton.Text = "PASS"
-		passButton.TextColor3 = Color3.fromRGB(78, 204, 163)
-		passButton.TextTransparency = isMyTurn and 0 or 0.45
+		passButton.TextColor3 = Color3.fromRGB(60, 190, 90)
+		passButton.TextTransparency = isMyTurn and 0 or 0.3
 		if pStroke then
-			pStroke.Color = isMyTurn and Color3.fromRGB(78, 204, 163) or Color3.fromRGB(45, 120, 95)
+			pStroke.Color = isMyTurn and Color3.fromRGB(60, 190, 90) or Color3.fromRGB(45, 120, 95)
 			pStroke.Transparency = isMyTurn and 0 or 0.50
 		end
 
@@ -457,16 +457,16 @@ function ActionBar.UpdateState(
 			end
 		else
 			bidButton.Text = "REVEALING"
-			bidButton.TextTransparency = 0.6
+			bidButton.TextTransparency = 0.3
 			if bStroke then
 				bStroke.Transparency = 0.6
 			end
 		end
 
 		raiseBidButton.Text = "CHALLENGE"
-		raiseBidButton.TextTransparency = 0.6
+		raiseBidButton.TextTransparency = 0.3
 		passButton.Text = "PASS"
-		passButton.TextTransparency = 0.6
+		passButton.TextTransparency = 0.3
 		if rStroke then
 			rStroke.Transparency = 0.6
 		end
@@ -478,11 +478,11 @@ function ActionBar.UpdateState(
 		-- RoundEnd / Lobby: keep stacked layout in quiet mode
 		isBidUnlocked = false
 		bidButton.Text = "BET"
-		bidButton.TextTransparency = 0.6
+		bidButton.TextTransparency = 0.3
 		raiseBidButton.Text = "CHALLENGE"
-		raiseBidButton.TextTransparency = 0.6
+		raiseBidButton.TextTransparency = 0.3
 		passButton.Text = "PASS"
-		passButton.TextTransparency = 0.6
+		passButton.TextTransparency = 0.3
 		if bStroke then
 			bStroke.Transparency = 0.6
 		end

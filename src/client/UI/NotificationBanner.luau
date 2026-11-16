@@ -4,7 +4,7 @@
 -- Displays slightly big, semi-transparent status announcements that gently fade
 
 local TweenService = game:GetService("TweenService")
-local Theme = require(script.Parent.Theme)
+local Theme = require(game:GetService("ReplicatedStorage").Shared.Theme)
 
 local NotificationBanner = {}
 local bannerFrame: Frame? = nil
@@ -38,9 +38,8 @@ function NotificationBanner.Create(parent: Instance): Frame
 	label.Font = Theme.Fonts.Title
 	label.TextSize = 17
 	label.TextColor3 = Color3.fromRGB(255, 255, 255)
-	label.TextTransparency = 0.15 -- Somewhat transparent, pleasant and non-annoying
-	label.TextStrokeTransparency = 0.55
-	label.TextStrokeColor3 = Color3.fromRGB(15, 35, 65)
+	label.TextTransparency = 0
+	Theme.Outline(label, 0.85)
 	label.TextWrapped = true
 	label.Text = ""
 	label.ZIndex = 31
@@ -102,7 +101,7 @@ function NotificationBanner.Show(text: string, style: string?)
 	local textColor = colorsByStyle[style or "info"] or Color3.fromRGB(245, 250, 255)
 	messageLabel.Text = text
 	messageLabel.TextColor3 = textColor
-	messageLabel.TextTransparency = 0.10
+	messageLabel.TextTransparency = 0
 
 	-- Soft subtle scale bounce
 	messageLabel.TextSize = 23

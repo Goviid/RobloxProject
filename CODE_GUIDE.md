@@ -30,7 +30,6 @@ F:\RobloxProject\
 │       ├── init.client.luau       <-- Client bootstrapper & network listeners
 │       ├── CameraController.luau  <-- 2.5D fixed tabletop camera (LOCOfficial style)
 │       └── UI/                    <-- Modular 2D tabletop interface (Theme A: Calavera)
-│           ├── Theme.luau         <-- Color palette, typography, gold filigree styling
 │           ├── NotificationBanner.luau <-- Top announcement banner & 15s turn timer bar
 │           ├── HandBar.luau       <-- Floating squircle cards at bottom with hover lift
 │           ├── ActionBar.luau     <-- Contextual buttons ([Place Card], [Bid], [Pass])
@@ -86,7 +85,8 @@ F:\RobloxProject\
 * **Spawn & Positioning:** Placed an invisible `SpawnLocation` directly at Seat 1 and anchors `HumanoidRootPart` with disabled locomotion so the player never spawns in the middle or slides off.
 * **Standing Avatars:** Positions human players and builds stylish custom-suited dummy avatars for bots around the circular table facing inward.
 * **Deal Animation:** Fanned hand tokens are only rebuilt when a seat's card count changes; tokens a hand gains (cards returning at round start) fly in from the table centre, staggered by seat. Your own 2D hand does the same via `HandBar.UpdateHand(..., deal)`.
-* **Seat Tags:** Every seat (bots and humans; your own tag is hidden from you) shows name, score pips (`●○ 1/2`), a badge with total cards left (hand + table), and greys out with "ELIMINATED". Driven by `UpdateScore`, `UpdateCardCount(seat, handCount, totalCards)` and `SetEliminated` from `RoundManager.broadcastState`.
+* **Pile Counters (`UpdatePileCount`):** A label beside each pile with the owner's card-back icon and the number of face-down cards. Muted during placement, bold gold during bidding / challenge / card-loss pick, hidden when empty. Clients enlarge it on mouse hover (`HoverScale`).
+* **Seat Tags:** Every seat (bots and humans; your own tag is hidden from you) shows name, score pips (`●○ 1/2`), lives as small card shapes (cards left, hand + table) in the player's card colour, an outline gradient from their card colour to gold, and greys out with "ELIMINATED". Driven by `UpdateScore`, `UpdateCardCount(seat, handCount, totalCards)` and `SetEliminated` from `RoundManager.broadcastState`.
 
 #### `Card3DManager.luau`
 * **Purpose:** Manages physical oversized 3D cards placed on the table in front of players (LOCOfficial style).
@@ -133,8 +133,10 @@ F:\RobloxProject\
 * **Cinematic Framing:** Frames the local player's back/shoulders at Seat 1 in the foreground (`Vector3.new(0, 7.6, 15.6)`) looking directly across the table (`Vector3.new(0, 3.2, 0.8)`), keeping table coasters, 3D card stacks, and all standing opponent bots in crystal clear view.
 * **Dynamic Polish:** Smooth FOV turn punch on active turn and dramatic screen shake on Skull hits. Avatar remains 100% visible with overhead player billboard tag.
 
-#### `UI/Theme.luau`
-* **Purpose:** Theme A (Calavera / Day of the Dead) design tokens.
+#### `Theme.luau` (shared: `src/shared/Theme.luau`)
+* **Purpose:** Theme A (Calavera / Day of the Dead) design tokens, shared by the screen UI and server-built 3D labels.
+* **Readability rules:** `Theme.TextSize` (nothing below `Min` = 14), `Theme.Outline(label)` for any text over the 3D scene, `Colors.Backing` for floating label pills. New UI takes colours from `Theme.Colors`, not `Color3.fromRGB` literals.
+* `init.client.luau` adds a `ScreenScale` UIScale that enlarges the UI on big monitors (1.0–1.5×); code placing GUI at raw screen positions must divide by it.
 * Defines the warm wood colors (`TableDark`, `TableSurface`), gold filigree accents (`Gold`, `GoldGlow`), crimson velvet (`RosePrimary`), and obsidian charcoal (`SkullPrimary`).
 
 #### `UI/NotificationBanner.luau`

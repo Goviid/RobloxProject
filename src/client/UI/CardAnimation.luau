@@ -3,7 +3,7 @@
 -- Flying card transitions from player hand onto table coaster (LOCOfficial style)
 
 local TweenService = game:GetService("TweenService")
-local Theme = require(script.Parent.Theme)
+local Theme = require(game:GetService("ReplicatedStorage").Shared.Theme)
 local CardArt = require(game:GetService("ReplicatedStorage").Shared.CardArt)
 
 local CardAnimation = {}

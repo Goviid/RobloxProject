@@ -77,7 +77,7 @@ function ChatBox.Create(parent: Instance): Frame
 	inputPlaceholder.Position = UDim2.fromOffset(8, 0)
 	inputPlaceholder.BackgroundTransparency = 1
 	inputPlaceholder.Font = Enum.Font.SourceSans
-	inputPlaceholder.TextSize = 13
+	inputPlaceholder.TextSize = 14
 	inputPlaceholder.TextColor3 = Color3.fromRGB(160, 155, 175)
 	inputPlaceholder.TextXAlignment = Enum.TextXAlignment.Left
 	inputPlaceholder.Text = 'Tap here or chat or "/" to chat'
@@ -103,7 +103,7 @@ function ChatBox.AddMessage(sender: string, text: string, colorHex: string?, ord
 	msgLabel.Size = UDim2.new(1, 0, 0, 16)
 	msgLabel.BackgroundTransparency = 1
 	msgLabel.Font = Enum.Font.SourceSansBold
-	msgLabel.TextSize = 13
+	msgLabel.TextSize = 14
 	msgLabel.TextColor3 = Color3.fromRGB(240, 235, 245)
 	msgLabel.TextXAlignment = Enum.TextXAlignment.Left
 	msgLabel.RichText = true

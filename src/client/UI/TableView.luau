@@ -4,7 +4,7 @@
 -- Features:
 -- 1. Left Pill: "TURN 1" (dynamically updates to Turn 2, Turn 3, etc. - NEVER duplicates!)
 -- 2. Center Pill: "ROUND 1: PLACEMENT PHASE" with gold/amber border
--- 3. Right Pill: "👤 YOUR TURN" (Gold) or "🤖 {NAME}'S TURN" (Cyan)
+-- 3. Right Pill: "👤 YOUR TURN" (Gold) or "{NAME}'S TURN" (warm beige)
 -- 4. Clean, non-overlapping alert line below
 
 local Enums = require(game:GetService("ReplicatedStorage").Shared.Enums)
@@ -68,7 +68,7 @@ function TableView.Create(parent: Instance, _onRevealClick: (targetUserId: numbe
 
 	local tStroke = Instance.new("UIStroke")
 	tStroke.Name = "TurnStroke"
-	tStroke.Color = Color3.fromRGB(80, 225, 245)
+	tStroke.Color = Color3.fromRGB(215, 204, 194)
 	tStroke.Thickness = 2.4
 	tStroke.Parent = turnPill
 
@@ -78,7 +78,7 @@ function TableView.Create(parent: Instance, _onRevealClick: (targetUserId: numbe
 	tIcon.BackgroundTransparency = 1
 	tIcon.Font = Enum.Font.FredokaOne
 	tIcon.TextSize = 16
-	tIcon.TextColor3 = Color3.fromRGB(80, 225, 245)
+	tIcon.TextColor3 = Color3.fromRGB(215, 204, 194)
 	tIcon.Text = "👤"
 	tIcon.Parent = turnPill
 
@@ -127,7 +127,7 @@ function TableView.Create(parent: Instance, _onRevealClick: (targetUserId: numbe
 	centerLabel.TextSize = 17
 	centerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	centerLabel.RichText = true
-	centerLabel.Text = `ROUND {currentRoundNumber}: <font color="#4ECCA3">PLACEMENT PHASE</font>`
+	centerLabel.Text = `ROUND {currentRoundNumber}: <font color="#3CBE5A">PLACEMENT PHASE</font>`
 	centerLabel.Parent = centerPill
 	centerTitleLabel = centerLabel
 
@@ -205,7 +205,7 @@ function TableView.Create(parent: Instance, _onRevealClick: (targetUserId: numbe
 	alertText.Font = Enum.Font.FredokaOne
 	alertText.TextSize = 16
 	alertText.TextColor3 = Color3.fromRGB(255, 220, 85)
-	alertText.TextStrokeTransparency = 0.4
+	alertText.TextStrokeTransparency = 0.15
 	alertText.TextStrokeColor3 = Color3.fromRGB(15, 12, 18)
 	alertText.Text = ""
 	alertText.Parent = alertFrame
@@ -237,9 +237,9 @@ function TableView.UpdateTurn(turnNumber: number, activePlayerName: string, isMy
 			activePlayerLabel.TextColor3 = Color3.fromRGB(255, 225, 80)
 			activePlayerStroke.Color = Color3.fromRGB(255, 215, 65)
 		else
-			activePlayerLabel.Text = "🤖 " .. activePlayerName .. "'S TURN"
-			activePlayerLabel.TextColor3 = Color3.fromRGB(160, 235, 255)
-			activePlayerStroke.Color = Color3.fromRGB(80, 220, 245)
+			activePlayerLabel.Text = activePlayerName .. "'S TURN"
+			activePlayerLabel.TextColor3 = Color3.fromRGB(235, 226, 218)
+			activePlayerStroke.Color = Color3.fromRGB(215, 204, 194)
 		end
 	end
 end
@@ -253,8 +253,8 @@ function TableView.UpdateCenter(gameState: string, _highestBid: number, _challen
 	end
 
 	local phaseNames: { [string]: { name: string, color: string } } = {
-		[Enums.GameState.Lobby] = { name = "WAITING FOR PLAYERS", color = "#50E1F5" },
-		[Enums.GameState.Placement] = { name = "PLACEMENT PHASE", color = "#4ECCA3" },
+		[Enums.GameState.Lobby] = { name = "WAITING FOR PLAYERS", color = "#D7CCC2" },
+		[Enums.GameState.Placement] = { name = "PLACEMENT PHASE", color = "#3CBE5A" },
 		[Enums.GameState.Bidding] = { name = "BIDDING PHASE", color = "#FFD23F" },
 		[Enums.GameState.Revealing] = { name = "CHALLENGE PHASE", color = "#FF6B6B" },
 		[Enums.GameState.Discarding] = { name = "SKULL PENALTY", color = "#FF6B6B" },
@@ -279,13 +279,13 @@ function TableView.StartTurnTimer(durationSeconds: number)
 	timerPill.Visible = true
 	local timeLeft = durationSeconds
 	local isMe = currentIsMyTurn
-	local initialText = isMe and string.format("👤 YOU (%ds)", math.ceil(timeLeft)) or string.format("🤖 %s (%ds)", currentActivePlayerName, math.ceil(timeLeft))
+	local initialText = isMe and string.format("👤 YOU (%ds)", math.ceil(timeLeft)) or string.format("%s (%ds)", currentActivePlayerName, math.ceil(timeLeft))
 
 	timerLabel.Text = initialText
-	timerLabel.TextColor3 = isMe and Color3.fromRGB(255, 225, 85) or Color3.fromRGB(160, 235, 255)
-	timerStroke.Color = isMe and Color3.fromRGB(255, 215, 65) or Color3.fromRGB(80, 225, 245)
+	timerLabel.TextColor3 = isMe and Color3.fromRGB(255, 225, 85) or Color3.fromRGB(235, 226, 218)
+	timerStroke.Color = isMe and Color3.fromRGB(255, 215, 65) or Color3.fromRGB(215, 204, 194)
 	timerFillBar.Size = UDim2.new(0.75, 0, 0, 3)
-	timerFillBar.BackgroundColor3 = isMe and Color3.fromRGB(255, 215, 65) or Color3.fromRGB(80, 225, 245)
+	timerFillBar.BackgroundColor3 = isMe and Color3.fromRGB(255, 215, 65) or Color3.fromRGB(215, 204, 194)
 
 	currentTimerThread = task.spawn(function()
 		local startTime = os.clock()
@@ -298,7 +298,7 @@ function TableView.StartTurnTimer(durationSeconds: number)
 				if currentIsMyTurn then
 					timerLabel.Text = string.format("👤 YOU (%ds)", ceilRem)
 				else
-					timerLabel.Text = string.format("🤖 %s (%ds)", currentActivePlayerName, ceilRem)
+					timerLabel.Text = string.format("%s (%ds)", currentActivePlayerName, ceilRem)
 				end
 			end
 
@@ -337,11 +337,11 @@ function TableView.StopTurnTimer()
 		if currentIsMyTurn then
 			timerLabel.Text = "👤 YOUR TURN"
 		else
-			timerLabel.Text = "🤖 " .. currentActivePlayerName .. "'S TURN"
+			timerLabel.Text = currentActivePlayerName .. "'S TURN"
 		end
 	end
 	if timerStroke then
-		timerStroke.Color = currentIsMyTurn and Color3.fromRGB(255, 215, 65) or Color3.fromRGB(80, 225, 245)
+		timerStroke.Color = currentIsMyTurn and Color3.fromRGB(255, 215, 65) or Color3.fromRGB(215, 204, 194)
 	end
 	if timerFillBar then
 		timerFillBar.Size = UDim2.fromOffset(0, 3)

@@ -1,6 +1,7 @@
 --!strict
 -- Theme.luau
--- Design system and styling tokens for Skulls & Roses (Theme A: Calavera / Day of the Dead)
+-- Design system and styling tokens for Skulls & Roses (Theme A: Calavera / Day of the Dead).
+-- Shared so server-built 3D labels (name tags, pile counters) match the screen UI.
 
 local Theme = {}
 
@@ -30,8 +31,8 @@ Theme.Colors = {
 	PanelBackground = Color3.fromRGB(22, 16, 14),   -- Card trays, action bars
 	PanelBorder = Color3.fromRGB(60, 42, 34),       -- Panel stroke
 	TextPrimary = Color3.fromRGB(250, 245, 240),    -- Crisp warm white
-	TextSecondary = Color3.fromRGB(180, 165, 155),  -- Muted beige
-	TextMuted = Color3.fromRGB(145, 130, 120),      -- Soft muted beige
+	TextSecondary = Color3.fromRGB(215, 204, 194),  -- Light beige (readable on dark panels)
+	TextMuted = Color3.fromRGB(184, 172, 162),      -- Muted beige, still >= 4.5:1 on panels
 	TextGold = Color3.fromRGB(245, 200, 70),        -- Golden highlighted text
 
 	-- Status & Turn Accents
@@ -40,6 +41,10 @@ Theme.Colors = {
 	WarningAmber = Color3.fromRGB(240, 140, 20),    -- High bid warning
 	AlertRed = Color3.fromRGB(225, 45, 45),         -- Skull reveal alert
 	TimerBar = Color3.fromRGB(235, 175, 40),        -- Countdown bar
+
+	-- Readability
+	TextOutline = Color3.fromRGB(12, 8, 6),         -- Stroke behind text drawn over the 3D scene
+	Backing = Color3.fromRGB(16, 11, 9),            -- Dark pill behind floating labels
 }
 
 -- ============================================================================
@@ -49,8 +54,28 @@ Theme.Fonts = {
 	Title = Enum.Font.FredokaOne,                   -- Bold, friendly display font
 	Header = Enum.Font.GothamBold,                  -- Clean modern bold headers
 	Body = Enum.Font.GothamMedium,                  -- Readable standard text
-	Sub = Enum.Font.Gotham,                         -- Fine details
+	Sub = Enum.Font.GothamMedium,                   -- Fine details (regular Gotham is too thin when small)
 }
+
+-- Text sizes. Nothing on screen goes below Min.
+Theme.TextSize = {
+	Min = 14,
+	Small = 14,
+	Body = 16,
+	Label = 18,
+	Heading = 22,
+	Title = 28,
+	Display = 34,
+}
+
+-- Give text a dark outline so it stays readable over the 3D table
+function Theme.Outline(label: Instance, strength: number?)
+	if label:IsA("TextLabel") or label:IsA("TextButton") then
+		local text = label :: any -- both have the TextStroke* properties
+		text.TextStrokeColor3 = Theme.Colors.TextOutline
+		text.TextStrokeTransparency = 1 - (strength or 0.75)
+	end
+end
 
 Theme.CornerRadius = {
 	Small = UDim.new(0, 6),

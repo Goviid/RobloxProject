@@ -3,7 +3,7 @@
 -- Pre-match lobby screen: seat list with ready status, the local player's READY toggle,
 -- and host controls (bots on/off, force start). Rendered from the server's LobbyState.
 
-local Theme = require(script.Parent.Theme)
+local Theme = require(game:GetService("ReplicatedStorage").Shared.Theme)
 
 local LobbyPanel = {}
 
@@ -132,7 +132,7 @@ function LobbyPanel.Create(parent: Instance, onAction: (action: string, value: a
 	footer.Position = UDim2.fromOffset(16, 82 + 4 * 38 + 4)
 	footer.Size = UDim2.new(1, -32, 0, 20)
 	footer.Font = Theme.Fonts.Sub
-	footer.TextSize = 13
+	footer.TextSize = Theme.TextSize.Small
 	footer.TextColor3 = Theme.Colors.TextMuted
 	footer.Text = ""
 	footer.ZIndex = 71
@@ -225,18 +225,18 @@ function LobbyPanel.Update(state: LobbyState, localUserId: number)
 				tags ..= ` <font color="#FFD23F">HOST</font>`
 			end
 			if seat.userId == localUserId then
-				tags ..= ` <font color="#8C8278">(you)</font>`
+				tags ..= ` <font color="#B8ACA2">(you)</font>`
 			end
 			local readyText = if seat.ready
 				then `<font color="#3CBE5A">READY</font>`
-				else `<font color="#8C8278">not ready</font>`
+				else `<font color="#B8ACA2">not ready</font>`
 			row.Text = `{seat.name}{tags}  ·  {readyText}`
 			row.BackgroundTransparency = 0.2
 		elseif state.addBots then
-			row.Text = `<font color="#8C8278">Open seat: a bot will play</font>`
+			row.Text = `<font color="#B8ACA2">Open seat: a bot will play</font>`
 			row.BackgroundTransparency = 0.6
 		else
-			row.Text = `<font color="#8C8278">Open seat</font>`
+			row.Text = `<font color="#B8ACA2">Open seat</font>`
 			row.BackgroundTransparency = 0.6
 		end
 	end

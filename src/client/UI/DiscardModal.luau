@@ -7,7 +7,7 @@
 
 local Enums = require(game:GetService("ReplicatedStorage").Shared.Enums)
 local CardArt = require(game:GetService("ReplicatedStorage").Shared.CardArt)
-local Theme = require(script.Parent.Theme)
+local Theme = require(game:GetService("ReplicatedStorage").Shared.Theme)
 
 local DiscardModal = {}
 
