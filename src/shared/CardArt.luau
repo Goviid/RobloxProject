@@ -30,7 +30,6 @@ end
 local SETS: { [string]: CardSet } = {
 	scarlet = set("scarlet", "Scarlet", Color3.fromRGB(205, 35, 50), 87334318012900, 119702310157142, 125505443153830),
 	blue_diamond = set("blue_diamond", "Blue Diamond", Color3.fromRGB(80, 150, 235), 127413325960769, 87043108671935, 128194131564673),
-	forest_green = set("forest_green", "Forest Green", Color3.fromRGB(70, 150, 80), 111252390997045, 71985640537026, 92951018340221),
 	sunset_orange = set("sunset_orange", "Sunset Orange", Color3.fromRGB(240, 135, 45), 70823296227511, 96214502886073, 106739792006211),
 	amethyst = set("amethyst", "Amethyst", Color3.fromRGB(155, 85, 205), 96321050050053, 98945749485976, 111067433629778),
 	obsidian_cyan = set("obsidian_cyan", "Obsidian Cyan", Color3.fromRGB(45, 205, 215), 80132308594232, 95851496099854, 138919229652247),
@@ -44,7 +43,6 @@ local CardArt = {}
 CardArt.SetIds = {
 	"scarlet",
 	"blue_diamond",
-	"forest_green",
 	"sunset_orange",
 	"amethyst",
 	"obsidian_cyan",

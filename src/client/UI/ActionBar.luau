@@ -1,502 +1,284 @@
 --!strict
 -- ActionBar.luau
--- Prominent, Clean, Non-overlapping Action Controls (Locofficial Style)
--- Features:
--- 1. "⚡ BID" button always visible floating clearly above the card dock
--- 2. Side-by-side "⚡ RAISE BID" and "✕ PASS" during Bidding phase
--- 3. Sleek frosted glass Bid Picker Modal centered directly above the button
--- 4. Compact boundary box so it never intercepts clicks on player cards
+-- Bottom-right action panel. Only visible on your turn, and only shows what you can
+-- do right now:
+--   Placement : hint, plus a bid stepper + "BID N" once bidding is allowed
+--   Bidding   : bid stepper + "RAISE TO N", and "PASS"
+--   Challenge : "FLIP MY PILE" while you have cards there, then "tap a pile" + "FLIP ANY PILE"
+-- Everything else (whose turn, timers, bids) lives in StatusBar.
 
-local TweenService = game:GetService("TweenService")
-local Enums = require(game:GetService("ReplicatedStorage").Shared.Enums)
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Enums = require(ReplicatedStorage.Shared.Enums)
+local Theme = require(ReplicatedStorage.Shared.Theme)
 
 local ActionBar = {}
 
-local rootFrame: Frame? = nil
-local bidButton: TextButton? = nil
-local raiseBidButton: TextButton? = nil
-local passButton: TextButton? = nil
+type ActionCallback = (action: string, data: any) -> ()
 
--- Bid Number Picker Modal
-local bidModal: Frame? = nil
-local bidValueLabel: TextLabel? = nil
-local bidSubtitleLabel: TextLabel? = nil
+local root: Frame? = nil
+local hintLabel: TextLabel? = nil
+local stepperRow: Frame? = nil
+local bidValue: TextLabel? = nil
+local primaryButton: TextButton? = nil
+local secondaryButton: TextButton? = nil
+local onAction: ActionCallback? = nil
+
+-- Current context, set by UpdateState
 local currentBid = 1
 local minBid = 1
 local maxBid = 1
-local isBidUnlocked = false
-local currentPhase: string = ""
-local isMyTurnCached = false
-local hasCardsInStackCached = false
+local primaryAction: string? = nil
+local primaryData: (() -> any)? = nil
 
-local onActionCallback: ((action: string, data: any) -> ())? = nil
+local PANEL_WIDTH = 270
+local BUTTON_HEIGHT = 44
 
--- Helper to construct a glowing neon pill button
-local function makeActionPill(
-	name: string,
-	text: string,
-	neonColor: Color3,
-	size: UDim2,
-	parent: GuiObject
-): TextButton
-	local btn = Instance.new("TextButton")
-	btn.Name = name
-	btn.Size = size
-	btn.BackgroundColor3 = Color3.fromRGB(22, 18, 28)
-	btn.BorderSizePixel = 0
-	btn.AutoButtonColor = false
-	btn.Font = Enum.Font.FredokaOne
-	btn.TextSize = 18
-	btn.TextColor3 = neonColor
-	btn.Text = text
-	btn.Parent = parent
-	Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
+local function makeButton(parent: Instance, name: string, order: number, color: Color3): TextButton
+	local button = Instance.new("TextButton")
+	button.Name = name
+	button.LayoutOrder = order
+	button.Size = UDim2.new(1, 0, 0, BUTTON_HEIGHT)
+	button.BackgroundColor3 = color
+	button.AutoButtonColor = true
+	button.BorderSizePixel = 0
+	button.Font = Theme.Fonts.Title
+	button.TextSize = Theme.TextSize.Label
+	button.TextColor3 = Theme.Colors.TextPrimary
+	button.Text = ""
+	button.Parent = parent
+	Instance.new("UICorner", button).CornerRadius = Theme.CornerRadius.Circular
+	Theme.Outline(button, 0.5)
+	return button
+end
+
+local function makeStepButton(parent: Instance, name: string, order: number, text: string): TextButton
+	local button = Instance.new("TextButton")
+	button.Name = name
+	button.LayoutOrder = order
+	button.Size = UDim2.fromOffset(44, 44)
+	button.BackgroundColor3 = Theme.Colors.PanelBorder
+	button.AutoButtonColor = true
+	button.BorderSizePixel = 0
+	button.Font = Theme.Fonts.Title
+	button.TextSize = Theme.TextSize.Heading
+	button.TextColor3 = Theme.Colors.TextPrimary
+	button.Text = text
+	button.Parent = parent
+	Instance.new("UICorner", button).CornerRadius = Theme.CornerRadius.Circular
+	return button
+end
+
+local function refreshBidText()
+	if bidValue then
+		bidValue.Text = tostring(currentBid)
+	end
+	if primaryButton and (primaryAction == Enums.PlayerAction.StartBid or primaryAction == Enums.PlayerAction.RaiseBid) then
+		primaryButton.Text = if primaryAction == Enums.PlayerAction.StartBid
+			then "BID " .. currentBid
+			else "RAISE TO " .. currentBid
+	end
+end
+
+function ActionBar.Create(parent: Instance, callback: ActionCallback): Frame
+	onAction = callback
+
+	local panel = Instance.new("Frame")
+	panel.Name = "ActionBarRoot"
+	panel.AnchorPoint = Vector2.new(1, 1)
+	panel.Position = UDim2.new(1, -16, 1, -16)
+	panel.Size = UDim2.fromOffset(PANEL_WIDTH, 0)
+	panel.AutomaticSize = Enum.AutomaticSize.Y
+	panel.BackgroundColor3 = Theme.Colors.Backing
+	panel.BackgroundTransparency = 0.1
+	panel.BorderSizePixel = 0
+	panel.Visible = false
+	panel.ZIndex = 30
+	panel.Parent = parent
+	Instance.new("UICorner", panel).CornerRadius = Theme.CornerRadius.Large
 
 	local stroke = Instance.new("UIStroke")
-	stroke.Name = "NeonBorder"
-	stroke.Color = neonColor
-	stroke.Thickness = 2.6
-	stroke.Parent = btn
+	stroke.Color = Theme.Colors.Gold
+	stroke.Thickness = 1.5
+	stroke.Parent = panel
 
-	local origSize = size
-
-	btn.MouseEnter:Connect(function()
-		TweenService:Create(btn, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = UDim2.new(origSize.X.Scale, origSize.X.Offset + 8, origSize.Y.Scale, origSize.Y.Offset + 2),
-			BackgroundColor3 = Color3.fromRGB(34, 28, 44),
-		}):Play()
-		TweenService:Create(stroke, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Thickness = 3.6,
-		}):Play()
-	end)
-
-	btn.MouseLeave:Connect(function()
-		TweenService:Create(btn, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = origSize,
-			BackgroundColor3 = Color3.fromRGB(22, 18, 28),
-		}):Play()
-		TweenService:Create(stroke, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Thickness = 2.6,
-		}):Play()
-	end)
-
-	return btn
-end
-
--- ============================================================================
--- 1. SETUP ACTION BAR (Bottom-Right stacked pills matching reference mockup)
--- ============================================================================
-function ActionBar.Create(parent: Instance, callback: (action: string, data: any) -> ()): Frame
-	onActionCallback = callback
-
-	-- Root container strictly anchored in the bottom-right corner (never touches cards or center table!)
-	local root = Instance.new("Frame")
-	root.Name = "ActionBarRoot"
-	root.AnchorPoint = Vector2.new(1, 1)
-	root.Size = UDim2.fromOffset(150, 150)
-	root.Position = UDim2.new(1, -25, 1, -25)
-	root.BackgroundTransparency = 1
-	root.Active = false
-	root.ZIndex = 35
-	root.Parent = parent
-	rootFrame = root
-
-	local col = Instance.new("Frame")
-	col.Name = "ActionColumn"
-	col.Size = UDim2.fromScale(1, 1)
-	col.BackgroundTransparency = 1
-	col.Active = false
-	col.Parent = root
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0, 12)
+	pad.PaddingBottom = UDim.new(0, 12)
+	pad.PaddingLeft = UDim.new(0, 12)
+	pad.PaddingRight = UDim.new(0, 12)
+	pad.Parent = panel
 
 	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Vertical
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Padding = UDim.new(0, 8)
-	layout.Parent = col
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.Parent = panel
 
-	-- 1. Prominent BET Button (Gold/Amber)
-	local bidBtn = makeActionPill(
-		"BidBtn",
-		"BET",
-		Color3.fromRGB(255, 215, 65),
-		UDim2.new(1, 0, 0, 42),
-		col
-	)
-	bidButton = bidBtn
-	bidBtn.LayoutOrder = 1
-	bidBtn.Visible = true
+	local hint = Instance.new("TextLabel")
+	hint.Name = "Hint"
+	hint.LayoutOrder = 1
+	hint.Size = UDim2.fromScale(1, 0)
+	hint.AutomaticSize = Enum.AutomaticSize.Y
+	hint.BackgroundTransparency = 1
+	hint.Font = Theme.Fonts.Header
+	hint.TextSize = Theme.TextSize.Body
+	hint.TextWrapped = true
+	hint.TextColor3 = Theme.Colors.TextPrimary
+	hint.Text = ""
+	hint.Parent = panel
 
-	-- 2. RAISE BID / CHALLENGE Button (Coral/Salmon Pink)
-	local raiseBtn = makeActionPill(
-		"RaiseBidBtn",
-		"CHALLENGE",
-		Color3.fromRGB(255, 115, 130),
-		UDim2.new(1, 0, 0, 42),
-		col
-	)
-	raiseBidButton = raiseBtn
-	raiseBtn.LayoutOrder = 2
-	raiseBtn.Visible = false
+	-- Bid stepper:  [-]  N  [+]
+	local row = Instance.new("Frame")
+	row.Name = "BidStepper"
+	row.LayoutOrder = 2
+	row.Size = UDim2.new(1, 0, 0, 44)
+	row.BackgroundTransparency = 1
+	row.Parent = panel
+	local rowLayout = Instance.new("UIListLayout")
+	rowLayout.FillDirection = Enum.FillDirection.Horizontal
+	rowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	rowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	rowLayout.Padding = UDim.new(0, 14)
+	rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	rowLayout.Parent = row
 
-	-- 3. PASS Button (Mint Green)
-	local passBtn = makeActionPill(
-		"PassBtn",
-		"PASS",
-		Color3.fromRGB(60, 190, 90),
-		UDim2.new(1, 0, 0, 42),
-		col
-	)
-	passButton = passBtn
-	passBtn.LayoutOrder = 3
-	passBtn.Visible = false
+	local minus = makeStepButton(row, "Minus", 1, "−")
+	local value = Instance.new("TextLabel")
+	value.Name = "Value"
+	value.LayoutOrder = 2
+	value.Size = UDim2.fromOffset(60, 44)
+	value.BackgroundTransparency = 1
+	value.Font = Theme.Fonts.Title
+	value.TextSize = Theme.TextSize.Title
+	value.TextColor3 = Theme.Colors.TextGold
+	value.Text = "1"
+	value.Parent = row
+	local plus = makeStepButton(row, "Plus", 3, "+")
 
-	-- ========================================================================
-	-- 2. BID NUMBER PICKER POPUP MODAL (Floats neatly to the left of the action buttons)
-	-- ========================================================================
-	local modal = Instance.new("Frame")
-	modal.Name = "BidPickerModal"
-	modal.AnchorPoint = Vector2.new(1, 1)
-	modal.Size = UDim2.fromOffset(260, 142)
-	modal.Position = UDim2.new(1, -185, 1, -25)
-	modal.BackgroundColor3 = Color3.fromRGB(18, 15, 25)
-	modal.BackgroundTransparency = 0.10
-	modal.BorderSizePixel = 0
-	modal.ZIndex = 50
-	modal.Visible = false
-	modal.Parent = parent
-	Instance.new("UICorner", modal).CornerRadius = UDim.new(0, 14)
-
-	local mStroke = Instance.new("UIStroke")
-	mStroke.Color = Color3.fromRGB(255, 215, 65)
-	mStroke.Thickness = 2.4
-	mStroke.Parent = modal
-
-	-- Modal Title
-	local mTitle = Instance.new("TextLabel")
-	mTitle.Size = UDim2.new(1, 0, 0, 26)
-	mTitle.Position = UDim2.fromOffset(0, 6)
-	mTitle.BackgroundTransparency = 1
-	mTitle.Font = Enum.Font.FredokaOne
-	mTitle.TextSize = 15
-	mTitle.TextColor3 = Color3.fromRGB(255, 220, 100)
-	mTitle.Text = "CHOOSE YOUR BID"
-	mTitle.Parent = modal
-
-	-- Close 'X' Button
-	local closeBtn = Instance.new("TextButton")
-	closeBtn.Size = UDim2.fromOffset(24, 24)
-	closeBtn.Position = UDim2.new(1, -28, 0, 6)
-	closeBtn.BackgroundColor3 = Color3.fromRGB(30, 24, 38)
-	closeBtn.Font = Enum.Font.FredokaOne
-	closeBtn.TextSize = 14
-	closeBtn.TextColor3 = Color3.fromRGB(200, 200, 215)
-	closeBtn.Text = "✕"
-	closeBtn.Parent = modal
-	Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(1, 0)
-	closeBtn.MouseButton1Click:Connect(function()
-		modal.Visible = false
-	end)
-
-	-- Value Controls: [-]  [ VALUE ]  [+]
-	local minusBtn = Instance.new("TextButton")
-	minusBtn.Size = UDim2.fromOffset(38, 38)
-	minusBtn.Position = UDim2.fromOffset(18, 36)
-	minusBtn.BackgroundColor3 = Color3.fromRGB(32, 26, 42)
-	minusBtn.Font = Enum.Font.FredokaOne
-	minusBtn.TextSize = 22
-	minusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	minusBtn.Text = "-"
-	minusBtn.Parent = modal
-	Instance.new("UICorner", minusBtn).CornerRadius = UDim.new(1, 0)
-
-	local valLabel = Instance.new("TextLabel")
-	valLabel.Size = UDim2.new(1, -120, 0, 38)
-	valLabel.Position = UDim2.fromOffset(60, 36)
-	valLabel.BackgroundTransparency = 1
-	valLabel.Font = Enum.Font.FredokaOne
-	valLabel.TextSize = 30
-	valLabel.TextColor3 = Color3.fromRGB(255, 225, 90)
-	valLabel.Text = "1"
-	valLabel.Parent = modal
-	bidValueLabel = valLabel
-
-	local plusBtn = Instance.new("TextButton")
-	plusBtn.Size = UDim2.fromOffset(38, 38)
-	plusBtn.Position = UDim2.new(1, -56, 0, 36)
-	plusBtn.BackgroundColor3 = Color3.fromRGB(32, 26, 42)
-	plusBtn.Font = Enum.Font.FredokaOne
-	plusBtn.TextSize = 22
-	plusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	plusBtn.Text = "+"
-	plusBtn.Parent = modal
-	Instance.new("UICorner", plusBtn).CornerRadius = UDim.new(1, 0)
-
-	-- Subtitle: "Cards on Table: X"
-	local subLabel = Instance.new("TextLabel")
-	subLabel.Size = UDim2.new(1, 0, 0, 16)
-	subLabel.Position = UDim2.fromOffset(0, 78)
-	subLabel.BackgroundTransparency = 1
-	subLabel.Font = Enum.Font.FredokaOne
-	subLabel.TextSize = 14
-	subLabel.TextColor3 = Color3.fromRGB(180, 185, 200)
-	subLabel.Text = "Cards on Table: 4"
-	subLabel.Parent = modal
-	bidSubtitleLabel = subLabel
-
-	-- Confirm Bid Button
-	local confirmBtn = Instance.new("TextButton")
-	confirmBtn.Size = UDim2.new(1, -36, 0, 32)
-	confirmBtn.Position = UDim2.new(0, 18, 1, -40)
-	confirmBtn.BackgroundColor3 = Color3.fromRGB(235, 155, 30)
-	confirmBtn.Font = Enum.Font.FredokaOne
-	confirmBtn.TextSize = 15
-	confirmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	confirmBtn.Text = "CONFIRM BID"
-	confirmBtn.Parent = modal
-	Instance.new("UICorner", confirmBtn).CornerRadius = UDim.new(1, 0)
-
-	minusBtn.MouseButton1Click:Connect(function()
+	minus.Activated:Connect(function()
 		if currentBid > minBid then
 			currentBid -= 1
-			valLabel.Text = tostring(currentBid)
+			refreshBidText()
 		end
 	end)
-
-	plusBtn.MouseButton1Click:Connect(function()
+	plus.Activated:Connect(function()
 		if currentBid < maxBid then
 			currentBid += 1
-			valLabel.Text = tostring(currentBid)
+			refreshBidText()
 		end
 	end)
 
-	confirmBtn.MouseButton1Click:Connect(function()
-		modal.Visible = false
-		if onActionCallback then
-			local actionToFire = (currentPhase == Enums.GameState.Bidding)
-				and Enums.PlayerAction.RaiseBid
-				or Enums.PlayerAction.StartBid
-			onActionCallback(actionToFire, { bid = currentBid })
+	local primary = makeButton(panel, "Primary", 3, Theme.Colors.WarningAmber)
+	primary.Activated:Connect(function()
+		if onAction and primaryAction then
+			onAction(primaryAction, if primaryData then primaryData() else {})
 		end
 	end)
 
-	bidModal = modal
-
-	-- Click Handlers
-	bidBtn.MouseButton1Click:Connect(function()
-		if currentPhase == Enums.GameState.Revealing and isMyTurnCached then
-			if onActionCallback then
-				local Players = game:GetService("Players")
-				local myId = Players.LocalPlayer.UserId
-				onActionCallback(Enums.PlayerAction.RevealCard, {
-					targetUserId = if hasCardsInStackCached then myId else nil,
-				})
-			end
-			return
-		end
-
-		if not isBidUnlocked then
-			local NotificationBanner = require(script.Parent.NotificationBanner)
-			NotificationBanner.Show("👉 Place your 1st card before starting a bid!", "info")
-			return
-		end
-		modal.Visible = not modal.Visible
-	end)
-
-	raiseBtn.MouseButton1Click:Connect(function()
-		local inBidding = (currentPhase == Enums.GameState.Bidding)
-		if inBidding and isMyTurnCached then
-			modal.Visible = not modal.Visible
-		elseif not inBidding then
-			local NotificationBanner = require(script.Parent.NotificationBanner)
-			NotificationBanner.Show("⚡ Challenge/Raise can only be called during betting phase!", "info")
-		else
-			local NotificationBanner = require(script.Parent.NotificationBanner)
-			NotificationBanner.Show("⏳ Please wait for your turn to raise or challenge!", "info")
+	local secondary = makeButton(panel, "Pass", 4, Theme.Colors.PanelBorder)
+	secondary.Text = "PASS"
+	secondary.Activated:Connect(function()
+		if onAction then
+			onAction(Enums.PlayerAction.Pass, {})
 		end
 	end)
 
-	passBtn.MouseButton1Click:Connect(function()
-		local inBidding = (currentPhase == Enums.GameState.Bidding)
-		if inBidding and isMyTurnCached then
-			if onActionCallback then
-				onActionCallback(Enums.PlayerAction.Pass, {})
-			end
-		elseif not inBidding then
-			local NotificationBanner = require(script.Parent.NotificationBanner)
-			NotificationBanner.Show("✕ You cannot pass during placement phase!", "info")
-		else
-			local NotificationBanner = require(script.Parent.NotificationBanner)
-			NotificationBanner.Show("⏳ Please wait for your turn to pass!", "info")
-		end
-	end)
-
-	return root
+	root = panel
+	hintLabel = hint
+	stepperRow = row
+	bidValue = value
+	primaryButton = primary
+	secondaryButton = secondary
+	return panel
 end
 
--- ============================================================================
--- 3. UPDATE STATE
--- ============================================================================
+-- Last context the stepper was set up for, so a re-sync mid-turn keeps the player's choice
+local lastStepperKey = ""
+
 function ActionBar.UpdateState(
 	isMyTurn: boolean,
 	gameState: string,
 	highestBid: number,
 	totalCards: number,
-	_hasCardsInHand: boolean,
+	hasCardsInHand: boolean,
 	hasCardsInStack: boolean,
 	canStartBid: boolean?
 )
-	if not rootFrame or not bidButton or not raiseBidButton or not passButton then
+	local panel, hint, row, primary, secondary = root, hintLabel, stepperRow, primaryButton, secondaryButton
+	if not panel or not hint or not row or not primary or not secondary then
 		return
 	end
 
-	minBid = math.max(1, highestBid + 1)
-	maxBid = math.max(minBid, totalCards)
-	currentBid = minBid
-	if bidValueLabel then
-		bidValueLabel.Text = tostring(currentBid)
-	end
-	if bidSubtitleLabel then
-		bidSubtitleLabel.Text = "Total Cards on Table: " .. totalCards
+	primaryAction, primaryData = nil, nil
+	if not isMyTurn then
+		panel.Visible = false
+		return
 	end
 
-	currentPhase = gameState
-	isMyTurnCached = isMyTurn
-	hasCardsInStackCached = hasCardsInStack
+	local showStepper, showPrimary, showPass = false, false, false
+	local bidData = function()
+		return { bid = currentBid }
+	end
 
-	local inPlacement = (gameState == Enums.GameState.Placement)
-	local inBidding = (gameState == Enums.GameState.Bidding)
-
-	-- All 3 action pills are permanently present in bottom-right matching reference mockup
-	bidButton.Visible = true
-	raiseBidButton.Visible = true
-	passButton.Visible = true
-
-	local bStroke = bidButton:FindFirstChildWhichIsA("UIStroke")
-	local rStroke = raiseBidButton:FindFirstChildWhichIsA("UIStroke")
-	local pStroke = passButton:FindFirstChildWhichIsA("UIStroke")
-
-	if inPlacement then
-		local canBidNow = (canStartBid == true or totalCards >= 4)
-		isBidUnlocked = canBidNow and isMyTurn
-
-		bidButton.Text = isBidUnlocked and "BET" or (totalCards >= 4 and "BET (Turn)" or "BET (Turn 2+)")
-		bidButton.TextColor3 = isBidUnlocked and Color3.fromRGB(255, 215, 65) or Color3.fromRGB(160, 150, 110)
-		bidButton.TextTransparency = isBidUnlocked and 0 or 0.3
-		if bStroke then
-			bStroke.Color = isBidUnlocked and Color3.fromRGB(255, 215, 65) or Color3.fromRGB(120, 110, 60)
-			bStroke.Transparency = isBidUnlocked and 0 or 0.4
+	if gameState == Enums.GameState.Placement then
+		if canStartBid and totalCards > 0 then
+			hint.Text = if hasCardsInHand
+				then "Place a card from your hand, or start the bidding"
+				else "No cards left in hand: start the bidding"
+			minBid, maxBid = 1, totalCards
+			showStepper, showPrimary = true, true
+			primaryAction, primaryData = Enums.PlayerAction.StartBid, bidData
+		else
+			hint.Text = "Place a card from your hand"
 		end
-
-		-- Dim CHALLENGE & PASS during placement
-		raiseBidButton.Text = "CHALLENGE"
-		raiseBidButton.TextColor3 = Color3.fromRGB(255, 115, 130)
-		raiseBidButton.TextTransparency = 0.3
-		if rStroke then
-			rStroke.Color = Color3.fromRGB(160, 65, 75)
-			rStroke.Transparency = 0.60
+	elseif gameState == Enums.GameState.Bidding then
+		if highestBid < totalCards then
+			hint.Text = "Raise the bid, or pass"
+			minBid, maxBid = highestBid + 1, totalCards
+			showStepper, showPrimary = true, true
+			primaryAction, primaryData = Enums.PlayerAction.RaiseBid, bidData
+		else
+			hint.Text = "The bid can't go higher"
 		end
-
-		passButton.Text = "PASS"
-		passButton.TextColor3 = Color3.fromRGB(60, 190, 90)
-		passButton.TextTransparency = 0.3
-		if pStroke then
-			pStroke.Color = Color3.fromRGB(45, 120, 95)
-			pStroke.Transparency = 0.60
-		end
-
-	elseif inBidding then
-		-- Dim BET or switch to RAISE
-		isBidUnlocked = false
-		bidButton.Text = "BET"
-		bidButton.TextColor3 = Color3.fromRGB(160, 150, 110)
-		bidButton.TextTransparency = 0.3
-		if bStroke then
-			bStroke.Color = Color3.fromRGB(110, 100, 60)
-			bStroke.Transparency = 0.60
-		end
-
-		-- Active CHALLENGE / RAISE BID
-		local canChallenge = isMyTurn and (highestBid < totalCards)
-		raiseBidButton.Text = (highestBid + 1 >= totalCards) and "CHALLENGE" or "RAISE BID"
-		raiseBidButton.TextColor3 = Color3.fromRGB(255, 115, 130)
-		raiseBidButton.TextTransparency = canChallenge and 0 or 0.3
-		if rStroke then
-			rStroke.Color = canChallenge and Color3.fromRGB(255, 115, 130) or Color3.fromRGB(160, 65, 75)
-			rStroke.Transparency = canChallenge and 0 or 0.50
-		end
-
-		-- Active PASS
-		passButton.Text = "PASS"
-		passButton.TextColor3 = Color3.fromRGB(60, 190, 90)
-		passButton.TextTransparency = isMyTurn and 0 or 0.3
-		if pStroke then
-			pStroke.Color = isMyTurn and Color3.fromRGB(60, 190, 90) or Color3.fromRGB(45, 120, 95)
-			pStroke.Transparency = isMyTurn and 0 or 0.50
-		end
-
+		showPass = true
 	elseif gameState == Enums.GameState.Revealing then
-		-- Challenge / Revealing Phase
-		isBidUnlocked = isMyTurn and hasCardsInStack
-		if isMyTurn and hasCardsInStack then
-			bidButton.Text = "FLIP OWN PILE"
-			bidButton.TextColor3 = Color3.fromRGB(255, 80, 100)
-			bidButton.TextTransparency = 0
-			if bStroke then
-				bStroke.Color = Color3.fromRGB(255, 65, 85)
-				bStroke.Transparency = 0
-			end
-		elseif isMyTurn then
-			bidButton.Text = "FLIP OPPONENT"
-			bidButton.TextColor3 = Color3.fromRGB(255, 215, 65)
-			bidButton.TextTransparency = 0.2
-			if bStroke then
-				bStroke.Color = Color3.fromRGB(255, 215, 65)
-				bStroke.Transparency = 0.2
+		showPrimary = true
+		primaryAction = Enums.PlayerAction.RevealCard
+		if hasCardsInStack then
+			hint.Text = "Flip your own pile first"
+			primary.Text = "FLIP MY PILE"
+			primaryData = function()
+				return { targetUserId = Players.LocalPlayer.UserId }
 			end
 		else
-			bidButton.Text = "REVEALING"
-			bidButton.TextTransparency = 0.3
-			if bStroke then
-				bStroke.Transparency = 0.6
+			hint.Text = "Tap a pile on the table to flip it"
+			primary.Text = "FLIP ANY PILE"
+			primaryData = function()
+				return {} -- the server picks an opponent's pile
 			end
 		end
-
-		raiseBidButton.Text = "CHALLENGE"
-		raiseBidButton.TextTransparency = 0.3
-		passButton.Text = "PASS"
-		passButton.TextTransparency = 0.3
-		if rStroke then
-			rStroke.Transparency = 0.6
-		end
-		if pStroke then
-			pStroke.Transparency = 0.6
-		end
-
 	else
-		-- RoundEnd / Lobby: keep stacked layout in quiet mode
-		isBidUnlocked = false
-		bidButton.Text = "BET"
-		bidButton.TextTransparency = 0.3
-		raiseBidButton.Text = "CHALLENGE"
-		raiseBidButton.TextTransparency = 0.3
-		passButton.Text = "PASS"
-		passButton.TextTransparency = 0.3
-		if bStroke then
-			bStroke.Transparency = 0.6
-		end
-		if rStroke then
-			rStroke.Transparency = 0.6
-		end
-		if pStroke then
-			pStroke.Transparency = 0.6
-		end
+		panel.Visible = false
+		return
 	end
 
-	if not isMyTurn and bidModal then
-		bidModal.Visible = false
+	if showStepper then
+		-- New turn / new bid range: start at the smallest legal bid; otherwise keep the choice
+		local key = gameState .. ":" .. minBid .. ":" .. maxBid
+		if key ~= lastStepperKey then
+			currentBid = minBid
+			lastStepperKey = key
+		end
+		currentBid = math.clamp(currentBid, minBid, maxBid)
+		refreshBidText()
+	else
+		lastStepperKey = ""
 	end
+	row.Visible = showStepper
+	primary.Visible = showPrimary
+	secondary.Visible = showPass
+	panel.Visible = true
 end
 
 return ActionBar

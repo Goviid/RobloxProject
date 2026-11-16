@@ -10,6 +10,7 @@
 
 local TweenService = game:GetService("TweenService")
 local CardArt = require(game:GetService("ReplicatedStorage").Shared.CardArt)
+local Toast = require(script.Parent.Toast)
 local Enums = require(game:GetService("ReplicatedStorage").Shared.Enums)
 
 local HandBar = {}
@@ -97,7 +98,8 @@ local function createCircularToken(
 	promptLabel.TextColor3 = isRose and Color3.fromRGB(255, 235, 160) or Color3.fromRGB(255, 120, 135)
 	promptLabel.TextStrokeTransparency = 0.15
 	promptLabel.TextStrokeColor3 = Color3.fromRGB(15, 15, 20)
-	promptLabel.Text = "PLACE CARD"
+	promptLabel.Text = ""
+	promptLabel.Visible = false -- only shown while hovering a card
 	promptLabel.ZIndex = baseZIndex + 4
 	promptLabel.Parent = container
 
@@ -197,11 +199,10 @@ local function createCircularToken(
 			Color = isRose and Color3.fromRGB(255, 245, 180) or Color3.fromRGB(255, 70, 100),
 		}):Play()
 
-		if isPlayerTurn and canCurrentlyPlace then
-			promptLabel.Text = isRose and "PLACE ROSE" or "PLACE SKULL"
-		else
-			promptLabel.Text = isRose and "ROSE" or "SKULL"
-		end
+		promptLabel.Text = if isPlayerTurn and canCurrentlyPlace
+			then (if isRose then "PLACE ROSE" else "PLACE SKULL")
+			else (if isRose then "ROSE" else "SKULL")
+		promptLabel.Visible = true
 	end)
 
 	btn.MouseLeave:Connect(function()
@@ -227,7 +228,7 @@ local function createCircularToken(
 			Color = isRose and Color3.fromRGB(255, 215, 75) or Color3.fromRGB(255, 45, 65),
 		}):Play()
 
-		promptLabel.Text = "PLACE CARD"
+		promptLabel.Visible = false
 	end)
 
 	btn.MouseButton1Click:Connect(function()
@@ -239,14 +240,12 @@ local function createCircularToken(
 		end
 
 		if not isPlayerTurn then
-			local NotificationBanner = require(script.Parent.NotificationBanner)
-			NotificationBanner.Show("⏳ Please wait for your turn to place a card!", "info")
+			Toast.Show("Wait for your turn to place a card", "info", 1.5)
 			return
 		end
 
 		if not canCurrentlyPlace then
-			local NotificationBanner = require(script.Parent.NotificationBanner)
-			NotificationBanner.Show("Cards cannot be placed during bidding/challenge!", "warning")
+			Toast.Show("Cards can only be placed before the bidding starts", "info", 1.5)
 			return
 		end
 

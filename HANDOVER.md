@@ -83,7 +83,6 @@ F:\RobloxProject/
             ├── NotificationBanner.luau# Top announcement toasts & 15s depleting timer bar
             ├── CardRevealModal.luau   # Center dramatic card flip popup (Rose vs Skull)
             ├── CardAnimation.luau     # Flying card physics tween module
-            ├── ChatBox.luau           # Top-left 2D translucent chat and game log
             └── VictoryModal.luau      # Fullscreen match victory popup celebrating winner
 ```
 
@@ -235,7 +234,7 @@ All remote instances are lazily retrieved or constructed by `src/shared/Network.
   - `[ 👁 FLIP STACK ]` pill during Revealing phase.
 - **Notification Banner (`NotificationBanner.luau`)**: **COMPLETE** — Slide-down announcement pill with a 15-second depleting horizontal progress bar.
 - **Card Reveal Modal (`CardRevealModal.luau`)**: **COMPLETE** — Dramatic center-screen card flip popup with front/back animation, owner name, and flips progress counter.
-- **Chat Box (`ChatBox.luau`)**: **COMPLETE** — Translucent 2D chat and game action log in the top-left corner.
+- **Chat Box**: *Removed (UI step 2, 2026-11-16)*. Roblox's built-in chat is used; game events show as pop-ups (`Toast.luau`) and match status in `StatusBar.luau`, which replaced `TableView.luau` and `NotificationBanner.luau`.
 - **Victory Modal (`VictoryModal.luau`)**: **COMPLETE** — Match end popup celebrating the 2-point winner with crown icon and countdown to the next match.
 - **Flying Card Physics (`CardAnimation.luau`)**: **PARTIAL** — Module exists with elastic trajectory math, but direct 3D placement tweens in `Card3DManager.luau` are currently preferred.
 

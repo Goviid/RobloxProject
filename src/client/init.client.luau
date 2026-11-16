@@ -16,11 +16,10 @@ local Enums = require(ReplicatedStorage.Shared.Enums)
 local Network = require(ReplicatedStorage.Shared.Network)
 local CardArt = require(ReplicatedStorage.Shared.CardArt)
 
-local NotificationBanner = require(script.UI.NotificationBanner)
-local TableView = require(script.UI.TableView)
+local StatusBar = require(script.UI.StatusBar)
+local Toast = require(script.UI.Toast)
 local HandBar = require(script.UI.HandBar)
 local ActionBar = require(script.UI.ActionBar)
-local ChatBox = require(script.UI.ChatBox)
 local CardRevealModal = require(script.UI.CardRevealModal)
 local VictoryModal = require(script.UI.VictoryModal)
 local DiscardModal = require(script.UI.DiscardModal)
@@ -104,7 +103,7 @@ local function applySeatView(seatIndex: number?)
 		local mat = arena:FindFirstChild("PlayerMat_" .. i, true)
 		local label = mat and mat:FindFirstChild("MatLabel", true)
 		if label and label:IsA("TextLabel") then
-			label.Text = if i == seatIndex then "YOUR PILE" else "PILE"
+			label.Text = if i == seatIndex then "YOUR PILE" else ""
 		end
 	end
 	for _, child in ipairs(arena:GetChildren()) do
@@ -196,13 +195,15 @@ local function buildUI()
 		cam:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
 	end
 
-	-- 1. Top Banner & Timer
-	NotificationBanner.Create(screenGui)
-
-	-- 2. Center Match Announcements
-	TableView.Create(screenGui, function(targetUserId: number)
-		onSubmitAction(Enums.PlayerAction.RevealCard, { targetUserId = targetUserId })
+	-- Roblox's player list would sit on top of the status strip, and the seat tags
+	-- already show every player
+	pcall(function()
+		game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
 	end)
+
+	-- 1. Status strip (top right: phase, whose turn, the one timer) and event pop-ups (above the hand)
+	StatusBar.Create(screenGui)
+	Toast.Create(screenGui)
 
 	-- 3. Bottom Hand Tray (Oversized, raised 2.5D circular hand)
 	HandBar.Create(screenGui, function(cardType: string, cardIndex: number)
@@ -221,13 +222,13 @@ local function buildUI()
 						CardAnimation.PlayCardFly(screenGui, HAND_DOCK_POS, target, cardType, myData and myData.cardSet)
 					end
 				else
-					NotificationBanner.Show(err or "Not your turn to place a card!", "warning")
+					Toast.Show(err or "Not your turn to place a card", "warning")
 					-- Immediately restore hand by requesting ground-truth state from server
 					Network.RequestState:FireServer()
 				end
 			end)
 		else
-			NotificationBanner.Show("Cards can only be placed during Placement Phase!", "warning")
+			Toast.Show("Cards can only be placed before the bidding starts", "info", 1.5)
 			Network.RequestState:FireServer()
 		end
 	end)
@@ -237,9 +238,6 @@ local function buildUI()
 		AudioController.PlayButtonClick()
 		onSubmitAction(action, data)
 	end)
-
-	-- 5. Translucent Roblox-style 2D Chat Box (Top-Left)
-	ChatBox.Create(screenGui)
 
 	-- 6. Center Card Reveal Popup
 	CardRevealModal.Create(screenGui)
@@ -269,11 +267,6 @@ local function buildUI()
 		end)
 	end)
 
-	-- 7. Pre-populate initial circular hand & bid controls on startup (Roses left, Skull right)
-	local initHand = { Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Rose, Enums.CardType.Skull }
-	HandBar.UpdateHand(initHand, true, true)
-	ActionBar.UpdateState(true, Enums.GameState.Placement, 0, 0, true, false, false)
-
 	print("[Skulls & Roses] Fresh SkullsGui built and parented successfully.")
 end
 
@@ -301,7 +294,7 @@ onSubmitAction = function(action: string, data: any): (boolean, any)
 		warn("[Client] Action '" .. action .. "' was rejected: " .. tostring(err))
 		AudioController.PlayError()
 		if err then
-			NotificationBanner.Show(err, "warning")
+			Toast.Show(err, "warning")
 		end
 		-- Re-sync state with server if action was rejected
 		Network.RequestState:FireServer()
@@ -331,37 +324,15 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 
 		local activePlayerData = payload.activePlayerId and lastKnownPlayers[tostring(payload.activePlayerId)]
 		local activePlayerName = activePlayerData and activePlayerData.name or "Opponent"
-		local activeStackCount = activePlayerData and activePlayerData.stackCount or 0
-		-- Turn number is based on active player's stack count so it reflects the true current turn
-		local turnNumber = math.max(1, activeStackCount + 1)
 
 		print(string.format("[Client GameStateChanged] State: %s | Active: %s (isMyTurn: %s) | Hand: %d | Stack: %d",
 			tostring(payload.gameState), tostring(payload.activePlayerId), tostring(isMyTurn), #myHand, myStackCount))
 
-		-- Determine left pill override based on phase
-		local pillOverride = nil
-		if payload.gameState == Enums.GameState.Bidding then
-			pillOverride = "BID: " .. tostring(payload.highestBid or 1)
-		elseif payload.gameState == Enums.GameState.Discarding then
-			pillOverride = "SKULL PENALTY"
-		elseif payload.gameState == Enums.GameState.Revealing then
-			pillOverride = "FLIPS: " .. tostring(payload.cardsFlipped or 0) .. "/" .. tostring(payload.targetCards or 1)
-		end
-
-		-- 1. Update Table View (seats, stack heights, score gems)
+		-- 1. Camera and per-seat table view
 		local seatIndex = myData and tonumber(myData.seatIndex) or nil
 		CameraController.SetSeat(seatIndex)
 		applySeatView(seatIndex)
 		CameraController.SetTurnFocus(isMyTurn)
-		TableView.UpdateLayout(lastKnownPlayers, payload.activePlayerId, payload.challengerId)
-		TableView.UpdateTurn(turnNumber, activePlayerName, isMyTurn, pillOverride)
-		TableView.UpdateCenter(
-			payload.gameState,
-			payload.highestBid or 0,
-			challengerData and challengerData.name or nil,
-			payload.totalCardsOnTable or 0,
-			payload.roundNumber or 1
-		)
 
 		-- 2. Update Hand Tray (Remains visible across all phases matching reference)
 		local canPlace = (payload.gameState == Enums.GameState.Placement)
@@ -446,44 +417,62 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 			DiscardModal.Hide()
 		end
 
-		-- 5. Turn Timer Reset & Turn Prompt
-		if payload.gameState == Enums.GameState.Placement or payload.gameState == Enums.GameState.Bidding
-			or payload.gameState == Enums.GameState.Revealing or payload.gameState == Enums.GameState.Discarding then
-			TableView.StartTurnTimer(Constants.TURN_TIMEOUT)
-			NotificationBanner.StartTimer(Constants.TURN_TIMEOUT)
-			if isMyTurn then
-				if payload.gameState == Enums.GameState.Placement then
-					NotificationBanner.Show("👉 YOUR TURN: Choose a card from your hand to place!", "info")
-				elseif payload.gameState == Enums.GameState.Bidding then
-					NotificationBanner.Show("👉 YOUR TURN: Raise your bid or Pass!", "info")
-				elseif payload.gameState == Enums.GameState.Revealing then
-					if myStackCount > 0 then
-						NotificationBanner.Show("YOU ARE CHALLENGER: Click YOUR stack to flip your cards first!", "warning")
-					else
-						NotificationBanner.Show("YOUR STACK IS CLEAR: Click an OPPONENT'S stack to flip!", "warning")
-					end
-				elseif payload.gameState == Enums.GameState.Discarding and isMyDiscard then
-					if discard.isOwnSkull then
-						NotificationBanner.Show("💀 Choose which of your cards to lose!", "alert")
-					else
-						NotificationBanner.Show("💀 Remove one of the challenger's cards!", "alert")
-					end
-				end
+		-- 5. Status strip: phase, whose turn, the one timer, and one line of context
+		local timed = payload.gameState == Enums.GameState.Placement
+			or payload.gameState == Enums.GameState.Bidding
+			or payload.gameState == Enums.GameState.Revealing
+			or payload.gameState == Enums.GameState.Discarding
+		if inLobby or payload.gameState == Enums.GameState.MatchEnd then
+			StatusBar.Hide()
+		else
+			local phaseNames = {
+				[Enums.GameState.Placement] = "PLACING",
+				[Enums.GameState.Bidding] = "BIDDING",
+				[Enums.GameState.Revealing] = "CHALLENGE",
+				[Enums.GameState.Discarding] = "SKULL PENALTY",
+				[Enums.GameState.RoundEnd] = "ROUND OVER",
+			}
+			local total = payload.totalCardsOnTable or 0
+			local info: string? = nil
+			if payload.gameState == Enums.GameState.Placement then
+				info = if total > 0 then total .. " on the table" else nil
+			elseif payload.gameState == Enums.GameState.Bidding then
+				local bidder = payload.highestBidderId and lastKnownPlayers[tostring(payload.highestBidderId)]
+				local bidderName = if tonumber(payload.highestBidderId) == localPlayer.UserId then "you"
+					elseif bidder then bidder.name
+					else "?"
+				info = "Bid " .. tostring(payload.highestBid or 0) .. " of " .. total .. " (" .. bidderName .. ")"
+			elseif payload.gameState == Enums.GameState.Revealing then
+				local who = if tonumber(payload.challengerId) == localPlayer.UserId then "You"
+					elseif challengerData then challengerData.name
+					else "Challenger"
+				info = who .. " flipped " .. tostring(payload.cardsFlipped or 0) .. " of " .. tostring(payload.targetCards or 0)
 			elseif payload.gameState == Enums.GameState.Discarding and discard then
 				local chooserData = lastKnownPlayers[tostring(discard.chooserId)]
 				local victimData = lastKnownPlayers[tostring(discard.victimId)]
 				local chooserName = chooserData and chooserData.name or "Opponent"
-				if tonumber(discard.victimId) == localPlayer.UserId then
-					NotificationBanner.Show("💀 " .. chooserName .. " is removing one of your cards...", "alert")
+				if isMyDiscard then
+					info = if discard.isOwnSkull then "Choose a card to lose" else "Remove one of their cards"
+				elseif tonumber(discard.victimId) == localPlayer.UserId then
+					info = chooserName .. " is removing one of your cards"
 				elseif discard.isOwnSkull then
-					NotificationBanner.Show(chooserName .. " is choosing a card to lose...", "info")
+					info = chooserName .. " is choosing a card to lose"
 				else
-					NotificationBanner.Show(chooserName .. " is removing a card from " .. (victimData and victimData.name or "the challenger") .. "...", "info")
+					info = chooserName .. " is removing a card from " .. (victimData and victimData.name or "the challenger")
 				end
 			end
-		else
-			TableView.StopTurnTimer()
-			NotificationBanner.StopTimer()
+			local phase = phaseNames[payload.gameState] or string.upper(tostring(payload.gameState))
+			StatusBar.Update({
+				phaseText = "ROUND " .. tostring(payload.roundNumber or 1) .. " · " .. phase,
+				turnText = if not timed then "" elseif isMyTurn then "YOUR TURN" else activePlayerName,
+				isMyTurn = isMyTurn and timed,
+				infoText = info,
+			})
+			if timed then
+				StatusBar.StartTimer(Constants.TURN_TIMEOUT)
+			else
+				StatusBar.StopTimer()
+			end
 		end
 	end)
 
@@ -492,30 +481,27 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 	end
 end)
 
--- Banner & Top HUD Notifications
+-- Server events -> pop-ups. Routine "info" messages (cards placed, round started, rose
+-- flips) are already visible in the status strip and on the table, so only passes get a
+-- brief pop-up; bids, skulls, timeouts, points and wins always do.
 Network.Notification.OnClientEvent:Connect(function(data: { text: string, style: string? })
-	NotificationBanner.Show(data.text, data.style)
-	ChatBox.AddMessage("SYSTEM", data.text, "#FFD23F")
+	local style = data.style or "info"
+	if style ~= "info" then
+		Toast.Show(data.text, style)
+	elseif string.find(data.text, " passed", 1, true) then
+		Toast.Show(data.text, "info", 1.4)
+	end
 	if string.find(data.text, "Point scored", 1, true) then
 		AudioController.PlayPointScored()
 	end
 end)
 
--- Live Bid Updates (e.g. "BLUFFER_99 raised the bid to 3!")
-Network.BidUpdated.OnClientEvent:Connect(function(bidderId: number, bid: number)
-	local p = lastKnownPlayers[tostring(bidderId)]
-	local pName = p and p.name or ("Player " .. bidderId)
-	local msg = pName .. " raised the bid to " .. bid .. "!"
-	TableView.SetAlertText(msg)
-	ChatBox.AddMessage(pName, "raised the bid to " .. bid .. "!", "#FFD23F")
-end)
+-- Bids: the server's "raised the bid" notification shows the pop-up; the status strip
+-- shows the current bid, so BidUpdated needs no extra UI.
 
 -- Card Played SFX / Alert
-Network.CardPlayed.OnClientEvent:Connect(function(playerId: number, _stackCount: number)
+Network.CardPlayed.OnClientEvent:Connect(function(_playerId: number, _stackCount: number)
 	AudioController.PlayCardPlace()
-	local p = lastKnownPlayers[tostring(playerId)]
-	local pName = p and p.name or ("Player " .. playerId)
-	ChatBox.AddMessage(pName, "placed a card face-down.", "#3CBE5A")
 end)
 
 -- Card Revealed (Card flipped by Challenger)
@@ -543,20 +529,17 @@ Network.CardRevealed.OnClientEvent:Connect(function(data: any)
 		CameraController.ShakeOnSkull()
 	end
 
-	local msg = isSkull and ("💀 " .. targetName .. "'s SKULL was revealed!") or ("🌹 Rose Revealed from " .. targetName .. " (" .. data.cardsFlipped .. "/" .. data.targetCards .. ")")
-	NotificationBanner.Show(msg, isSkull and "alert" or "info")
 end)
 
 -- Private: which card I lost to a skull penalty (only the victim receives this)
 Network.CardLost.OnClientEvent:Connect(function(data: any)
 	local cardName = data and data.cardType == Enums.CardType.Skull and "your SKULL 💀" or "a ROSE 🌹"
-	NotificationBanner.Show("You lost " .. cardName .. "!", "alert")
+	Toast.Show("You lost " .. cardName .. "!", "alert")
 	-- The lost card flies off the top of the screen
 	if data and data.cardType then
 		local myData = lastKnownPlayers[tostring(localPlayer.UserId)]
 		CardAnimation.PlayCardFly(screenGui, HAND_DOCK_POS, UDim2.fromScale(0.5, -0.15), data.cardType, myData and myData.cardSet)
 	end
-	ChatBox.AddMessage("SYSTEM", "You lost " .. cardName .. ".", "#FF6B6B")
 end)
 
 -- Lobby (seats, ready check, countdown, host controls)
@@ -583,7 +566,6 @@ Network.GameOver.OnClientEvent:Connect(function(winnerId: number, reason: string
 	local name = (pData and pData.name) or (winner and winner.DisplayName) or ("Player " .. winnerId)
 	AudioController.PlayVictory()
 	VictoryModal.Show(name, winnerId == localPlayer.UserId, reason, duration)
-	NotificationBanner.Show("👑 " .. name .. " WINS THE MATCH! 👑", "success")
 end)
 
 -- ============================================================================

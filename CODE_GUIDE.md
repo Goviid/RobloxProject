@@ -30,10 +30,10 @@ F:\RobloxProject\
 │       ├── init.client.luau       <-- Client bootstrapper & network listeners
 │       ├── CameraController.luau  <-- 2.5D fixed tabletop camera (LOCOfficial style)
 │       └── UI/                    <-- Modular 2D tabletop interface (Theme A: Calavera)
-│           ├── NotificationBanner.luau <-- Top announcement banner & 15s turn timer bar
-│           ├── HandBar.luau       <-- Floating squircle cards at bottom with hover lift
-│           ├── ActionBar.luau     <-- Contextual buttons ([Place Card], [Bid], [Pass])
-│           ├── TableView.luau     <-- Circular 2-6 player table with avatar heads & turn halos
+│           ├── StatusBar.luau     <-- Top-right status strip: phase, whose turn, the one turn timer
+│           ├── Toast.luau         <-- Short queued event pop-ups above the hand
+│           ├── HandBar.luau       <-- Your hand at the bottom, with hover lift
+│           ├── ActionBar.luau     <-- Bottom-right panel: only the actions you can take now
 │           ├── CardRevealModal.luau<-- Center animated card flip popup (Rose vs Skull)
 │           └── CardAnimation.luau <-- Flying card trajectory animation (hand to table)
 ```
@@ -56,7 +56,7 @@ F:\RobloxProject\
 * **`TURN_TIMEOUT = 30`**: Seconds allowed per turn (including the skull-penalty pick) before the game takes an automatic action so games never freeze.
 * **`MATCH_OVER_DELAY = 30`**: How long the winner screen stays up before a new match starts.
 * **`BOT_THINK_DELAY = 3`**: Seconds a bot waits before acting, so humans can follow along.
-* **`SEAT_DISTRIBUTIONS`**: Mathematical circle degrees used by `TableView.luau` to arrange player pods radially around the table.
+* **`SEAT_DISTRIBUTIONS`**: Legacy radial seat angles (unused since the 3D table took over seating).
 
 #### `Enums.luau`
 * **Purpose:** Centralized dictionary of constants to avoid typos and keep states consistent.
@@ -139,9 +139,11 @@ F:\RobloxProject\
 * `init.client.luau` adds a `ScreenScale` UIScale that enlarges the UI on big monitors (1.0–1.5×); code placing GUI at raw screen positions must divide by it.
 * Defines the warm wood colors (`TableDark`, `TableSurface`), gold filigree accents (`Gold`, `GoldGlow`), crimson velvet (`RosePrimary`), and obsidian charcoal (`SkullPrimary`).
 
-#### `UI/NotificationBanner.luau`
-* **Purpose:** Top-center game announcement banner and animated turn timer bar.
-* Features smooth slide/bounce animations and a depleting progress bar for the turn countdown.
+#### `UI/StatusBar.luau`
+* **Purpose:** The only match-status display: one pill in the top-right corner (the top centre stays clear for the far player's 3D name tag; Roblox's player list is hidden to make room) with `ROUND n · PHASE`, whose turn (gold "YOUR TURN" for you), the single turn timer (drain bar under the pill, red in the last 5 s), and one line of context (cards on the table, current bid and bidder, flips so far, or who is choosing a lost card). Hidden in the lobby and on the winner screen.
+
+#### `UI/Toast.luau`
+* **Purpose:** Short event pop-ups at the bottom centre, just above the hand, one at a time and queued (max 3; a backed-up queue plays faster). Fed by server `Notification`s that matter (bids, skull hits, timeouts, points, wins, passes) and client messages (rejected actions, "you lost a card"). Routine info messages are not shown.
 
 #### `UI/HandBar.luau`
 * **Purpose:** Oversized 2D floating card hand at the bottom of the screen (LOCOfficial style).
@@ -149,14 +151,7 @@ F:\RobloxProject\
 * Never disappears when count reaches 0—gracefully dims to maintain tactile hand presence.
 
 #### `UI/ActionBar.luau`
-* **Purpose:** Bottom-right contextual action buttons (LOCOfficial style).
-* Features a prominent `[ 🌹 PLACE ROSE ]` / `[ 💀 PLACE SKULL ]` action button that reflects the active hand selection and automatically places cards with one click.
-* Dynamically switches to bidding stepper and pass button during bidding phase.
-
-#### `UI/TableView.luau`
-* **Purpose:** Sleek LOCOfficial Top HUD Status Badge & Compact Player Strip.
-* Pinned neatly at the top of the screen to leave the center 3D table completely unobstructed. Shows player names, avatars, stack counts, score gems, and active turn halos.
-* Allows challengers to click player pills (or the physical 3D table cards) to reveal cards.
+* **Purpose:** Bottom-right panel, only on your turn and only with what you can do now: placement hint (+ bid stepper and **BID N** once bidding is allowed), bidding stepper with **RAISE TO N** and **PASS**, and **FLIP MY PILE** / **FLIP ANY PILE** during the challenge. The bid stepper keeps your choice across re-syncs within a turn.
 
 #### `UI/LobbyPanel.luau`
 * **Purpose:** Lobby screen rendered from `LobbyState`: seat list with ready status, READY toggle, and host-only BOTS ON/OFF and START buttons.
