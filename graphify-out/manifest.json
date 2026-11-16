@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   "src/client/AudioController.luau": {
-    "mtime": 1794783419.7346494,
-    "seen": 1794783529.0684996,
-    "ast_hash": "b86a238b982e77e1743572297836c32a",
+    "mtime": 1794783644.1730351,
+    "seen": 1794790460.8541558,
+    "ast_hash": "871ab895da801dc5c7cc2d977558cf4a",
     "semantic_hash": ""
   },
   "src/client/CameraController.luau": {
@@ -36,15 +36,15 @@
     "semantic_hash": ""
   },
   "src/client/UI/CardAnimation.luau": {
-    "mtime": 1794783419.7372746,
-    "seen": 1794783529.0685017,
-    "ast_hash": "f08b4efb0dc8e151785d4ed165b5d5ca",
+    "mtime": 1794790346.7976604,
+    "seen": 1794790460.8541605,
+    "ast_hash": "168766ac6a82811413bc4ca17ec7583c",
     "semantic_hash": ""
   },
   "src/client/UI/CardRevealModal.luau": {
-    "mtime": 1794783419.737811,
-    "seen": 1794783529.0685024,
-    "ast_hash": "0b74c97e49ab127ed51cbafae3f4d932",
+    "mtime": 1794790326.6244328,
+    "seen": 1794790460.8541622,
+    "ast_hash": "3313c85fd542facf6dec16b166da0676",
     "semantic_hash": ""
   },
   "src/client/UI/ChatBox.luau": {
@@ -54,15 +54,15 @@
     "semantic_hash": ""
   },
   "src/client/UI/DiscardModal.luau": {
-    "mtime": 1794783419.737811,
-    "seen": 1794783529.0685039,
-    "ast_hash": "5ab0e8aecc0debe5db9dcb414a3a613a",
+    "mtime": 1794790346.790686,
+    "seen": 1794790460.8541648,
+    "ast_hash": "14af529fee25553548d517c9d92f65a6",
     "semantic_hash": ""
   },
   "src/client/UI/HandBar.luau": {
-    "mtime": 1794783419.7388158,
-    "seen": 1794783529.0685043,
-    "ast_hash": "f7f49c097f12df3be670eec9c6b7f6d6",
+    "mtime": 1794790290.9409847,
+    "seen": 1794790460.8541656,
+    "ast_hash": "aee38a0f17fcd8ab08c3ff6eff525a08",
     "semantic_hash": ""
   },
   "src/client/UI/LobbyPanel.luau": {
@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "src/client/init.client.luau": {
-    "mtime": 1794783419.735721,
-    "seen": 1794783529.0685086,
-    "ast_hash": "add775ddc4d7837ec463c418c5800272",
+    "mtime": 1794790362.7637324,
+    "seen": 1794790460.854172,
+    "ast_hash": "371696a1d0aef4ec1a1b138176fe1e20",
     "semantic_hash": ""
   },
   "src/server/BotController.luau": {
@@ -114,9 +114,9 @@
     "semantic_hash": ""
   },
   "src/server/Card3DManager.luau": {
-    "mtime": 1794783419.7415147,
-    "seen": 1794783529.0685103,
-    "ast_hash": "5a9e1b40ab64e9dd4ba8f4891f42e6aa",
+    "mtime": 1794790261.2611847,
+    "seen": 1794790460.8541737,
+    "ast_hash": "2d5764c275d96b6d4a0e01a89ca9788c",
     "semantic_hash": ""
   },
   "src/server/LobbyManager.luau": {
@@ -126,21 +126,21 @@
     "semantic_hash": ""
   },
   "src/server/PlayerManager.luau": {
-    "mtime": 1794783434.2779005,
-    "seen": 1794783529.068512,
-    "ast_hash": "39925b3c016a277301ba8eed93b38d61",
+    "mtime": 1794790214.822029,
+    "seen": 1794790460.8541758,
+    "ast_hash": "171a6b408e7da2b66e879848716b1591",
     "semantic_hash": ""
   },
   "src/server/RoundManager.luau": {
-    "mtime": 1794783419.7430427,
-    "seen": 1794783529.0685127,
-    "ast_hash": "5fbf199034ea18cd0fb9372bab4b25ab",
+    "mtime": 1794790214.822029,
+    "seen": 1794790460.8541765,
+    "ast_hash": "765f104099fa9e92b3ba915d5c6efd28",
     "semantic_hash": ""
   },
   "src/server/TableBuilder.luau": {
-    "mtime": 1794783419.7435458,
-    "seen": 1794783529.0685134,
-    "ast_hash": "81961e9978a4383d91afb8c93f40c0e7",
+    "mtime": 1794790229.549224,
+    "seen": 1794790460.8541775,
+    "ast_hash": "b64a40bac7a69e7592f5130a6d6cdfbd",
     "semantic_hash": ""
   },
   "src/server/init.server.luau": {
@@ -174,15 +174,15 @@
     "semantic_hash": ""
   },
   "CODE_GUIDE.md": {
-    "mtime": 1794783223.378729,
-    "seen": 1794783529.0685172,
-    "ast_hash": "42da93fb081a2e5ae517e01198ff96a3",
+    "mtime": 1794790411.6301963,
+    "seen": 1794790460.8541846,
+    "ast_hash": "6fd6af0b9bdd62bddf8b8ebb63e49104",
     "semantic_hash": ""
   },
   "HANDOVER.md": {
-    "mtime": 1794781161.543244,
-    "seen": 1794783529.0685177,
-    "ast_hash": "a8721fe95042a4dcb461aff7f19878c2",
+    "mtime": 1794790411.6301963,
+    "seen": 1794790460.8541856,
+    "ast_hash": "7a8b4bc3006311910105207abf4fc403",
     "semantic_hash": ""
   },
   "IMPLEMENTATION_PLAN.md": {
@@ -195,6 +195,156 @@
     "mtime": 1793866697.3801816,
     "seen": 1794783529.0685189,
     "ast_hash": "6a72e64352e71203aebd3353f2190763",
+    "semantic_hash": ""
+  },
+  "src/shared/CardArt.luau": {
+    "mtime": 1794790202.4811447,
+    "seen": 1794790460.8541799,
+    "ast_hash": "17628b321dc3bd26618ee53fbb296e22",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/amethyst_back.png": {
+    "mtime": 1794789985.1177905,
+    "seen": 1794790460.8541877,
+    "ast_hash": "4365f18b68ada63014b635adadc69a28",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/amethyst_rose.png": {
+    "mtime": 1794789985.1587925,
+    "seen": 1794790460.8541884,
+    "ast_hash": "a076020e4f4eef5616415d8a38e0c4cc",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/amethyst_skull.png": {
+    "mtime": 1794789985.137248,
+    "seen": 1794790460.8541894,
+    "ast_hash": "be2a3aa05f59e42b41107b1ea9ea3866",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/blue_diamond_back.png": {
+    "mtime": 1794789984.9106336,
+    "seen": 1794790460.8541899,
+    "ast_hash": "7419ed5a9e259ee9f282cd4dc8ee76b5",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/blue_diamond_rose.png": {
+    "mtime": 1794789984.957935,
+    "seen": 1794790460.8541906,
+    "ast_hash": "5b792ef8c8dafd855796ff1fbf1c3a2c",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/blue_diamond_skull.png": {
+    "mtime": 1794789984.9370618,
+    "seen": 1794790460.854191,
+    "ast_hash": "53518bd0b954d4f7c67f001420a6ad2e",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/deep_emerald_back.png": {
+    "mtime": 1794789985.6637173,
+    "seen": 1794790460.8541918,
+    "ast_hash": "e5297c70615decb027547d6c3e4f4662",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/deep_emerald_rose.png": {
+    "mtime": 1794789985.7054622,
+    "seen": 1794790460.8541925,
+    "ast_hash": "5610e4e307b6bf4f1c819b87e5c8f11b",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/deep_emerald_skull.png": {
+    "mtime": 1794789985.683552,
+    "seen": 1794790460.8541932,
+    "ast_hash": "3a5d20c091089542a10ed8bd082f47c7",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/forest_green_back.png": {
+    "mtime": 1794789985.2338414,
+    "seen": 1794790460.8541942,
+    "ast_hash": "bf0e559910c99f24d38a88d23af540e8",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/forest_green_rose.png": {
+    "mtime": 1794789985.2751474,
+    "seen": 1794790460.8541946,
+    "ast_hash": "3a13fa79426d072465255e966820b8b6",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/forest_green_skull.png": {
+    "mtime": 1794789985.2549675,
+    "seen": 1794790460.854195,
+    "ast_hash": "6131def2e5469e074eb0c9cf333967d1",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/obsidian_cyan_back.png": {
+    "mtime": 1794789985.0163927,
+    "seen": 1794790460.854196,
+    "ast_hash": "3a48a18646806a5f1a8107f7030ad9bb",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/obsidian_cyan_rose.png": {
+    "mtime": 1794789985.0584636,
+    "seen": 1794790460.8541968,
+    "ast_hash": "66a80cf9b24225fe184c3217dcfa09cd",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/obsidian_cyan_skull.png": {
+    "mtime": 1794789985.0382352,
+    "seen": 1794790460.8541975,
+    "ast_hash": "98428e631a1a5b170dc06f6704991533",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/obsidian_gold_back.png": {
+    "mtime": 1794789985.3386478,
+    "seen": 1794790460.854198,
+    "ast_hash": "1b6544baf779c8be7737a5d882f65a73",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/obsidian_gold_rose.png": {
+    "mtime": 1794789985.3811555,
+    "seen": 1794790460.8541987,
+    "ast_hash": "b78861c6f28219f53cb70dfaebd19e50",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/obsidian_gold_skull.png": {
+    "mtime": 1794789985.3601356,
+    "seen": 1794790460.8541996,
+    "ast_hash": "b431fd1de836b1233958ec8881c930c4",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/scarlet_back.png": {
+    "mtime": 1794789985.4444542,
+    "seen": 1794790460.8542001,
+    "ast_hash": "9275a119ece858d8ba4485e0c8c4a416",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/scarlet_rose.png": {
+    "mtime": 1794789985.495496,
+    "seen": 1794790460.8542008,
+    "ast_hash": "46f5afc40bf3cf200f23e5617a72e853",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/scarlet_skull.png": {
+    "mtime": 1794789985.464162,
+    "seen": 1794790460.8542016,
+    "ast_hash": "368fb3644e4e4917ffd750610890532c",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/sunset_orange_back.png": {
+    "mtime": 1794789985.5595021,
+    "seen": 1794790460.854202,
+    "ast_hash": "351b91c5eb6b33792621d1bb100b8820",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/sunset_orange_rose.png": {
+    "mtime": 1794789985.599429,
+    "seen": 1794790460.854203,
+    "ast_hash": "09091d29c8e055739f625b376961db5c",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/sunset_orange_skull.png": {
+    "mtime": 1794789985.5799034,
+    "seen": 1794790460.8542035,
+    "ast_hash": "ad83124dec1bbdb393f89838db72970a",
     "semantic_hash": ""
   }
 }
