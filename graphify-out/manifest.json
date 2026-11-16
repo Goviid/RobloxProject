@@ -78,9 +78,9 @@
     "semantic_hash": ""
   },
   "src/client/init.client.luau": {
-    "mtime": 1794808656.7641997,
-    "seen": 1794810527.1269495,
-    "ast_hash": "cec9c4f98bc52d0d517d2c560d18722b",
+    "mtime": 1794812453.5962677,
+    "seen": 1794813598.8540564,
+    "ast_hash": "04bf0c287b809ee713be8451ccd56d39",
     "semantic_hash": ""
   },
   "src/server/BotController.luau": {
@@ -114,9 +114,9 @@
     "semantic_hash": ""
   },
   "src/server/TableBuilder.luau": {
-    "mtime": 1794791311.733632,
-    "seen": 1794807282.9347205,
-    "ast_hash": "af27ae68746d30cf62bb31dd08732e35",
+    "mtime": 1794812635.0972373,
+    "seen": 1794813598.8540618,
+    "ast_hash": "9ab575a59e78fd55ee4dac01c948143f",
     "semantic_hash": ""
   },
   "src/server/init.server.luau": {
@@ -150,9 +150,9 @@
     "semantic_hash": ""
   },
   "CODE_GUIDE.md": {
-    "mtime": 1794808656.762687,
-    "seen": 1794810527.126966,
-    "ast_hash": "d3883977abcdd9338163101944f6f7e3",
+    "mtime": 1794812635.1408045,
+    "seen": 1794813598.8540683,
+    "ast_hash": "9d3898a51cb563ded5ca9b29de926378",
     "semantic_hash": ""
   },
   "HANDOVER.md": {
@@ -333,6 +333,12 @@
     "mtime": 1794807879.0364676,
     "seen": 1794810527.1269505,
     "ast_hash": "56bc1f88cea9a54f59b30a9d521a9bd2",
+    "semantic_hash": ""
+  },
+  "src/client/UI/Hand3D.luau": {
+    "mtime": 1794813538.3054373,
+    "seen": 1794813598.854049,
+    "ast_hash": "e171668811e820b9948347713abd65d5",
     "semantic_hash": ""
   }
 }
