@@ -155,6 +155,10 @@ F:\RobloxProject\
 #### `UI/PhaseOverlay.luau`
 * **Purpose:** Round intro card ("ROUND 3 · X starts", shown ~2s when a round's placement begins) and a status pill while not playing (eliminated, or waiting for a seat).
 
+#### `AudioController.luau`
+* **Purpose:** All client sound effects, from one `SOUND_CONFIGS` table of verified Audio asset IDs (see `HANDOVER.md` §6.2 for sources and the attribution the card-flip sound needs).
+* **Cues (wired in `init.client.luau`):** card place / flip / rose / skull, point scored, victory, your-turn pop, ticks over the last 5 s of your turn and during the lobby countdown, match-start bell, elimination, and an error buzz when the server rejects an action.
+
 #### `CameraController.luau` (per-seat view)
 * `SetSeat(seatIndex)` rotates the seat-1 camera setup around the table to face it from the local player's seat (angle taken from `PlayerMat_<seat>`). `init.client.luau` also relabels your own mat "YOUR PILE" and hides your own fanned hand tokens locally.
 

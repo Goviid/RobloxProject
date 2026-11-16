@@ -1,86 +1,46 @@
 --!strict
 -- AudioController.luau
--- Manages sound effects for card placement, card flips, skull stingers, and victory fanfares (LOCOfficial style)
+-- Client-side sound effects. Every ID below was checked to be a real Audio asset
+-- (MarketplaceService:GetProductInfo -> AssetTypeId 3). Sources are Roblox's licensed
+-- libraries (Pro Sound Effects, APM Music) or creators publishing original free sounds:
+--   card_flip by f4ngy via Freesound (Attribution licence) -> credit "f4ngy (Freesound)"
+--   "Daily Sounds" set by DailySoundsFX (original, free)
+-- To swap a sound, change its id here; keep it an Audio asset you are allowed to use.
 
 local SoundService = game:GetService("SoundService")
 local ContentProvider = game:GetService("ContentProvider")
 
 local AudioController = {}
 
--- Sound asset definitions with primary IDs and fallbacks
-local SOUND_CONFIGS = {
-	CardPlace = {
-		id = "rbxassetid://9114223170",
-		fallbackId = "rbxassetid://6026987857",
-		volume = 0.65,
-		pitchRange = { min = 0.94, max = 1.06 },
-	},
-	CardFlip = {
-		id = "rbxassetid://9114223321",
-		fallbackId = "rbxassetid://6895079853",
-		volume = 0.70,
-		pitchRange = { min = 0.96, max = 1.04 },
-	},
-	RoseReveal = {
-		id = "rbxassetid://9114223789",
-		fallbackId = "rbxassetid://5153734608",
-		volume = 0.85,
-		pitchRange = { min = 1.0, max = 1.05 },
-	},
-	SkullReveal = {
-		id = "rbxassetid://9114387214",
-		fallbackId = "rbxassetid://8601662498",
-		volume = 1.0,
-		pitchRange = { min = 0.90, max = 0.95 },
-	},
-	PointScored = {
-		id = "rbxassetid://9114223961",
-		fallbackId = "rbxassetid://5153734608",
-		volume = 0.90,
-		pitchRange = { min = 1.0, max = 1.0 },
-	},
-	Victory = {
-		id = "rbxassetid://9114224120",
-		fallbackId = "rbxassetid://9114223961",
-		volume = 1.0,
-		pitchRange = { min = 1.0, max = 1.0 },
-	},
-	ButtonClick = {
-		id = "rbxassetid://6895079853",
-		fallbackId = "rbxasset://sounds/uiclick.wav",
-		volume = 0.45,
-		pitchRange = { min = 0.98, max = 1.02 },
-	},
-	TimerTick = {
-		id = "rbxassetid://9114222851",
-		fallbackId = "rbxassetid://6895079853",
-		volume = 0.40,
-		pitchRange = { min = 1.0, max = 1.0 },
-	},
+type SoundConfig = { id: string, volume: number, pitchMin: number, pitchMax: number }
+
+local SOUND_CONFIGS: { [string]: SoundConfig } = {
+	CardPlace = { id = "rbxassetid://9118833191", volume = 0.6, pitchMin = 0.95, pitchMax = 1.08 }, -- Scrapbook Close 1 (PSE)
+	CardFlip = { id = "rbxassetid://3456145589", volume = 0.7, pitchMin = 0.96, pitchMax = 1.04 }, -- card_flip (f4ngy)
+	RoseReveal = { id = "rbxassetid://130378474223829", volume = 0.55, pitchMin = 1.0, pitchMax = 1.06 }, -- Coin Pickup
+	SkullReveal = { id = "rbxassetid://130018094603454", volume = 0.8, pitchMin = 0.95, pitchMax = 1.0 }, -- Horror Stinger
+	PointScored = { id = "rbxassetid://1840076509", volume = 0.7, pitchMin = 1.0, pitchMax = 1.0 }, -- Through the Roof (sting, APM)
+	Victory = { id = "rbxassetid://1836473422", volume = 0.8, pitchMin = 1.0, pitchMax = 1.0 }, -- Victory Fanfare Sting (APM)
+	ButtonClick = { id = "rbxassetid://6895079853", volume = 0.4, pitchMin = 0.98, pitchMax = 1.02 }, -- UI Click
+	TimerTick = { id = "rbxassetid://6895079853", volume = 0.35, pitchMin = 0.7, pitchMax = 0.7 }, -- UI Click, pitched down
+	YourTurn = { id = "rbxassetid://106984966606682", volume = 0.6, pitchMin = 1.0, pitchMax = 1.0 }, -- Cartoon Pop
+	Eliminated = { id = "rbxassetid://96795857757261", volume = 0.6, pitchMin = 1.0, pitchMax = 1.0 }, -- Power Down
+	MatchStart = { id = "rbxassetid://87058958593472", volume = 0.5, pitchMin = 1.0, pitchMax = 1.0 }, -- Church Bell Toll
+	ErrorBuzz = { id = "rbxassetid://91501650514390", volume = 0.35, pitchMin = 1.0, pitchMax = 1.0 }, -- Error Buzz
 }
 
 local soundFolder: Folder? = nil
 local activeSounds: { [string]: Sound } = {}
 
--- Safely plays a sound with volume and slight organic pitch variation
+-- Play a sound with a little pitch variation so repeats don't sound mechanical
 local function playSound(name: string)
 	local config = SOUND_CONFIGS[name]
-	if not config then
-		return
-	end
-
 	local sound = activeSounds[name]
-	if not sound then
+	if not config or not sound then
 		return
 	end
-
 	pcall(function()
-		-- Subtle pitch variation for organic tabletop feel
-		if config.pitchRange then
-			sound.PlaybackSpeed = config.pitchRange.min + math.random() * (config.pitchRange.max - config.pitchRange.min)
-		else
-			sound.PlaybackSpeed = 1.0
-		end
+		sound.PlaybackSpeed = config.pitchMin + math.random() * (config.pitchMax - config.pitchMin)
 		sound.TimePosition = 0
 		sound.Volume = config.volume
 		sound:Play()
@@ -101,14 +61,12 @@ function AudioController.Init()
 		snd.Name = name .. "SFX"
 		snd.SoundId = config.id
 		snd.Volume = config.volume
-		snd.RollOffMaxDistance = 100
 		snd.Parent = folder
 		activeSounds[name] = snd
 	end
 
 	soundFolder = folder
 
-	-- Asynchronously preload sound assets
 	task.spawn(function()
 		local preloadList = {}
 		for _, snd in pairs(activeSounds) do
@@ -118,8 +76,6 @@ function AudioController.Init()
 			ContentProvider:PreloadAsync(preloadList)
 		end)
 	end)
-
-	print("[AudioController] Sound effects initialized and preloaded.")
 end
 
 -- ============================================================================
@@ -157,5 +113,20 @@ function AudioController.PlayTimerTick()
 	playSound("TimerTick")
 end
 
-return AudioController
+function AudioController.PlayYourTurn()
+	playSound("YourTurn")
+end
 
+function AudioController.PlayEliminated()
+	playSound("Eliminated")
+end
+
+function AudioController.PlayMatchStart()
+	playSound("MatchStart")
+end
+
+function AudioController.PlayError()
+	playSound("ErrorBuzz")
+end
+
+return AudioController

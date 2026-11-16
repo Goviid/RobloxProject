@@ -263,18 +263,24 @@ All remote instances are lazily retrieved or constructed by `src/shared/Network.
 ### 6.1 Geometry & Models
 All 3D models (the parlor room, table, felt surface, chairs, mats, cards, and bot dummy bodies) are **100% procedurally built** in `src/server/TableBuilder.luau` and `src/server/Card3DManager.luau` using standard Roblox primitive parts (`Part`, `Cylinder`, `SmoothPlastic`, `Neon`, `SurfaceGui`, `UICorner`, `UIStroke`). No external `.rbxm` mesh assets are required.
 
-### 6.2 Hardcoded Audio Asset IDs (`src/client/AudioController.luau`)
+### 6.2 Audio Asset IDs (`src/client/AudioController.luau`)
 
-| Sound Name | Primary Roblox Asset ID | Fallback Asset ID | Usage |
+Replaced 2026-11-16: the original IDs were mostly not audio at all (places, scripts, an image), so every game sound except the button click was silent. Each ID below was verified as an Audio asset with `MarketplaceService:GetProductInfo`.
+
+| Sound | Asset ID | Source | When it plays |
 | :--- | :--- | :--- | :--- |
-| `CardPlace` | `rbxassetid://9114223170` | `rbxassetid://6026987857` | Played when a card is placed on table |
-| `CardFlip` | `rbxassetid://9114223321` | `rbxassetid://6895079853` | Played when a card begins flip animation |
-| `RoseReveal`| `rbxassetid://9114223789` | `rbxassetid://5153734608` | Played when a revealed card is a Rose |
-| `SkullReveal`| `rbxassetid://9114387214`| `rbxassetid://8601662498` | Dramatic stinger played when Skull is hit |
-| `PointScored`| `rbxassetid://9114223961`| `rbxassetid://5153734608` | Celebratory chime when challenger reaches target |
-| `Victory` | `rbxassetid://9114224120` | `rbxassetid://9114223961` | Fanfare played when a player reaches 2 points |
-| `ButtonClick`| `rbxassetid://6895079853` | `rbxasset://sounds/uiclick.wav`| UI button press click |
-| `TimerTick` | `rbxassetid://9114222851` | `rbxassetid://6895079853` | Turn countdown warning tick |
+| `CardPlace` | `9118833191` | Pro Sound Effects "Scrapbook Close 1" | Any player places a card |
+| `CardFlip` | `3456145589` | "card_flip" by f4ngy (Freesound, Attribution licence: credit required) | A card is revealed |
+| `RoseReveal` | `130378474223829` | Daily Sounds "Coin Pickup" | Revealed card is a Rose |
+| `SkullReveal` | `130018094603454` | Daily Sounds "Horror Stinger" | Revealed card is a Skull |
+| `PointScored` | `1840076509` | APM "Through the Roof (sting)" | A challenge succeeds |
+| `Victory` | `1836473422` | APM "Victory Fanfare Sting" | Match won |
+| `ButtonClick` | `6895079853` | "UI Click" | UI buttons |
+| `TimerTick` | `6895079853` | "UI Click", pitched down | Last 5 s of your turn; lobby countdown |
+| `YourTurn` | `106984966606682` | Daily Sounds "Cartoon Pop" | Your turn starts |
+| `Eliminated` | `96795857757261` | Daily Sounds "Power Down" | You lose your last card |
+| `MatchStart` | `87058958593472` | Daily Sounds "Church Bell Toll" | Round 1 of a match |
+| `ErrorBuzz` | `91501650514390` | Daily Sounds "Error Buzz" | The server rejects your action |
 
 ---
 

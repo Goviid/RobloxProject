@@ -48,6 +48,10 @@ local onSubmitAction: (action: string, data: any) -> (boolean, any)
 local lastKnownPlayers: { [string]: any } = {}
 local currentGameState: string = Enums.GameState.Placement
 local previousGameState: string? = nil
+local lastTurnKey: string? = nil -- "<state>:<activeId>" while it's your turn, for the turn cue
+local tickThread: thread? = nil -- last-seconds timer ticks
+local TICK_SECONDS = 5
+local lastLobbyCountdown: number? = nil
 
 -- Screen position of a seat's pile mat on the 3D table (for card fly animations)
 local function getSeatPileScreenPos(seatIndex: number?): UDim2?
@@ -137,7 +141,6 @@ local function buildUI()
 			task.spawn(function()
 				local success, err = onSubmitAction(Enums.PlayerAction.PlaceCard, { cardType = cardType })
 				if success then
-					AudioController.PlayCardPlace()
 					local myData = lastKnownPlayers[tostring(localPlayer.UserId)]
 					local target = getSeatPileScreenPos(myData and myData.seatIndex)
 					if target then
@@ -222,6 +225,7 @@ onSubmitAction = function(action: string, data: any): (boolean, any)
 	local success, err = Network.SubmitAction:InvokeServer(action, data)
 	if not success then
 		warn("[Client] Action '" .. action .. "' was rejected: " .. tostring(err))
+		AudioController.PlayError()
 		if err then
 			NotificationBanner.Show(err, "warning")
 		end
@@ -304,6 +308,35 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 		-- 4. Round intro card when a new round's placement begins; spectating pill when eliminated
 		if payload.gameState == Enums.GameState.Placement and previousGameState ~= Enums.GameState.Placement then
 			PhaseOverlay.ShowRound(payload.roundNumber or 1, activePlayerName, isMyTurn)
+			if (payload.roundNumber or 1) == 1 then
+				AudioController.PlayMatchStart()
+			end
+		end
+
+		-- Turn sounds: a cue when your turn starts, ticks over the last seconds of your timer.
+		-- The server restarts the timer on every update in a timed phase, so the ticks are
+		-- rescheduled on every update too.
+		local timedPhase = payload.gameState == Enums.GameState.Placement
+			or payload.gameState == Enums.GameState.Bidding
+			or payload.gameState == Enums.GameState.Revealing
+			or payload.gameState == Enums.GameState.Discarding
+		local turnKey = if isMyTurn and timedPhase then payload.gameState .. ":" .. tostring(payload.activePlayerId) else nil
+		if turnKey and turnKey ~= lastTurnKey then
+			AudioController.PlayYourTurn()
+		end
+		lastTurnKey = turnKey
+		if tickThread then
+			task.cancel(tickThread)
+			tickThread = nil
+		end
+		if turnKey then
+			tickThread = task.delay(math.max(0, Constants.TURN_TIMEOUT - TICK_SECONDS), function()
+				for _ = 1, TICK_SECONDS do
+					AudioController.PlayTimerTick()
+					task.wait(1)
+				end
+				tickThread = nil
+			end)
 		end
 		previousGameState = payload.gameState
 		local inLobby = payload.gameState == Enums.GameState.Lobby
@@ -388,7 +421,7 @@ end)
 Network.Notification.OnClientEvent:Connect(function(data: { text: string, style: string? })
 	NotificationBanner.Show(data.text, data.style)
 	ChatBox.AddMessage("SYSTEM", data.text, "#FFD23F")
-	if data.style == "success" or string.find(data.text, "Point scored") then
+	if string.find(data.text, "Point scored", 1, true) then
 		AudioController.PlayPointScored()
 	end
 end)
@@ -453,6 +486,18 @@ end)
 -- Lobby (seats, ready check, countdown, host controls)
 Network.LobbyState.OnClientEvent:Connect(function(state: any)
 	LobbyPanel.Update(state, localPlayer.UserId)
+	local countdown = state and state.inLobby and tonumber(state.countdown) or nil
+	if countdown and countdown ~= lastLobbyCountdown then
+		AudioController.PlayTimerTick()
+	end
+	lastLobbyCountdown = countdown
+end)
+
+-- Elimination sting for the player who just lost their last card
+Network.PlayerEliminated.OnClientEvent:Connect(function(userId: number)
+	if userId == localPlayer.UserId then
+		AudioController.PlayEliminated()
+	end
 end)
 
 -- Game Over
