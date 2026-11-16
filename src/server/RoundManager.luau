@@ -438,6 +438,9 @@ local function declareMatchWinner(winnerId: number, reason: string)
 	currentGameState = Enums.GameState.MatchEnd
 	local winner = PlayerManager.GetPlayer(winnerId)
 	broadcastNotification("👑 " .. (winner and winner.name or "Player") .. " WINS THE MATCH! 👑", "success")
+	if winner then
+		TableBuilder.PlayReaction(winner.seatIndex, "Dance", Constants.MATCH_OVER_DELAY - 1)
+	end
 	Network.GameOver:FireAllClients(winnerId, reason, Constants.MATCH_OVER_DELAY)
 	broadcastState()
 
@@ -522,6 +525,7 @@ local function onChallengerSuccess()
 	end
 
 	challenger.score += 1
+	TableBuilder.PlayReaction(challenger.seatIndex, "Cheer")
 	broadcastNotification("🎉 " .. challenger.name .. " successfully flipped " .. targetCardsToFlip .. " Roses! Point scored!", "success")
 	if challenger.isBot then
 		pcall(function()
@@ -691,6 +695,12 @@ local function onChallengerFailed(skullOwnerId: number)
 	end
 
 	local isOwnSkull = (challengerId == skullOwnerId)
+
+	-- Reactions: the challenger flinches; whoever owned the skull laughs
+	TableBuilder.PlayReaction(challenger.seatIndex, "Shock", 1.4)
+	if not isOwnSkull then
+		TableBuilder.PlayReaction(skullOwner.seatIndex, "Laugh")
+	end
 
 	local cards = {}
 	for _, c in ipairs(challenger.hand) do

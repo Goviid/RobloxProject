@@ -10,6 +10,7 @@
 
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Constants = require(ReplicatedStorage.Shared.Constants)
@@ -26,7 +27,9 @@ local botDummies: { [number]: Model } = {}
 local seatBillboards: { [number]: BillboardGui } = {}
 local opponentHands: { [number]: Model } = {}
 local seatCardSets: { [number]: string } = {} -- CardArt set per seat (card backs)
-local pileCounters: { [number]: BillboardGui } = {} -- "N cards" label beside each pile
+local pileCounters: { [number]: BillboardGui } = {}
+local turnDots: { [number]: BillboardGui } = {} -- small gold dot just above the active player's name tag
+local activeTurnSeat: number? = nil -- "N cards" label beside each pile
 local cardCountLabels: { [number]: TextLabel } = {}
 local scoreLabels: { [number]: TextLabel } = {}
 -- Last known per-seat status, re-applied when a tag is rebuilt (e.g. a player respawns)
@@ -98,6 +101,7 @@ function TableBuilder.Build()
 	table.clear(cardCountLabels)
 	table.clear(scoreLabels)
 	table.clear(pileCounters)
+	table.clear(turnDots)
 
 	local arena = Instance.new("Model")
 	arena.Name = "SkullsArena"
@@ -128,6 +132,13 @@ function TableBuilder.Build()
 		local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
 		if atmosphere then
 			atmosphere:Destroy()
+		end
+		-- Soft bloom: only neon (the turn orb, LED rings) glows; lit bodies don't
+		local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
+		if bloom then
+			bloom.Intensity = 0.35
+			bloom.Size = 18
+			bloom.Threshold = 2.6
 		end
 	end)
 
@@ -427,18 +438,35 @@ function TableBuilder.Build()
 		end
 	end
 
-	-- 6. Sleek Black Armchairs Behind Each Seat
+
+	-- 6. Low-backed wooden chairs. Players sit with their root where they used to stand
+	-- (the seated pose only folds the legs forward under the table), so heads stay at
+	-- the same height. The back stops below the shoulders and is narrower than a body,
+	-- so it never pokes out past the avatar.
+	local CHAIR_WOOD = Color3.fromRGB(58, 32, 24)
+	local CHAIR_CUSHION = Color3.fromRGB(120, 28, 36)
 	for seatIdx, cfg in pairs(SEAT_CONFIGS) do
-		local chairCF = CFrame.lookAt(cfg.standPos, cfg.lookAt)
-		local chair = Instance.new("Part")
-		chair.Name = "Armchair_" .. seatIdx
-		chair.Size = Vector3.new(3.2, 3.6, 2.4)
-		chair.CFrame = chairCF * CFrame.new(0, -0.6, 0.8)
-		chair.Anchored = true
-		chair.CanCollide = true
-		chair.Material = Enum.Material.SmoothPlastic
-		chair.Color = Color3.fromRGB(18, 16, 20) -- Sleek matte black armchair
+		local seatCF = CFrame.lookAt(cfg.standPos, cfg.lookAt) -- -Z faces the table
+		local chair = Instance.new("Model")
+		chair.Name = "Chair_" .. seatIdx
 		chair.Parent = tableModel
+		local function chairPart(name: string, size: Vector3, offset: Vector3, color: Color3)
+			local p = Instance.new("Part")
+			p.Name = name
+			p.Size = size
+			p.CFrame = seatCF * CFrame.new(offset)
+			p.Anchored = true
+			p.CanCollide = false
+			p.CastShadow = false
+			p.Material = Enum.Material.SmoothPlastic
+			p.Color = color
+			p.Parent = chair
+		end
+		-- Seat top sits just under the thighs (about 1 stud below the avatar's root)
+		chairPart("Cushion", Vector3.new(2.0, 0.3, 1.9), Vector3.new(0, -1.15, -0.35), CHAIR_CUSHION)
+		chairPart("SeatFrame", Vector3.new(2.1, 0.25, 2.0), Vector3.new(0, -1.42, -0.35), CHAIR_WOOD)
+		chairPart("Back", Vector3.new(1.5, 1.4, 0.22), Vector3.new(0, -0.35, 0.72), CHAIR_WOOD)
+		chairPart("Pedestal", Vector3.new(0.45, cfg.standPos.Y - 1.55, 0.45), Vector3.new(0, -(cfg.standPos.Y + 1.55) / 2, -0.35), CHAIR_WOOD)
 	end
 
 	-- Stacks Container
@@ -471,6 +499,33 @@ local function createPlayerTag(adornee: BasePart, displayName: string, seatIdx: 
 	bill.AlwaysOnTop = true
 	bill.Adornee = adornee
 	bill.Parent = adornee
+
+	-- Turn marker: a small gold dot sitting just below the tag, shown only on your turn.
+	-- Its own tiny billboard, shifted by its own height (SizeOffset), so it always sits
+	-- the same few pixels below the capsule whatever the avatar.
+	local oldDot = adornee:FindFirstChild("TurnDot")
+	if oldDot then
+		oldDot:Destroy()
+	end
+	local dotGui = Instance.new("BillboardGui")
+	dotGui.Name = "TurnDot"
+	if hideFrom then
+		dotGui.PlayerToHideFrom = hideFrom
+	end
+	dotGui.Size = UDim2.fromOffset(10, 10)
+	dotGui.StudsOffset = bill.StudsOffset
+	dotGui.SizeOffset = Vector2.new(0, -4) -- 40px down: capsule half-height (28) plus a small gap
+	dotGui.AlwaysOnTop = true
+	dotGui.Enabled = activeTurnSeat == seatIdx
+	dotGui.Adornee = adornee
+	dotGui.Parent = adornee
+	local dot = Instance.new("Frame")
+	dot.Size = UDim2.fromScale(1, 1)
+	dot.BackgroundColor3 = Color3.fromRGB(255, 205, 90)
+	dot.BorderSizePixel = 0
+	dot.Parent = dotGui
+	Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+	turnDots[seatIdx] = dotGui
 
 
 	-- Capsule background
@@ -713,7 +768,7 @@ local function renderOpponentFannedHand(seatIdx: number, cardCount: number)
 		token.Anchored = true
 		token.CanCollide = false
 		token.Material = Enum.Material.SmoothPlastic
-		token.Color = CardArt.Get(setId).accent:Lerp(Color3.new(0, 0, 0), 0.6) -- rim in the set's colour
+		token.Color = CardArt.Get(setId).accent:Lerp(Color3.new(1, 1, 1), 0.25) -- rim in the set's colour
 		token.Parent = handModel
 
 		-- The player's card back on both faces, so tokens never reveal anything
@@ -748,8 +803,320 @@ local function renderOpponentFannedHand(seatIdx: number, cardCount: number)
 end
 
 -- ============================================================================
--- 4. SPAWN SLEEK DARK BOT AVATARS (Matching Concept Reference)
+-- 4. BOT AVATARS, ANIMATION & REACTIONS
 -- ============================================================================
+local Players = game:GetService("Players")
+
+-- Roblox's own R15 animations (the ones every default avatar uses)
+local ANIM = {
+	Cheer = "rbxassetid://507770677",
+	Laugh = "rbxassetid://507770818",
+	Point = "rbxassetid://507770453",
+	Dance = "rbxassetid://507771019",
+	Shock = "rbxassetid://507767968", -- the fall pose: arms flung up
+}
+local REACTION_SECONDS = 2.6
+
+-- Seated-at-the-table pose: elbows bent so the hands hold the card fan from behind,
+-- hips and knees bent as if sitting. The root stays where it was, so heads keep their
+-- height. Angles were checked on a live bot: hands land about 0.9 studs out, 0.8 up and
+-- 0.7 forward of the root, just behind the held cards (1.25 forward), so they don't
+-- poke through.
+local TABLE_POSE: { [string]: CFrame } = {
+	RightShoulder = CFrame.Angles(math.rad(15), 0, math.rad(-30)),
+	LeftShoulder = CFrame.Angles(math.rad(15), 0, math.rad(30)),
+	RightElbow = CFrame.Angles(math.rad(135), 0, 0),
+	LeftElbow = CFrame.Angles(math.rad(135), 0, 0),
+	RightHip = CFrame.Angles(math.rad(90), 0, 0),
+	LeftHip = CFrame.Angles(math.rad(90), 0, 0),
+	RightKnee = CFrame.Angles(math.rad(-90), 0, 0),
+	LeftKnee = CFrame.Angles(math.rad(-90), 0, 0),
+}
+
+-- Turn an attachment by `rotation` on top of its original orientation (saved once in an
+-- attribute, so posing again never stacks). Only the orientation is touched; the
+-- position is left to Roblox's avatar scaling.
+local function rotateAttachment(att: Attachment, rotation: CFrame?)
+	local base = att:GetAttribute("BaseRotation")
+	if typeof(base) ~= "CFrame" then
+		base = att.CFrame.Rotation
+		att:SetAttribute("BaseRotation", base)
+	end
+	local turned = if rotation then (base :: CFrame) * rotation else base :: CFrame
+	att.CFrame = CFrame.new(att.Position) * turned
+end
+
+-- Today's R15 avatars are jointed with AnimationConstraints, which follow the attachment
+-- on the parent side (Attachment0), so that is what gets turned. Older rigs use Motor6Ds:
+-- their C0 is turned too, along with the attachment Roblox rebuilds them from.
+local function applyTablePose(character: Model, seated: boolean)
+	for _, joint in ipairs(character:GetDescendants()) do
+		local pose = TABLE_POSE[joint.Name]
+		if not pose then
+			continue
+		end
+		local rotation = if seated then pose else nil
+		if joint:IsA("AnimationConstraint") then
+			local att = joint.Attachment0
+			if att then
+				rotateAttachment(att, rotation)
+			end
+		elseif joint:IsA("Motor6D") then
+			local part0 = joint.Part0
+			local att = part0 and part0:FindFirstChild(joint.Name .. "RigAttachment")
+			if att and att:IsA("Attachment") then
+				rotateAttachment(att, rotation)
+			end
+			local base = joint:GetAttribute("BaseRotation")
+			if typeof(base) ~= "CFrame" then
+				base = joint.C0.Rotation
+				joint:SetAttribute("BaseRotation", base)
+			end
+			local turned = if rotation then (base :: CFrame) * rotation else base :: CFrame
+			joint.C0 = CFrame.new(joint.C0.Position) * turned
+		end
+	end
+end
+
+-- Seat or unseat a character. Any looping animation (the idle sway every avatar plays)
+-- holds the arms at its own angles and cancels the pose, so seated characters play none:
+-- the default Animate script is removed, and players' clients also stop their own
+-- tracks when they see the "SeatedAtTable" attribute (see init.client). Short reactions
+-- still play over the pose. Applied again shortly after, in case Roblox's avatar
+-- loading or scaling resets the joints in between.
+local function setTablePose(character: Model, seated: boolean)
+	character:SetAttribute("SeatedAtTable", seated)
+	if seated then
+		local animate = character:FindFirstChild("Animate")
+		if animate then
+			animate:Destroy()
+		end
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
+		if animator then
+			for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+				if track.Looped then
+					track:Stop(0)
+				end
+			end
+		end
+	end
+	applyTablePose(character, seated)
+	for _, delaySeconds in ipairs({ 0.5, 2 }) do
+		task.delay(delaySeconds, function()
+			if character.Parent and character:GetAttribute("SeatedAtTable") == seated then
+				applyTablePose(character, seated)
+			end
+		end)
+	end
+end
+
+-- Character standing at each seat (bot model or a player's character), for reactions
+local seatCharacters: { [number]: Model } = {}
+-- Loaded animation tracks per character, so each animation is only loaded once
+local trackCache: { [Model]: { [string]: AnimationTrack } } = {}
+
+local function getTrack(character: Model, animId: string): AnimationTrack?
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return nil
+	end
+	local animator = humanoid:FindFirstChildOfClass("Animator")
+	if not animator then
+		local created = Instance.new("Animator")
+		created.Parent = humanoid
+		animator = created
+	end
+	local cache = trackCache[character]
+	if not cache then
+		cache = {}
+		trackCache[character] = cache
+		character.Destroying:Connect(function()
+			trackCache[character] = nil
+		end)
+	end
+	local track = cache[animId]
+	if track then
+		return track
+	end
+	local ok, loaded = pcall(function()
+		local anim = Instance.new("Animation")
+		anim.AnimationId = animId
+		return (animator :: Animator):LoadAnimation(anim)
+	end)
+	if not ok or not loaded then
+		return nil
+	end
+	cache[animId] = loaded
+	return loaded
+end
+
+-- Calavera look for bots: brown skull and hands, a dark suit, a sugar-skull face and a
+-- sombrero. The face's flowers and the sombrero take the bot's card colour.
+-- Face art: "Artwork assets/Bots/skull_face.png" (white parts are tinted, black stays black)
+local SKULL_FACE = "rbxassetid://94176651222783"
+local BONE = Color3.fromRGB(70, 46, 32) -- deep warm brown; light colours glare like bulbs under the room's bright ambient light
+local SUIT = Color3.fromRGB(34, 30, 38)
+local HAT_BAND = Color3.fromRGB(140, 100, 36)
+local HAT_SHADE = 0.6 -- sombrero = card colour this much toward black, so it doesn't glare
+
+-- Each bot's skull and sombrero live in their own model beside the bot (not inside it):
+-- Roblox's avatar scaling resizes every part inside a character, which squashed the
+-- hat into the head. They are welded to the head and removed with the bot.
+local botCostumes: { [Model]: Model } = {}
+
+-- Hide the default head and weld on a classic Roblox head shape carrying the skull face.
+-- Decals on the default (mesh) head get stretched over its curves; on the classic head
+-- shape they sit flat like a classic face. Then add the sombrero.
+local function dressSkeleton(model: Model, parent: Instance)
+	local head = model:FindFirstChild("Head")
+	if not head or not head:IsA("BasePart") then
+		return
+	end
+	head.Transparency = 1 -- still carries the name tag and turn dot
+	for _, child in ipairs(head:GetChildren()) do
+		if child:IsA("Decal") then
+			child:Destroy()
+		end
+	end
+
+	local costume = Instance.new("Model")
+	costume.Name = "Calavera_" .. model.Name
+	local function weldedPart(name: string, size: Vector3, cf: CFrame): Part
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.CFrame = cf
+		p.Material = Enum.Material.SmoothPlastic
+		p.Anchored = false
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Massless = true
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = head
+		weld.Part1 = p
+		weld.Parent = p
+		p.Parent = costume
+		return p
+	end
+
+	local skull = weldedPart("Skull", Vector3.new(1.5, 1.5, 1.5), head.CFrame)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Head
+	mesh.Scale = Vector3.new(1.25, 1.25, 1.25)
+	mesh.Parent = skull
+	local face = Instance.new("Decal")
+	face.Name = "SkullFace"
+	face.Face = Enum.NormalId.Front
+	face.Texture = SKULL_FACE
+	face.Parent = skull
+
+	local top = head.Size.Y / 2
+	local upright = CFrame.Angles(0, 0, math.rad(90)) -- cylinder axis (X) pointing up
+	local function hatPart(name: string, size: Vector3, offsetY: number)
+		local p = weldedPart(name, size, head.CFrame * CFrame.new(0, offsetY, 0) * upright)
+		p.Shape = Enum.PartType.Cylinder
+		p.CastShadow = false
+	end
+	-- Brim rests on top of the skull; the crown sinks only slightly into it
+	hatPart("SombreroBrim", Vector3.new(0.12, 3.1, 3.1), top + 0.02)
+	hatPart("SombreroBand", Vector3.new(0.22, 1.2, 1.2), top + 0.18)
+	hatPart("SombreroCrown", Vector3.new(0.95, 1.15, 1.15), top + 0.5)
+	costume.Parent = parent
+	botCostumes[model] = costume
+	model.Destroying:Connect(function()
+		botCostumes[model] = nil
+		costume:Destroy()
+	end)
+end
+
+-- Colours: bone and suit are fixed; the face flowers and sombrero follow the card colour.
+-- Everything is matte so the bodies don't shine.
+local function colorBot(model: Model, accent: Color3)
+	for _, part in ipairs(model:GetChildren()) do
+		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+			local name = part.Name
+			part.Material = Enum.Material.SmoothPlastic
+			if string.find(name, "Torso") or string.find(name, "Leg") or string.find(name, "Foot") then
+				part.Color = SUIT
+			elseif string.find(name, "Arm") or string.find(name, "Hand") or name == "Head" then
+				part.Color = BONE
+			end
+		end
+	end
+	local costume = botCostumes[model]
+	if costume then
+		for _, part in ipairs(costume:GetChildren()) do
+			if part:IsA("BasePart") then
+				if part.Name == "Skull" then
+					part.Color = BONE
+					local face = part:FindFirstChild("SkullFace")
+					if face and face:IsA("Decal") then
+						face.Color3 = accent
+					end
+				elseif part.Name == "SombreroBand" then
+					part.Color = HAT_BAND
+				else
+					part.Color = accent:Lerp(Color3.new(0, 0, 0), HAT_SHADE)
+				end
+			end
+		end
+	end
+end
+
+-- An R15 avatar with skeleton proportions: thin limbs and torso, a big skull head.
+-- Only the root is anchored so animations can move the limbs. Returns nil if Roblox
+-- can't build one.
+local function buildBotAvatar(botName: string): Model?
+	local ok, model = pcall(function()
+		local desc = Instance.new("HumanoidDescription")
+		desc.WidthScale = 0.7
+		desc.DepthScale = 0.7
+		desc.HeightScale = 1
+		desc.HeadScale = 1.3
+		return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
+	end)
+	if not ok or not model then
+		warn("[TableBuilder] Couldn't build a bot avatar:", model)
+		return nil
+	end
+	model.Name = "Bot_" .. botName
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None -- we draw our own tag
+	end
+	for _, part in ipairs(model:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.Anchored = part.Name == "HumanoidRootPart"
+			part.CanCollide = false
+		end
+	end
+	return model
+end
+
+-- Fallback if no avatar can be built: the old dark silhouette
+local function buildBotSilhouette(botName: string, targetCF: CFrame): Model
+	local model = Instance.new("Model")
+	model.Name = "Bot_" .. botName
+	local function piece(name: string, size: Vector3, cf: CFrame)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.CFrame = cf
+		p.Anchored = true
+		p.CanCollide = false
+		p.Material = Enum.Material.SmoothPlastic
+		p.Color = Color3.fromRGB(15, 14, 18)
+		p.Parent = model
+	end
+	piece("Torso", Vector3.new(2.4, 2.6, 1.4), targetCF * CFrame.new(0, -0.2, 0))
+	piece("Head", Vector3.new(1.4, 1.4, 1.4), targetCF * CFrame.new(0, 1.8, 0))
+	piece("LeftArm", Vector3.new(1.0, 2.4, 1.0), targetCF * CFrame.new(-1.6, -0.2, -0.4) * CFrame.Angles(math.rad(-25), 0, math.rad(-15)))
+	piece("RightArm", Vector3.new(1.0, 2.4, 1.0), targetCF * CFrame.new(1.6, -0.2, -0.4) * CFrame.Angles(math.rad(-25), 0, math.rad(15)))
+	return model
+end
+
 function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	local cfg = SEAT_CONFIGS[seatIndex]
 	if not cfg or not arenaModel then
@@ -762,61 +1129,54 @@ function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
 	end
 
 	local targetCF = CFrame.lookAt(cfg.standPos, cfg.lookAt)
-
-	local botModel = Instance.new("Model")
-	botModel.Name = "Bot_" .. botName
+	local avatar = buildBotAvatar(botName)
+	if avatar then
+		avatar:PivotTo(targetCF)
+	end
+	local botModel: Model = avatar or buildBotSilhouette(botName, targetCF)
 	botModel.Parent = arenaModel
+	if avatar then
+		-- No idle loop: it would hold the arms down (see setTablePose)
+		setTablePose(avatar, true)
+		-- Dress once the rig has settled in the world: the head moves into place when the
+		-- joints first solve, and a hat welded before that ends up sunk into the skull
+		RunService.Heartbeat:Wait()
+		dressSkeleton(avatar, arenaModel)
+		colorBot(avatar, CardArt.Get(seatCardSets[seatIndex]).accent)
+	end
 
-	-- Sleek matte black silhouette torso
-	local torso = Instance.new("Part")
-	torso.Name = "Torso"
-	torso.Size = Vector3.new(2.4, 2.6, 1.4)
-	torso.CFrame = targetCF * CFrame.new(0, -0.2, 0)
-	torso.Anchored = true
-	torso.CanCollide = false
-	torso.Material = Enum.Material.SmoothPlastic
-	torso.Color = Color3.fromRGB(15, 14, 18) -- Pure dark silhouette
-	torso.Parent = botModel
-
-	-- Silhouette Head
-	local head = Instance.new("Part")
-	head.Name = "Head"
-	head.Size = Vector3.new(1.4, 1.4, 1.4)
-	head.CFrame = targetCF * CFrame.new(0, 1.8, 0)
-	head.Anchored = true
-	head.CanCollide = false
-	head.Material = Enum.Material.SmoothPlastic
-	head.Color = Color3.fromRGB(15, 14, 18)
-	head.Parent = botModel
-
-	-- Left and Right blocky arms holding cards
-	local leftArm = Instance.new("Part")
-	leftArm.Name = "LeftArm"
-	leftArm.Size = Vector3.new(1.0, 2.4, 1.0)
-	leftArm.CFrame = targetCF * CFrame.new(-1.6, -0.2, -0.4) * CFrame.Angles(math.rad(-25), 0, math.rad(-15))
-	leftArm.Anchored = true
-	leftArm.CanCollide = false
-	leftArm.Material = Enum.Material.SmoothPlastic
-	leftArm.Color = Color3.fromRGB(15, 14, 18)
-	leftArm.Parent = botModel
-
-	local rightArm = Instance.new("Part")
-	rightArm.Name = "RightArm"
-	rightArm.Size = Vector3.new(1.0, 2.4, 1.0)
-	rightArm.CFrame = targetCF * CFrame.new(1.6, -0.2, -0.4) * CFrame.Angles(math.rad(-25), 0, math.rad(15))
-	rightArm.Anchored = true
-	rightArm.CanCollide = false
-	rightArm.Material = Enum.Material.SmoothPlastic
-	rightArm.Color = Color3.fromRGB(15, 14, 18)
-	rightArm.Parent = botModel
-
-	-- Floating Frosted Glass Nametag Banner above pile
-	seatBillboards[seatIndex] = createPlayerTag(head, botName, seatIndex)
+	local head = botModel:FindFirstChild("Head")
+	if head and head:IsA("BasePart") then
+		seatBillboards[seatIndex] = createPlayerTag(head, botName, seatIndex)
+	end
 	botDummies[seatIndex] = botModel
+	seatCharacters[seatIndex] = botModel
 
 	-- Render starting circular tokens in hand (4 tokens)
 	renderOpponentFannedHand(seatIndex, 4)
-	print("[TableBuilder] Spawned sleek bot:", botName, "at seat", seatIndex)
+	print("[TableBuilder] Spawned bot:", botName, "at seat", seatIndex)
+end
+
+-- Play a short reaction on whoever stands at a seat (bot or player):
+-- "Cheer", "Laugh", "Point", "Dance" or "Shock". Silently does nothing if the
+-- animation can't load (e.g. Studio offline) or the seat is empty.
+function TableBuilder.PlayReaction(seatIndex: number, kind: string, seconds: number?)
+	local character = seatCharacters[seatIndex]
+	local animId = ANIM[kind]
+	if not character or not character.Parent or not animId then
+		return
+	end
+	local track = getTrack(character, animId)
+	if not track then
+		return
+	end
+	track.Priority = Enum.AnimationPriority.Action
+	track:Play(0.2)
+	task.delay(seconds or REACTION_SECONDS, function()
+		if track.IsPlaying then
+			track:Stop(0.3)
+		end
+	end)
 end
 
 -- Position human player
@@ -842,6 +1202,8 @@ function TableBuilder.StandPlayer(player: Player, seatIndex: number)
 		char:PivotTo(cf)
 		hrp.CFrame = cf
 		hrp.Anchored = true
+		seatCharacters[seatIndex] = char
+		setTablePose(char, true)
 		hum.WalkSpeed = 0
 		hum.JumpPower = 0
 	end
@@ -876,6 +1238,10 @@ function TableBuilder.HighlightTurn(activeSeatIndex: number?)
 		if sparks then
 			sparks.Enabled = isActive
 		end
+	end
+	activeTurnSeat = activeSeatIndex
+	for seatIdx, dotGui in pairs(turnDots) do
+		dotGui.Enabled = activeSeatIndex ~= nil and seatIdx == activeSeatIndex
 	end
 end
 
@@ -994,6 +1360,10 @@ function TableBuilder.SetSeatCardSet(seatIndex: number, setId: string?)
 	if setId and seatCardSets[seatIndex] ~= setId then
 		seatCardSets[seatIndex] = setId
 		applySeatStatus(seatIndex) -- recolour the name tag
+		local bot = botDummies[seatIndex]
+		if bot and bot:FindFirstChildOfClass("Humanoid") then
+			colorBot(bot, CardArt.Get(setId).accent)
+		end
 	end
 end
 
@@ -1034,6 +1404,12 @@ function TableBuilder.ClearSeat(seatIndex: number)
 		opponentHands[seatIndex] = nil
 	end
 	seatBillboards[seatIndex] = nil
+	local dotGui = turnDots[seatIndex]
+	if dotGui then
+		dotGui:Destroy()
+		turnDots[seatIndex] = nil
+	end
+	seatCharacters[seatIndex] = nil
 	scoreLabels[seatIndex] = nil
 	cardCountLabels[seatIndex] = nil
 	seatStatus[seatIndex] = nil
@@ -1054,7 +1430,12 @@ function TableBuilder.StandSpectator(player: Player)
 		if tag then
 			tag:Destroy()
 		end
+		local dotGui = head and head:FindFirstChild("TurnDot")
+		if dotGui then
+			dotGui:Destroy()
+		end
 		local cf = CFrame.lookAt(Vector3.new(0, 3.4, 15), Vector3.new(0, 3.0, 0))
+		setTablePose(char, false) -- standing back from the table
 		char:PivotTo(cf)
 		hrp.Anchored = true
 		hum.WalkSpeed = 0

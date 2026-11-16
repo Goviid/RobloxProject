@@ -260,6 +260,32 @@ end
 -- Initialize UI immediately
 buildUI()
 
+-- Seated at the table: the server sets "SeatedAtTable" and removes the Animate script.
+-- Stop the looping tracks it already started here (this client plays them for its own
+-- character), otherwise the idle sway holds the arms down over the seated pose.
+local function watchSeatedPose(character: Model)
+	local function stopLoops()
+		if character:GetAttribute("SeatedAtTable") ~= true then
+			return
+		end
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
+		if animator then
+			for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+				if track.Looped then
+					track:Stop(0)
+				end
+			end
+		end
+	end
+	character:GetAttributeChangedSignal("SeatedAtTable"):Connect(stopLoops)
+	stopLoops()
+end
+if localPlayer.Character then
+	watchSeatedPose(localPlayer.Character)
+end
+localPlayer.CharacterAdded:Connect(watchSeatedPose)
+
 -- Auto-heal UI if character respawns or PlayerGui resets
 localPlayer.CharacterAdded:Connect(function()
 	task.wait(0.2)
