@@ -51,8 +51,7 @@ local SEAT_CONFIGS = {
 		standPos = Vector3.new(0, 3.4, 7.8),
 		lookAt = Vector3.new(0, 3.0, 0),
 		pilePos = Vector3.new(0, 3.06, 4.4),
-		handPos = Vector3.new(0, 3.3, 5.8),
-		handRotY = 0,
+		handPos = Vector3.new(0, 4.4, 6.5),
 		isLocal = true,
 		label = "PILE", -- each client relabels its own mat "YOUR PILE" locally
 	},
@@ -60,8 +59,7 @@ local SEAT_CONFIGS = {
 		standPos = Vector3.new(-7.8, 3.4, 0),
 		lookAt = Vector3.new(0, 3.0, 0),
 		pilePos = Vector3.new(-4.4, 3.06, 0),
-		handPos = Vector3.new(-5.8, 3.3, 0),
-		handRotY = math.rad(90),
+		handPos = Vector3.new(-6.5, 4.4, 0),
 		isLocal = false,
 		label = "PILE",
 	},
@@ -69,8 +67,7 @@ local SEAT_CONFIGS = {
 		standPos = Vector3.new(0, 3.4, -7.8),
 		lookAt = Vector3.new(0, 3.0, 0),
 		pilePos = Vector3.new(0, 3.06, -4.4),
-		handPos = Vector3.new(0, 3.3, -5.8),
-		handRotY = math.rad(180),
+		handPos = Vector3.new(0, 4.4, -6.5),
 		isLocal = false,
 		label = "PILE",
 	},
@@ -78,8 +75,7 @@ local SEAT_CONFIGS = {
 		standPos = Vector3.new(7.8, 3.4, 0),
 		lookAt = Vector3.new(0, 3.0, 0),
 		pilePos = Vector3.new(4.4, 3.06, 0),
-		handPos = Vector3.new(5.8, 3.3, 0),
-		handRotY = math.rad(-90),
+		handPos = Vector3.new(6.5, 4.4, 0),
 		isLocal = false,
 		label = "PILE",
 	},
@@ -695,16 +691,19 @@ local function renderOpponentFannedHand(seatIdx: number, cardCount: number)
 	handModel.Parent = arenaModel
 	opponentHands[seatIdx] = handModel
 
-	local TOKEN_DIAMETER = 1.35
-	local SPACING = 0.55
-	local startX = -(cardCount - 1) * SPACING / 2
+	-- Held upright in front of the player, faces toward the centre, fanned like a hand
+	-- of cards. Cylinder faces sit on its X axis, so turn X toward the centre.
+	local TOKEN_DIAMETER = 1.6
+	local SPACING = 0.65
+	local FAN_DEGREES = 9
+	local startZ = -(cardCount - 1) * SPACING / 2
+	local facing = CFrame.lookAt(cfg.handPos, Vector3.new(0, cfg.handPos.Y, 0)) * CFrame.Angles(0, math.rad(90), 0)
 
 	for i = 1, cardCount do
-		local xOff = startX + (i - 1) * SPACING
-		local tokenCF = CFrame.new(cfg.handPos)
-			* CFrame.Angles(0, cfg.handRotY or 0, 0)
-			* CFrame.new(xOff, 0, (i - 1) * 0.08)
-			* CFrame.Angles(0, 0, math.rad(90))
+		local t = i - (cardCount + 1) / 2 -- -n..n around the middle card
+		local tokenCF = facing
+			* CFrame.new(-(i - 1) * 0.04, -math.abs(t) * 0.1, startZ + (i - 1) * SPACING)
+			* CFrame.Angles(math.rad(-t * FAN_DEGREES), 0, 0)
 
 		local token = Instance.new("Part")
 		token.Name = "HandToken_" .. i
@@ -737,7 +736,7 @@ local function renderOpponentFannedHand(seatIdx: number, cardCount: number)
 		-- Deal: tokens the hand just gained (cards back at round start) fly in from the table
 		-- centre, staggered by seat and by card so it reads as a dealer going round the table
 		if i > prevCount then
-			token.CFrame = CFrame.new(0, 3.6, 0) * CFrame.Angles(0, 0, math.rad(90))
+			token.CFrame = CFrame.new(0, cfg.handPos.Y, 0) * facing.Rotation
 			token.Size = Vector3.new(0.06, TOKEN_DIAMETER * 0.4, TOKEN_DIAMETER * 0.4)
 			local delayTime = (seatIdx - 1) * 0.12 + (i - prevCount - 1) * 0.09
 			TweenService:Create(token, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, delayTime), {

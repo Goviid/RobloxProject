@@ -35,7 +35,8 @@ F:\RobloxProject\
 │           ├── UIKit.luau         <-- Shared panel / label / button / row / pop animation for every pop-up
 │           ├── StatusBar.luau     <-- Bottom-left status card: phase, whose turn, the one turn timer
 │           ├── Toast.luau         <-- Short queued event pop-ups above the hand
-│           ├── HandBar.luau       <-- Your hand at the bottom, with hover lift
+│           ├── Hand3D.luau        <-- Your hand as floating 3D cards in front of the camera
+│           ├── HandBar.luau       <-- Old 2D hand, no longer used
 │           ├── ActionBar.luau     <-- Bottom-right panel: only the actions you can take now
 │           ├── CardRevealModal.luau<-- Centre card flip pop-up (Rose vs Skull)
 │           ├── DiscardModal.luau  <-- Skull-penalty card picker
@@ -91,6 +92,7 @@ F:\RobloxProject\
 * **Regular Bright Lighting:** Standard Roblox daytime lighting (`Brightness: 2.0`, `ClockTime: 14.0`, `ShadowMap`, natural ambient fill) with zero dark walls or dim gloom.
 * **Spawn & Positioning:** Placed an invisible `SpawnLocation` directly at Seat 1 and anchors `HumanoidRootPart` with disabled locomotion so the player never spawns in the middle or slides off.
 * **Standing Avatars:** Positions human players and builds stylish custom-suited dummy avatars for bots around the circular table facing inward.
+* **Opponent hands:** each player's card backs are held upright and fanned in front of them, facing the centre.
 * **Deal Animation:** Fanned hand tokens are only rebuilt when a seat's card count changes; tokens a hand gains (cards returning at round start) fly in from the table centre, staggered by seat. Your own 2D hand does the same via `HandBar.UpdateHand(..., deal)`.
 * **Pile Counters (`UpdatePileCount`):** A label beside each pile with the owner's card-back icon and the number of face-down cards. Muted during placement, bold gold during bidding / challenge / card-loss pick, hidden when empty. Clients enlarge it on mouse hover (`HoverScale`).
 * **Seat Tags:** Every seat (bots and humans; your own tag is hidden from you) shows name, score pips (`●○ 1/2`), lives as small card shapes (cards left, hand + table) in the player's card colour, an outline gradient from their card colour to gold, and greys out with "ELIMINATED". Driven by `UpdateScore`, `UpdateCardCount(seat, handCount, totalCards)` and `SetEliminated` from `RoundManager.broadcastState`.
@@ -159,10 +161,13 @@ F:\RobloxProject\
 #### `UI/Toast.luau`
 * **Purpose:** Short event pop-ups at the bottom centre, just above the hand, one at a time and queued (max 3; a backed-up queue plays faster). Fed by server `Notification`s that matter (bids, skull hits, timeouts, points, wins, passes) and client messages (rejected actions, "you lost a card"). Routine info messages are not shown.
 
-#### `UI/HandBar.luau`
-* **Purpose:** Oversized 2D floating card hand at the bottom of the screen (LOCOfficial style).
-* Large, chunky cards (140x195px) with giant 🌹 and 💀 icons, tactile spring hover elevation, and gold glowing selection border.
-* Never disappears when count reaches 0—gracefully dims to maintain tactile hand presence.
+#### `UI/Hand3D.luau`
+* **Purpose:** Your hand as oversized round 3D cards floating in a fan at the bottom of your view. The cards are local parts inside the camera (only you see them), repositioned every frame after the camera (`Hand3DLayout`), with a slow bob.
+* Hover a card (mouse raycast) to lift and grow it; click or tap it on your turn and it flies to your pile (`SetPileTarget`) while the placement is sent. Cards sit lower when you can't place. Rejected placements restore the hand from the next state.
+* Same interface as the old `HandBar` (`Create`, `UpdateHand(hand, isTurn, canPlace, deal, setId)`, `SetVisible`, `ConsumeCard`, `GetSelectedCard`, `GetRemainingCardsCount`); `init.client.luau` requires it in HandBar's place.
+
+#### `UI/HandBar.luau` (unused)
+* The previous 2D hand at the bottom of the screen. Kept for reference; switch back by requiring it instead of `Hand3D` in `init.client.luau`.
 
 #### `UI/ActionBar.luau`
 * **Purpose:** Bottom-right panel, only on your turn and only with what you can do now: placement hint (+ bid stepper and **BID N** once bidding is allowed), bidding stepper with **RAISE TO N** and **PASS**, and **FLIP MY PILE** / **FLIP ANY PILE** during the challenge. The bid stepper keeps your choice across re-syncs within a turn.

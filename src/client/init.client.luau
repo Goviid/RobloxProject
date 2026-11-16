@@ -18,7 +18,7 @@ local CardArt = require(ReplicatedStorage.Shared.CardArt)
 
 local StatusBar = require(script.UI.StatusBar)
 local Toast = require(script.UI.Toast)
-local HandBar = require(script.UI.HandBar)
+local HandBar = require(script.UI.Hand3D) -- hand as floating 3D cards (old 2D hand: UI.HandBar)
 local ActionBar = require(script.UI.ActionBar)
 local CardRevealModal = require(script.UI.CardRevealModal)
 local VictoryModal = require(script.UI.VictoryModal)
@@ -68,27 +68,6 @@ local lastTurnKey: string? = nil -- "<state>:<activeId>" while it's your turn, f
 local tickThread: thread? = nil -- last-seconds timer ticks
 local TICK_SECONDS = 5
 local lastLobbyCountdown: number? = nil
-
--- Screen position of a seat's pile mat on the 3D table (for card fly animations)
-local function getSeatPileScreenPos(seatIndex: number?): UDim2?
-	local camera = workspace.CurrentCamera
-	local arena = workspace:FindFirstChild("SkullsArena")
-	if not camera or not arena or not seatIndex then
-		return nil
-	end
-	local mat = arena:FindFirstChild("PlayerMat_" .. seatIndex, true)
-	if not mat or not mat:IsA("BasePart") then
-		return nil
-	end
-	local point, onScreen = camera:WorldToScreenPoint(mat.Position)
-	if not onScreen then
-		return nil
-	end
-	-- Undo the screen scale so the offset lands on the pile
-	local scaleObj = screenGui and screenGui:FindFirstChild("ScreenScale")
-	local scale = if scaleObj and scaleObj:IsA("UIScale") then scaleObj.Scale else 1
-	return UDim2.fromOffset(point.X / scale, point.Y / scale)
-end
 
 local HAND_DOCK_POS = UDim2.fromScale(0.5, 0.86)
 
@@ -213,7 +192,13 @@ local function buildUI()
 	StatusBar.Create(screenGui)
 	Toast.Create(screenGui)
 
-	-- 3. Bottom Hand Tray (Oversized, raised 2.5D circular hand)
+	-- 3. Your hand: oversized 3D cards floating at the bottom of the view
+	HandBar.SetPileTarget(function(): Vector3?
+		local myData = lastKnownPlayers[tostring(localPlayer.UserId)]
+		local arena = workspace:FindFirstChild("SkullsArena")
+		local mat = myData and arena and arena:FindFirstChild("PlayerMat_" .. tostring(myData.seatIndex), true)
+		return if mat and mat:IsA("BasePart") then mat.Position + Vector3.new(0, 0.6, 0) else nil
+	end)
 	HandBar.Create(screenGui, function(cardType: string, cardIndex: number)
 		print("[HandBar] Selected card: " .. cardType .. " at idx " .. tostring(cardIndex))
 		AudioController.PlayButtonClick()
@@ -223,13 +208,7 @@ local function buildUI()
 			print("[HandBar] Submitting card placement: " .. cardType)
 			task.spawn(function()
 				local success, err = onSubmitAction(Enums.PlayerAction.PlaceCard, { cardType = cardType })
-				if success then
-					local myData = lastKnownPlayers[tostring(localPlayer.UserId)]
-					local target = getSeatPileScreenPos(myData and myData.seatIndex)
-					if target then
-						CardAnimation.PlayCardFly(screenGui, HAND_DOCK_POS, target, cardType, myData and myData.cardSet)
-					end
-				else
+				if not success then
 					Toast.Show(err or "Not your turn to place a card", "warning")
 					-- Immediately restore hand by requesting ground-truth state from server
 					Network.RequestState:FireServer()
