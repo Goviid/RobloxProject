@@ -1,215 +1,113 @@
 --!strict
 -- VictoryModal.luau
--- Match celebration popup honoring the winner with animated particles, crown, and score banner (LOCOfficial style)
+-- Winner screen: crown, who won, and a countdown back to the lobby, with a confetti
+-- burst. Built on UIKit.
 
 local TweenService = game:GetService("TweenService")
 local Theme = require(game:GetService("ReplicatedStorage").Shared.Theme)
+local UIKit = require(script.Parent.UIKit)
 
 local VictoryModal = {}
-local modalFrame: Frame? = nil
+
+local panel: Frame? = nil
+local confettiLayer: Frame? = nil
 local winnerLabel: TextLabel? = nil
-local subtitleLabel: TextLabel? = nil
+local reasonLabel: TextLabel? = nil
+local countdownLabel: TextLabel? = nil
+local showToken = 0
 
--- Create floating confetti flakes
-local function spawnConfettiBurst(parent: Instance)
-	local colors = {
-		Color3.fromRGB(245, 205, 60),  -- Gold
-		Color3.fromRGB(235, 45, 65),   -- Crimson Rose
-		Color3.fromRGB(255, 255, 255), -- White
-		Color3.fromRGB(60, 190, 100),  -- Emerald
-		Color3.fromRGB(50, 140, 240),  -- Azure
-	}
+local CONFETTI_COLORS = {
+	Theme.Colors.Gold,
+	Theme.Colors.RosePrimary,
+	Theme.Colors.TextPrimary,
+	Theme.Colors.SuccessGreen,
+	Color3.fromRGB(80, 150, 235),
+}
 
+-- Confetti flies out from the panel's centre on a layer of its own (the panel's
+-- list layout would otherwise line the flakes up)
+local function spawnConfettiBurst(layer: Frame)
 	for _ = 1, 35 do
 		local flake = Instance.new("Frame")
 		flake.Name = "ConfettiFlake"
+		flake.AnchorPoint = Vector2.new(0.5, 0.5)
 		flake.Size = UDim2.fromOffset(math.random(8, 14), math.random(8, 14))
-		flake.Position = UDim2.fromScale(math.random(15, 85) / 100, 0.45)
-		flake.BackgroundColor3 = colors[math.random(1, #colors)]
+		flake.Position = UDim2.fromScale(0.5 + math.random(-12, 12) / 100, 0.45)
+		flake.BackgroundColor3 = CONFETTI_COLORS[math.random(1, #CONFETTI_COLORS)]
 		flake.BorderSizePixel = 0
 		flake.Rotation = math.random(0, 360)
-		flake.ZIndex = 60
-		flake.Parent = parent
-
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 3)
-		corner.Parent = flake
-
-		local targetX = flake.Position.X.Scale + (math.random(-25, 25) / 100)
-		local targetY = flake.Position.Y.Scale + (math.random(-35, 35) / 100)
+		flake.Parent = layer
+		Instance.new("UICorner", flake).CornerRadius = UDim.new(0, 3)
 
 		local tween = TweenService:Create(flake, TweenInfo.new(math.random(12, 22) / 10, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Position = UDim2.fromScale(targetX, targetY),
+			Position = UDim2.fromScale(flake.Position.X.Scale + math.random(-30, 30) / 100, 0.45 + math.random(-35, 35) / 100),
 			Rotation = flake.Rotation + math.random(-180, 180),
 			BackgroundTransparency = 1,
 		})
-		tween:Play()
 		tween.Completed:Connect(function()
 			flake:Destroy()
 		end)
+		tween:Play()
 	end
 end
 
 function VictoryModal.Create(parent: Instance): Frame
-	local container = Instance.new("Frame")
-	container.Name = "VictoryModal"
-	container.Size = UDim2.fromOffset(440, 260)
-	container.Position = UDim2.new(0.5, -220, 0.45, -130)
-	container.BackgroundColor3 = Theme.Colors.PanelBackground
-	container.BackgroundTransparency = 0.08
-	container.BorderSizePixel = 0
-	container.Visible = false
-	container.ZIndex = 50
-	container.Parent = parent
+	local frame = UIKit.Panel(parent, { name = "VictoryModal", width = 420, zIndex = 50, padding = 22, gap = 8 })
 
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = Theme.CornerRadius.Large
-	corner.Parent = container
+	UIKit.Label(frame, { name = "Crown", style = "display", order = 1, text = "👑" }).TextSize = 52
+	UIKit.Label(frame, { name = "Title", style = "title", order = 2, text = "MATCH OVER" })
+	local winner = UIKit.Label(frame, { name = "WinnerName", style = "display", order = 3 })
+	local reason = UIKit.Label(frame, { name = "Reason", style = "body", order = 4 })
+	local countdown = UIKit.Label(frame, { name = "Countdown", style = "muted", order = 5 })
 
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = Theme.Colors.GoldGlow
-	stroke.Thickness = 3
-	stroke.Parent = container
+	local layer = Instance.new("Frame")
+	layer.Name = "Confetti"
+	layer.Size = UDim2.fromScale(1, 1)
+	layer.BackgroundTransparency = 1
+	layer.ZIndex = 51
+	layer.Parent = parent
 
-	-- Top Crown Trophy Banner
-	local crownIcon = Instance.new("TextLabel")
-	crownIcon.Name = "CrownIcon"
-	crownIcon.Size = UDim2.new(1, 0, 0, 60)
-	crownIcon.Position = UDim2.fromOffset(0, 12)
-	crownIcon.BackgroundTransparency = 1
-	crownIcon.Font = Theme.Fonts.Title
-	crownIcon.TextSize = 52
-	crownIcon.Text = "👑"
-	crownIcon.ZIndex = 52
-	crownIcon.Parent = container
-
-	-- Victory Title
-	local title = Instance.new("TextLabel")
-	title.Name = "Title"
-	title.Size = UDim2.new(1, -20, 0, 28)
-	title.Position = UDim2.fromOffset(10, 72)
-	title.BackgroundTransparency = 1
-	title.Font = Theme.Fonts.Title
-	title.TextSize = 22
-	title.TextColor3 = Theme.Colors.Gold
-	title.Text = "MATCH VICTORY"
-	title.ZIndex = 52
-	title.Parent = container
-
-	-- Winner Name
-	local winner = Instance.new("TextLabel")
-	winner.Name = "WinnerName"
-	winner.Size = UDim2.new(1, -20, 0, 34)
-	winner.Position = UDim2.fromOffset(10, 104)
-	winner.BackgroundTransparency = 1
-	winner.Font = Theme.Fonts.Header
-	winner.TextSize = 20
-	winner.TextColor3 = Theme.Colors.TextPrimary
-	winner.Text = "DON DIEGO"
-	winner.ZIndex = 52
-	winner.Parent = container
-
-	-- Winning Score Gems (2 golden diamonds)
-	local gemBox = Instance.new("Frame")
-	gemBox.Name = "GemBox"
-	gemBox.Size = UDim2.new(1, 0, 0, 32)
-	gemBox.Position = UDim2.fromOffset(0, 146)
-	gemBox.BackgroundTransparency = 1
-	gemBox.ZIndex = 52
-	gemBox.Parent = container
-
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	layout.Padding = UDim.new(0, 12)
-	layout.Parent = gemBox
-
-	for i = 1, 2 do
-		local gem = Instance.new("TextLabel")
-		gem.Name = "Gem_" .. i
-		gem.Size = UDim2.fromOffset(28, 28)
-		gem.BackgroundTransparency = 1
-		gem.Font = Theme.Fonts.Title
-		gem.TextSize = 26
-		gem.TextColor3 = Theme.Colors.Gold
-		gem.Text = "◆"
-		gem.ZIndex = 53
-		gem.Parent = gemBox
-	end
-
-	-- Subtitle (Round transition message)
-	local sub = Instance.new("TextLabel")
-	sub.Name = "Subtitle"
-	sub.Size = UDim2.new(1, -20, 0, 24)
-	sub.Position = UDim2.new(0, 10, 1, -38)
-	sub.BackgroundTransparency = 1
-	sub.Font = Theme.Fonts.Body
-	sub.TextSize = Theme.TextSize.Small
-	sub.TextColor3 = Theme.Colors.TextSecondary
-	sub.Text = "Preparing the next match..."
-	sub.ZIndex = 52
-	sub.Parent = container
-
-	modalFrame = container
+	panel = frame
+	confettiLayer = layer
 	winnerLabel = winner
-	subtitleLabel = sub
-
-	return container
+	reasonLabel = reason
+	countdownLabel = countdown
+	return frame
 end
 
-local showToken = 0
-
--- Shows the winner for `duration` seconds with a countdown to the next match.
+-- Shows the winner for `duration` seconds with a countdown to the lobby.
 function VictoryModal.Show(winnerName: string, isLocalPlayer: boolean, reason: string?, duration: number?)
-	if not modalFrame or not winnerLabel or not subtitleLabel then
+	local frame, layer, winner, reasonText, countdown = panel, confettiLayer, winnerLabel, reasonLabel, countdownLabel
+	if not frame or not layer or not winner or not reasonText or not countdown then
 		return
 	end
-	local subtitle = subtitleLabel
 	showToken += 1
 	local token = showToken
 	local holdSeconds = math.max(3, duration or 6)
 
-	winnerLabel.Text = if isLocalPlayer then "🎉 YOU WON THE MATCH! 🎉" else (winnerName .. " WINS THE MATCH!")
-	winnerLabel.TextColor3 = if isLocalPlayer then Theme.Colors.GoldGlow else Theme.Colors.TextPrimary
+	winner.Text = if isLocalPlayer then "YOU WIN!" else (winnerName .. " wins")
+	winner.TextColor3 = if isLocalPlayer then Theme.Colors.GoldGlow else Theme.Colors.TextPrimary
+	reasonText.Text = reason or ""
+	reasonText.Visible = reason ~= nil and reason ~= ""
 
-	local reasonText = reason or "Match over!"
 	task.spawn(function()
 		local secondsLeft = math.ceil(holdSeconds)
 		while secondsLeft > 0 and showToken == token do
-			subtitle.Text = reasonText .. "  New game in " .. secondsLeft .. "s"
+			countdown.Text = "Back to the lobby in " .. secondsLeft .. "s"
 			task.wait(1)
 			secondsLeft -= 1
 		end
 	end)
 
-	modalFrame.Visible = true
-	modalFrame.Size = UDim2.fromOffset(360, 210)
-	modalFrame.Position = UDim2.new(0.5, -180, 0.45, -105)
+	UIKit.Pop(frame, true)
+	spawnConfettiBurst(layer)
 
-	TweenService:Create(modalFrame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Size = UDim2.fromOffset(440, 260),
-		Position = UDim2.new(0.5, -220, 0.45, -130),
-	}):Play()
-
-	spawnConfettiBurst(modalFrame)
-
-	-- Auto-dismiss just before the next match starts
+	-- Auto-dismiss just before the lobby comes back
 	task.delay(holdSeconds - 0.5, function()
-		if not modalFrame or showToken ~= token then
-			return
+		if showToken == token then
+			UIKit.Pop(frame, false)
 		end
-		local tween = TweenService:Create(modalFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			Size = UDim2.fromOffset(340, 200),
-			Position = UDim2.new(0.5, -170, 0.45, -100),
-		})
-		tween:Play()
-		tween.Completed:Connect(function()
-			if modalFrame then
-				modalFrame.Visible = false
-			end
-		end)
 	end)
 end
 
 return VictoryModal
-

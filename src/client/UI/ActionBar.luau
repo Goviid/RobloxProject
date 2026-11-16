@@ -11,6 +11,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Enums = require(ReplicatedStorage.Shared.Enums)
 local Theme = require(ReplicatedStorage.Shared.Theme)
+local UIKit = require(script.Parent.UIKit)
 
 local ActionBar = {}
 
@@ -32,40 +33,10 @@ local primaryAction: string? = nil
 local primaryData: (() -> any)? = nil
 
 local PANEL_WIDTH = 270
-local BUTTON_HEIGHT = 44
-
-local function makeButton(parent: Instance, name: string, order: number, color: Color3): TextButton
-	local button = Instance.new("TextButton")
-	button.Name = name
-	button.LayoutOrder = order
-	button.Size = UDim2.new(1, 0, 0, BUTTON_HEIGHT)
-	button.BackgroundColor3 = color
-	button.AutoButtonColor = true
-	button.BorderSizePixel = 0
-	button.Font = Theme.Fonts.Title
-	button.TextSize = Theme.TextSize.Label
-	button.TextColor3 = Theme.Colors.TextPrimary
-	button.Text = ""
-	button.Parent = parent
-	Instance.new("UICorner", button).CornerRadius = Theme.CornerRadius.Circular
-	Theme.Outline(button, 0.5)
-	return button
-end
 
 local function makeStepButton(parent: Instance, name: string, order: number, text: string): TextButton
-	local button = Instance.new("TextButton")
-	button.Name = name
-	button.LayoutOrder = order
-	button.Size = UDim2.fromOffset(44, 44)
-	button.BackgroundColor3 = Theme.Colors.PanelBorder
-	button.AutoButtonColor = true
-	button.BorderSizePixel = 0
-	button.Font = Theme.Fonts.Title
+	local button = UIKit.Button(parent, { name = name, text = text, kind = "secondary", order = order, width = UDim.new(0, 44) })
 	button.TextSize = Theme.TextSize.Heading
-	button.TextColor3 = Theme.Colors.TextPrimary
-	button.Text = text
-	button.Parent = parent
-	Instance.new("UICorner", button).CornerRadius = Theme.CornerRadius.Circular
 	return button
 end
 
@@ -83,65 +54,16 @@ end
 function ActionBar.Create(parent: Instance, callback: ActionCallback): Frame
 	onAction = callback
 
-	local panel = Instance.new("Frame")
-	panel.Name = "ActionBarRoot"
+	-- Same panel style as the pop-ups, docked bottom-right
+	local panel = UIKit.Panel(parent, { name = "ActionBarRoot", width = PANEL_WIDTH, zIndex = 30, padding = 12, gap = 8 })
 	panel.AnchorPoint = Vector2.new(1, 1)
 	panel.Position = UDim2.new(1, -16, 1, -16)
-	panel.Size = UDim2.fromOffset(PANEL_WIDTH, 0)
-	panel.AutomaticSize = Enum.AutomaticSize.Y
-	panel.BackgroundColor3 = Theme.Colors.Backing
-	panel.BackgroundTransparency = 0.1
-	panel.BorderSizePixel = 0
-	panel.Visible = false
-	panel.ZIndex = 30
-	panel.Parent = parent
-	Instance.new("UICorner", panel).CornerRadius = Theme.CornerRadius.Large
 
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = Theme.Colors.Gold
-	stroke.Thickness = 1.5
-	stroke.Parent = panel
-
-	local pad = Instance.new("UIPadding")
-	pad.PaddingTop = UDim.new(0, 12)
-	pad.PaddingBottom = UDim.new(0, 12)
-	pad.PaddingLeft = UDim.new(0, 12)
-	pad.PaddingRight = UDim.new(0, 12)
-	pad.Parent = panel
-
-	local layout = Instance.new("UIListLayout")
-	layout.Padding = UDim.new(0, 8)
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	layout.Parent = panel
-
-	local hint = Instance.new("TextLabel")
-	hint.Name = "Hint"
-	hint.LayoutOrder = 1
-	hint.Size = UDim2.fromScale(1, 0)
-	hint.AutomaticSize = Enum.AutomaticSize.Y
-	hint.BackgroundTransparency = 1
-	hint.Font = Theme.Fonts.Header
-	hint.TextSize = Theme.TextSize.Body
-	hint.TextWrapped = true
-	hint.TextColor3 = Theme.Colors.TextPrimary
-	hint.Text = ""
-	hint.Parent = panel
+	local hint = UIKit.Label(panel, { name = "Hint", style = "heading", order = 1 })
 
 	-- Bid stepper:  [-]  N  [+]
-	local row = Instance.new("Frame")
+	local row = UIKit.Row(panel, 2, UIKit.ButtonHeight, 14)
 	row.Name = "BidStepper"
-	row.LayoutOrder = 2
-	row.Size = UDim2.new(1, 0, 0, 44)
-	row.BackgroundTransparency = 1
-	row.Parent = panel
-	local rowLayout = Instance.new("UIListLayout")
-	rowLayout.FillDirection = Enum.FillDirection.Horizontal
-	rowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	rowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	rowLayout.Padding = UDim.new(0, 14)
-	rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	rowLayout.Parent = row
 
 	local minus = makeStepButton(row, "Minus", 1, "−")
 	local value = Instance.new("TextLabel")
@@ -169,15 +91,14 @@ function ActionBar.Create(parent: Instance, callback: ActionCallback): Frame
 		end
 	end)
 
-	local primary = makeButton(panel, "Primary", 3, Theme.Colors.WarningAmber)
+	local primary = UIKit.Button(panel, { name = "Primary", kind = "primary", order = 3 })
 	primary.Activated:Connect(function()
 		if onAction and primaryAction then
 			onAction(primaryAction, if primaryData then primaryData() else {})
 		end
 	end)
 
-	local secondary = makeButton(panel, "Pass", 4, Theme.Colors.PanelBorder)
-	secondary.Text = "PASS"
+	local secondary = UIKit.Button(panel, { name = "Pass", text = "PASS", kind = "secondary", order = 4 })
 	secondary.Activated:Connect(function()
 		if onAction then
 			onAction(Enums.PlayerAction.Pass, {})
@@ -278,7 +199,9 @@ function ActionBar.UpdateState(
 	row.Visible = showStepper
 	primary.Visible = showPrimary
 	secondary.Visible = showPass
-	panel.Visible = true
+	if not panel.Visible then
+		UIKit.Pop(panel, true)
+	end
 end
 
 return ActionBar

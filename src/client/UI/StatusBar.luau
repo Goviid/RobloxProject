@@ -1,9 +1,13 @@
 --!strict
 -- StatusBar.luau
--- The one place for match status: a single pill in the top-right corner
--- (the top centre is left clear for the far player's 3D name tag).
---   ROUND 3 · BIDDING  |  YOUR TURN  23s  |  Bid 3 of 9 on table
--- A thin bar under the pill drains with the turn timer (the only timer on screen).
+-- The one place for match status: a small fixed-width card in the bottom-left corner.
+--   ROUND 3 · BIDDING        23s
+--   YOUR TURN
+--   Bid 3 of 9 · ROSE_KING
+--   ▬▬▬▬▬▬▬▬▬▬▬▬▬ (turn timer)
+-- Fixed width so it never shifts as the text changes. Bottom-left because the top of the
+-- screen belongs to the other players' 3D name tags (far, left and right seats), and the
+-- bottom centre / right hold the hand and the action panel.
 
 local Theme = require(game:GetService("ReplicatedStorage").Shared.Theme)
 
@@ -11,9 +15,9 @@ local StatusBar = {}
 
 export type Status = {
 	phaseText: string, -- "ROUND 3 · BIDDING"
-	turnText: string, -- "YOUR TURN" / "ROSE_KING"
+	turnText: string, -- "YOUR TURN" / "ROSE_KING" / "" when nobody is on the clock
 	isMyTurn: boolean,
-	infoText: string?, -- "Bid 3 of 9 on table" / "Flips 1 of 3" / waiting messages
+	infoText: string?, -- "Bid 3 of 9 · ROSE_KING" / "Flips 1 of 3" / waiting messages
 }
 
 local root: Frame? = nil
@@ -21,99 +25,98 @@ local phaseLabel: TextLabel? = nil
 local turnLabel: TextLabel? = nil
 local timerLabel: TextLabel? = nil
 local infoLabel: TextLabel? = nil
-local infoDivider: Frame? = nil
-local pillStroke: UIStroke? = nil
+local cardStroke: UIStroke? = nil
+local timerTrack: Frame? = nil
 local timerFill: Frame? = nil
 local timerThread: thread? = nil
 local myTurnCached = false
 
-local HEIGHT = 40
+local WIDTH = 280
+local TIMER_WIDTH = 44
 
-local function makeLabel(parent: Instance, name: string, order: number, font: Enum.Font, color: Color3): TextLabel
+local function makeLabel(parent: Instance, name: string, order: number, font: Enum.Font, size: number, color: Color3): TextLabel
 	local label = Instance.new("TextLabel")
 	label.Name = name
 	label.LayoutOrder = order
-	label.AutomaticSize = Enum.AutomaticSize.X
-	label.Size = UDim2.fromOffset(0, HEIGHT)
+	label.Size = UDim2.new(1, 0, 0, size + 4)
 	label.BackgroundTransparency = 1
 	label.Font = font
-	label.TextSize = Theme.TextSize.Body
+	label.TextSize = size
 	label.TextColor3 = color
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.TextTruncate = Enum.TextTruncate.AtEnd
 	label.Text = ""
 	label.Parent = parent
 	return label
 end
 
-local function makeDivider(parent: Instance, order: number): Frame
-	local divider = Instance.new("Frame")
-	divider.Name = "Divider" .. order
-	divider.LayoutOrder = order
-	divider.Size = UDim2.fromOffset(1, 20)
-	divider.BackgroundColor3 = Theme.Colors.PanelBorder
-	divider.BorderSizePixel = 0
-	divider.Parent = parent
-	return divider
-end
-
 function StatusBar.Create(parent: Instance)
-	-- Wrapper holds the pill (which sizes to its text) and the timer bar under it
-	local wrapper = Instance.new("Frame")
-	wrapper.Name = "StatusBar"
-	wrapper.AnchorPoint = Vector2.new(1, 0)
-	wrapper.Position = UDim2.new(1, -16, 0, 8)
-	wrapper.AutomaticSize = Enum.AutomaticSize.X
-	wrapper.Size = UDim2.fromOffset(0, HEIGHT + 6)
-	wrapper.BackgroundTransparency = 1
-	wrapper.Visible = false
-	wrapper.ZIndex = 20
-	wrapper.Parent = parent
-
-	local pill = Instance.new("Frame")
-	pill.Name = "Pill"
-	pill.AutomaticSize = Enum.AutomaticSize.X
-	pill.Size = UDim2.fromOffset(0, HEIGHT)
-	pill.BackgroundColor3 = Theme.Colors.Backing
-	pill.BackgroundTransparency = 0.12
-	pill.BorderSizePixel = 0
-	pill.ZIndex = 20
-	pill.Parent = wrapper
-	Instance.new("UICorner", pill).CornerRadius = Theme.CornerRadius.Circular
+	local card = Instance.new("Frame")
+	card.Name = "StatusBar"
+	card.AnchorPoint = Vector2.new(0, 1)
+	card.Position = UDim2.new(0, 16, 1, -16)
+	card.Size = UDim2.fromOffset(WIDTH, 0)
+	card.AutomaticSize = Enum.AutomaticSize.Y
+	card.BackgroundColor3 = Theme.Colors.Backing
+	card.BackgroundTransparency = 0.12
+	card.BorderSizePixel = 0
+	card.Visible = false
+	card.ZIndex = 20
+	card.Parent = parent
+	Instance.new("UICorner", card).CornerRadius = Theme.CornerRadius.Medium
 
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Theme.Colors.PanelBorder
 	stroke.Thickness = 1.5
-	stroke.Parent = pill
+	stroke.Parent = card
 
 	local pad = Instance.new("UIPadding")
-	pad.PaddingLeft = UDim.new(0, 18)
-	pad.PaddingRight = UDim.new(0, 18)
-	pad.Parent = pill
+	pad.PaddingTop = UDim.new(0, 8)
+	pad.PaddingBottom = UDim.new(0, 10)
+	pad.PaddingLeft = UDim.new(0, 12)
+	pad.PaddingRight = UDim.new(0, 12)
+	pad.Parent = card
 
 	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.VerticalAlignment = Enum.VerticalAlignment.Center
-	layout.Padding = UDim.new(0, 12)
+	layout.Padding = UDim.new(0, 3)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Parent = pill
+	layout.Parent = card
 
-	phaseLabel = makeLabel(pill, "Phase", 1, Theme.Fonts.Title, Theme.Colors.TextGold)
-	makeDivider(pill, 2)
-	turnLabel = makeLabel(pill, "Turn", 3, Theme.Fonts.Header, Theme.Colors.TextPrimary)
-	timerLabel = makeLabel(pill, "Timer", 4, Theme.Fonts.Header, Theme.Colors.TextSecondary)
-	infoDivider = makeDivider(pill, 5)
-	infoLabel = makeLabel(pill, "Info", 6, Theme.Fonts.Body, Theme.Colors.TextSecondary)
+	-- Line 1: phase, with the timer pinned to the right (fixed width, so digits don't shift it)
+	local phase = makeLabel(card, "Phase", 1, Theme.Fonts.Title, Theme.TextSize.Body, Theme.Colors.TextGold)
+	phase.Size = UDim2.new(1, -TIMER_WIDTH, 0, Theme.TextSize.Body + 4)
+	local timer = Instance.new("TextLabel")
+	timer.Name = "Timer"
+	timer.AnchorPoint = Vector2.new(1, 0)
+	timer.Position = UDim2.new(1, TIMER_WIDTH, 0, 0)
+	timer.Size = UDim2.new(0, TIMER_WIDTH, 1, 0)
+	timer.BackgroundTransparency = 1
+	timer.Font = Theme.Fonts.Title
+	timer.TextSize = Theme.TextSize.Label
+	timer.TextColor3 = Theme.Colors.TextSecondary
+	timer.TextXAlignment = Enum.TextXAlignment.Right
+	timer.Text = ""
+	timer.Visible = false
+	timer.Parent = phase
 
-	-- Timer drain bar under the pill
+	-- Line 2: whose turn. Line 3: context
+	local turn = makeLabel(card, "Turn", 2, Theme.Fonts.Header, Theme.TextSize.Label, Theme.Colors.TextPrimary)
+	local info = makeLabel(card, "Info", 3, Theme.Fonts.Body, Theme.TextSize.Small, Theme.Colors.TextSecondary)
+	info.Size = UDim2.fromScale(1, 0) -- longer waiting messages wrap onto a second line
+	info.AutomaticSize = Enum.AutomaticSize.Y
+	info.TextWrapped = true
+	info.TextTruncate = Enum.TextTruncate.None
+
+	-- Line 4: timer drain bar
 	local track = Instance.new("Frame")
 	track.Name = "TimerTrack"
-	track.AnchorPoint = Vector2.new(0.5, 0)
-	track.Position = UDim2.new(0.5, 0, 0, HEIGHT + 3)
-	track.Size = UDim2.new(1, -36, 0, 3)
+	track.LayoutOrder = 4
+	track.Size = UDim2.new(1, 0, 0, 4)
 	track.BackgroundColor3 = Theme.Colors.PanelBorder
 	track.BackgroundTransparency = 0.3
 	track.BorderSizePixel = 0
 	track.Visible = false
-	track.Parent = wrapper
+	track.Parent = card
 	Instance.new("UICorner", track).CornerRadius = Theme.CornerRadius.Circular
 	local fill = Instance.new("Frame")
 	fill.Name = "Fill"
@@ -123,25 +126,30 @@ function StatusBar.Create(parent: Instance)
 	fill.Parent = track
 	Instance.new("UICorner", fill).CornerRadius = Theme.CornerRadius.Circular
 
-	root = wrapper
-	pillStroke = stroke
+	root = card
+	phaseLabel = phase
+	turnLabel = turn
+	timerLabel = timer
+	infoLabel = info
+	cardStroke = stroke
+	timerTrack = track
 	timerFill = fill
 end
 
 function StatusBar.Update(status: Status)
-	local pill, phase, turn, info, divider, stroke = root, phaseLabel, turnLabel, infoLabel, infoDivider, pillStroke
-	if not pill or not phase or not turn or not info or not divider or not stroke then
+	local card, phase, turn, info, stroke = root, phaseLabel, turnLabel, infoLabel, cardStroke
+	if not card or not phase or not turn or not info or not stroke then
 		return
 	end
-	pill.Visible = true
+	card.Visible = true
 	phase.Text = status.phaseText
-	turn.Text = status.turnText
+	turn.Text = if status.isMyTurn or status.turnText == "" then status.turnText else (status.turnText .. "'s turn")
 	turn.TextColor3 = if status.isMyTurn then Theme.Colors.TextGold else Theme.Colors.TextPrimary
+	turn.Visible = status.turnText ~= ""
 	stroke.Color = if status.isMyTurn then Theme.Colors.Gold else Theme.Colors.PanelBorder
 	stroke.Thickness = if status.isMyTurn then 2 else 1.5
 	info.Text = status.infoText or ""
-	info.Visible = status.infoText ~= nil and status.infoText ~= ""
-	divider.Visible = info.Visible
+	info.Visible = info.Text ~= ""
 	myTurnCached = status.isMyTurn
 end
 
@@ -161,22 +169,18 @@ function StatusBar.StopTimer()
 		timerLabel.Text = ""
 		timerLabel.Visible = false
 	end
-	local track = timerFill and timerFill.Parent
-	if track and track:IsA("Frame") then
-		track.Visible = false
+	if timerTrack then
+		timerTrack.Visible = false
 	end
 end
 
 function StatusBar.StartTimer(seconds: number)
 	StatusBar.StopTimer()
-	local label, fill = timerLabel, timerFill
-	if not label or not fill then
+	local label, track, fill = timerLabel, timerTrack, timerFill
+	if not label or not track or not fill then
 		return
 	end
-	local track = fill.Parent
-	if track and track:IsA("Frame") then
-		track.Visible = true
-	end
+	track.Visible = true
 	label.Visible = true
 	local started = os.clock()
 	timerThread = task.spawn(function()

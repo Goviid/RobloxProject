@@ -13,6 +13,8 @@ F:\RobloxProject\
 ├── CODE_GUIDE.md                  <-- You are here (Living architectural reference)
 ├── default.project.json           <-- Rojo mapping config (maps files into Studio)
 ├── src/
+│   ├── first/                     <-- ReplicatedFirst (runs before everything else on the client)
+│   │   └── LoadingScreen.client.luau <-- Themed loading screen; hides pop-in until the scene is ready
 │   ├── shared/                    <-- ReplicatedStorage.Shared (Code accessible by both Server and Client)
 │   │   ├── Constants.luau         <-- Rules, timers, player count constraints
 │   │   ├── Enums.luau             <-- Game states, card types, and player actions
@@ -30,11 +32,16 @@ F:\RobloxProject\
 │       ├── init.client.luau       <-- Client bootstrapper & network listeners
 │       ├── CameraController.luau  <-- 2.5D fixed tabletop camera (LOCOfficial style)
 │       └── UI/                    <-- Modular 2D tabletop interface (Theme A: Calavera)
-│           ├── StatusBar.luau     <-- Top-right status strip: phase, whose turn, the one turn timer
+│           ├── UIKit.luau         <-- Shared panel / label / button / row / pop animation for every pop-up
+│           ├── StatusBar.luau     <-- Bottom-left status card: phase, whose turn, the one turn timer
 │           ├── Toast.luau         <-- Short queued event pop-ups above the hand
 │           ├── HandBar.luau       <-- Your hand at the bottom, with hover lift
 │           ├── ActionBar.luau     <-- Bottom-right panel: only the actions you can take now
-│           ├── CardRevealModal.luau<-- Center animated card flip popup (Rose vs Skull)
+│           ├── CardRevealModal.luau<-- Centre card flip pop-up (Rose vs Skull)
+│           ├── DiscardModal.luau  <-- Skull-penalty card picker
+│           ├── VictoryModal.luau  <-- Winner screen with countdown and confetti
+│           ├── LobbyPanel.luau    <-- Lobby: seats, ready, host bots/start
+│           ├── PhaseOverlay.luau  <-- Round intro card and spectating pill
 │           └── CardAnimation.luau <-- Flying card trajectory animation (hand to table)
 ```
 
@@ -127,6 +134,9 @@ F:\RobloxProject\
 
 ### 3. Client Modules (`src/client/`)
 
+#### `first/LoadingScreen.client.luau` (ReplicatedFirst)
+* **Purpose:** Replaces Roblox's default loading screen with a themed one (title, step text, progress bar) that stays up until: the game has loaded, the server has built the table (`workspace` attribute `TableReady`, set in `init.server.luau`), card art and sounds are preloaded (player attribute `ClientReady`, set by `init.client.luau`), and your avatar has spawned. Each step has a timeout and the whole screen is capped at 25 s, then it fades out. Colours mirror `Theme` because Shared may not have replicated yet.
+
 #### `CameraController.luau`
 * **Purpose:** 3D tabletop over-the-shoulder camera elevated behind Seat 1 framing your avatar, the circular table, and opponent bots (LOCOfficial style).
 * **Per-Frame Override Lock:** Binds to `RunService.RenderStepped` above standard camera priority (`Enum.RenderPriority.Camera.Value + 20`), dynamically updating `Workspace.CurrentCamera` to prevent Roblox engine hijacking.
@@ -139,8 +149,12 @@ F:\RobloxProject\
 * `init.client.luau` adds a `ScreenScale` UIScale that enlarges the UI on big monitors (1.0–1.5×); code placing GUI at raw screen positions must divide by it.
 * Defines the warm wood colors (`TableDark`, `TableSurface`), gold filigree accents (`Gold`, `GoldGlow`), crimson velvet (`RosePrimary`), and obsidian charcoal (`SkullPrimary`).
 
+#### `UI/UIKit.luau`
+* **Purpose:** The shared look for every pop-up, so they all match. `Panel` (centred, auto-height, dark backing, gold border, vertical layout, hidden until shown), `SetAccent` (border colour, e.g. red for skulls), `Label` with styles `display` / `title` / `heading` / `body` / `muted`, `Button` with kinds `primary` (marigold) / `success` / `danger` / `secondary`, `SetButtonKind`, `SetEnabled`, `Row` (horizontal layout), and `Pop(frame, show)` for the springy show / quick shrink-and-hide.
+* Built on it: `ActionBar`, `CardRevealModal`, `DiscardModal`, `VictoryModal`, `LobbyPanel`, `PhaseOverlay`. Build new pop-ups from it rather than hand-styling Instances.
+
 #### `UI/StatusBar.luau`
-* **Purpose:** The only match-status display: one pill in the top-right corner (the top centre stays clear for the far player's 3D name tag; Roblox's player list is hidden to make room) with `ROUND n · PHASE`, whose turn (gold "YOUR TURN" for you), the single turn timer (drain bar under the pill, red in the last 5 s), and one line of context (cards on the table, current bid and bidder, flips so far, or who is choosing a lost card). Hidden in the lobby and on the winner screen.
+* **Purpose:** The only match-status display: a fixed-width (280px) card in the bottom-left corner. Line 1 `ROUND n · PHASE` with the turn timer pinned right (red in the last 5 s); line 2 whose turn (gold "YOUR TURN", or "<name>'s turn"); line 3 context (cards on the table, current bid and bidder, flips so far, or who is choosing a lost card; wraps if long); a drain bar along the bottom. Fixed width so it never shifts as text changes, and out of the top of the screen, which belongs to the other players' 3D name tags (far, left and right seats). Roblox's player list is hidden (it only repeated the seat tags). Hidden in the lobby and on the winner screen.
 
 #### `UI/Toast.luau`
 * **Purpose:** Short event pop-ups at the bottom centre, just above the hand, one at a time and queued (max 3; a backed-up queue plays faster). Fed by server `Notification`s that matter (bids, skull hits, timeouts, points, wins, passes) and client messages (rejected actions, "you lost a card"). Routine info messages are not shown.
@@ -167,11 +181,13 @@ F:\RobloxProject\
 * `SetSeat(seatIndex)` rotates the seat-1 camera setup around the table to face it from the local player's seat (angle taken from `PlayerMat_<seat>`). `init.client.luau` also relabels your own mat "YOUR PILE" and hides your own fanned hand tokens locally.
 
 #### `UI/DiscardModal.luau`
-* **Purpose:** Skull penalty picker, shown only to the chooser. Own skull: the challenger's cards face-up, pick one to lose. Someone else's skull: N face-down cards, the skull owner removes one blindly.
+* **Purpose:** Skull penalty picker (UIKit panel, red border), shown only to the chooser; cards lift on hover. State re-syncs don't rebuild an already-open picker. Own skull: the challenger's cards face-up, pick one to lose. Someone else's skull: N face-down cards, the skull owner removes one blindly.
 
 #### `UI/CardRevealModal.luau`
-* **Purpose:** Center-screen card flip popup.
-* Plays an animated card reveal popup whenever a card is flipped by the challenger, showing the card face (`🌹 Rose` or `💥 Skull!`), who owned it, and current bet progress.
+* **Purpose:** Centre-screen card flip pop-up (UIKit panel): "ROSE REVEALED" / "SKULL!", the card face in its owner's art set with a coin-flip animation, and "<name>'s pile · flip n of m". Border turns red on a skull. Hides itself after 2.2 s.
+
+#### `UI/VictoryModal.luau`
+* **Purpose:** Winner screen (UIKit panel): crown, "YOU WIN!" / "<name> wins", the reason (first to 2 points, last standing, everyone left), and a "Back to the lobby in Ns" countdown, with a confetti burst on its own layer.
 
 #### `UI/CardAnimation.luau`
 * **Purpose:** Flying card physics animation (LOCOfficial style).

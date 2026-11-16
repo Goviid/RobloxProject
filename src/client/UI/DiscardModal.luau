@@ -4,10 +4,13 @@
 --   Own skull:    the challenger sees their own cards face-up and picks one to lose.
 --   Other skull:  the skull owner sees N face-down cards and removes one blindly.
 -- The server decides who sees what; this module only renders the payload it is given.
+-- Built on UIKit.
 
-local Enums = require(game:GetService("ReplicatedStorage").Shared.Enums)
-local CardArt = require(game:GetService("ReplicatedStorage").Shared.CardArt)
-local Theme = require(game:GetService("ReplicatedStorage").Shared.Theme)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Enums = require(ReplicatedStorage.Shared.Enums)
+local CardArt = require(ReplicatedStorage.Shared.CardArt)
+local Theme = require(ReplicatedStorage.Shared.Theme)
+local UIKit = require(script.Parent.UIKit)
 
 local DiscardModal = {}
 
@@ -25,75 +28,19 @@ local subtitleLabel: TextLabel? = nil
 local cardRow: Frame? = nil
 local pickCallback: ((pick: { [string]: any }) -> ())? = nil
 local hasPicked = false
+local shownKey = "" -- what the open picker shows, so state re-syncs don't rebuild it
+local isOpen = false
 
-local CARD_W, CARD_H, CARD_GAP = 72, 102, 12
+local CARD_SIZE, CARD_GAP = 76, 12
 
 function DiscardModal.Create(parent: Instance, onPick: (pick: { [string]: any }) -> ()): Frame
 	pickCallback = onPick
 
-	local frame = Instance.new("Frame")
-	frame.Name = "DiscardModal"
-	frame.AnchorPoint = Vector2.new(0.5, 0.5)
-	frame.Position = UDim2.fromScale(0.5, 0.45)
-	frame.Size = UDim2.fromOffset(360, 210)
-	frame.BackgroundColor3 = Theme.Colors.PanelBackground
-	frame.BackgroundTransparency = 0.08
-	frame.BorderSizePixel = 0
-	frame.Visible = false
-	frame.ZIndex = 60
-	frame.Parent = parent
-
-	local sizeLimit = Instance.new("UISizeConstraint")
-	sizeLimit.MaxSize = Vector2.new(360, 210)
-	sizeLimit.Parent = frame
-
-	Instance.new("UICorner", frame).CornerRadius = Theme.CornerRadius.Large
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = Theme.Colors.AlertRed
-	stroke.Thickness = 2
-	stroke.Parent = frame
-
-	local title = Instance.new("TextLabel")
-	title.Name = "Title"
-	title.BackgroundTransparency = 1
-	title.Position = UDim2.fromOffset(12, 10)
-	title.Size = UDim2.new(1, -24, 0, 26)
-	title.Font = Theme.Fonts.Title
-	title.TextSize = 20
-	title.TextColor3 = Theme.Colors.TextGold
-	title.Text = "SKULL PENALTY"
-	title.ZIndex = 61
-	title.Parent = frame
-
-	local subtitle = Instance.new("TextLabel")
-	subtitle.Name = "Subtitle"
-	subtitle.BackgroundTransparency = 1
-	subtitle.Position = UDim2.fromOffset(12, 38)
-	subtitle.Size = UDim2.new(1, -24, 0, 34)
-	subtitle.Font = Theme.Fonts.Body
-	subtitle.TextSize = 14
-	subtitle.TextWrapped = true
-	subtitle.TextColor3 = Theme.Colors.TextSecondary
-	subtitle.Text = ""
-	subtitle.ZIndex = 61
-	subtitle.Parent = frame
-
-	local row = Instance.new("Frame")
+	local frame = UIKit.Panel(parent, { name = "DiscardModal", width = 380, zIndex = 60, accent = Theme.Colors.AlertRed })
+	local title = UIKit.Label(frame, { name = "Title", style = "title", order = 1, text = "SKULL PENALTY" })
+	local subtitle = UIKit.Label(frame, { name = "Subtitle", style = "body", order = 2 })
+	local row = UIKit.Row(frame, 3, CARD_SIZE + 8, CARD_GAP)
 	row.Name = "CardRow"
-	row.BackgroundTransparency = 1
-	row.AnchorPoint = Vector2.new(0.5, 0)
-	row.Position = UDim2.new(0.5, 0, 0, 86)
-	row.Size = UDim2.new(1, -24, 0, CARD_H)
-	row.ZIndex = 61
-	row.Parent = frame
-
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	layout.VerticalAlignment = Enum.VerticalAlignment.Center
-	layout.Padding = UDim.new(0, CARD_GAP)
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Parent = row
 
 	root = frame
 	titleLabel = title
@@ -102,55 +49,43 @@ function DiscardModal.Create(parent: Instance, onPick: (pick: { [string]: any })
 	return frame
 end
 
-local function makeCardButton(row: Frame, order: number, cardType: string?, setId: string?): TextButton
-	local isSkull = cardType == Enums.CardType.Skull
+-- A round card: its face for your own cards, its back for a blind pick
+local function makeCardButton(row: Frame, order: number, cardType: string?, setId: string?): ImageButton
 	local faceUp = cardType ~= nil
+	local isSkull = cardType == Enums.CardType.Skull
 
-	local button = Instance.new("TextButton")
+	local button = Instance.new("ImageButton")
 	button.Name = "DiscardCard" .. order
 	button.LayoutOrder = order
-	button.Size = UDim2.fromOffset(CARD_W, CARD_H)
-	button.AutoButtonColor = true
-	button.BorderSizePixel = 0
-	button.Font = Theme.Fonts.Title
-	button.TextSize = faceUp and 34 or 30
-	button.ZIndex = 62
-	if not faceUp then
-		button.BackgroundColor3 = Theme.Colors.CardBack
-		button.TextColor3 = Theme.Colors.Gold
-		button.Text = "?"
-	elseif isSkull then
-		button.BackgroundColor3 = Theme.Colors.SkullPrimary
-		button.TextColor3 = Theme.Colors.SkullAccent
-		button.Text = "💀"
-	else
-		button.BackgroundColor3 = Theme.Colors.RosePrimary
-		button.TextColor3 = Theme.Colors.TextPrimary
-		button.Text = "🌹"
-	end
-	button.Parent = row
-
-	-- Card art: the face for your own cards, the back for a blind pick
-	button.Text = ""
+	button.Size = UDim2.fromOffset(CARD_SIZE, CARD_SIZE)
 	button.BackgroundTransparency = 1
-	local art = Instance.new("ImageLabel")
-	art.Name = "CardArt"
-	art.AnchorPoint = Vector2.new(0.5, 0.5)
-	art.Position = UDim2.fromScale(0.5, 0.5)
-	art.Size = UDim2.fromOffset(CARD_W, CARD_W)
-	art.BackgroundTransparency = 1
-	art.Image = if faceUp then CardArt.Face(setId, cardType) else CardArt.Back(setId)
-	art.ZIndex = 63
-	art.Parent = button
-	Instance.new("UICorner", art).CornerRadius = UDim.new(1, 0)
+	button.AutoButtonColor = true
+	button.Image = if faceUp then CardArt.Face(setId, cardType) else CardArt.Back(setId)
+	button.ScaleType = Enum.ScaleType.Fit
+	button.Parent = row
+	Instance.new("UICorner", button).CornerRadius = UDim.new(1, 0)
 
-	Instance.new("UICorner", button).CornerRadius = Theme.CornerRadius.Medium
 	local stroke = Instance.new("UIStroke")
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	stroke.Color = faceUp and (isSkull and Theme.Colors.SkullAccent or Theme.Colors.RoseAccent) or Theme.Colors.CardBorder
+	stroke.Color = if not faceUp then Theme.Colors.CardBorder
+		elseif isSkull then Theme.Colors.SkullAccent
+		else Theme.Colors.RoseAccent
 	stroke.Thickness = 2
-	stroke.Parent = art -- round rim around the card art
+	stroke.Parent = button
 
+	-- Lift slightly on hover so it's clear what you're about to pick
+	local scale = Instance.new("UIScale")
+	scale.Parent = button
+	button.MouseEnter:Connect(function()
+		scale.Scale = 1.08
+		stroke.Color = Theme.Colors.GoldGlow
+	end)
+	button.MouseLeave:Connect(function()
+		scale.Scale = 1
+		stroke.Color = if not faceUp then Theme.Colors.CardBorder
+			elseif isSkull then Theme.Colors.SkullAccent
+			else Theme.Colors.RoseAccent
+	end)
 	return button
 end
 
@@ -161,6 +96,15 @@ function DiscardModal.Show(info: DiscardInfo, victimName: string, setId: string?
 		return
 	end
 
+	local cards = info.cards
+	local ownPick = info.isOwnSkull and cards ~= nil
+	local key = (if ownPick and cards then table.concat(cards, ",") else tostring(info.cardCount))
+		.. "|" .. tostring(info.victimId) .. "|" .. tostring(setId)
+	if isOpen and key == shownKey then
+		return -- same picker already open (state re-sync)
+	end
+	shownKey = key
+
 	hasPicked = false
 	for _, child in ipairs(row:GetChildren()) do
 		if child:IsA("GuiButton") then
@@ -168,41 +112,43 @@ function DiscardModal.Show(info: DiscardInfo, victimName: string, setId: string?
 		end
 	end
 
-	local cards = info.cards
-	if info.isOwnSkull and cards then
+	local function pick(payload: { [string]: any })
+		if hasPicked or not pickCallback then
+			return
+		end
+		hasPicked = true
+		pickCallback(payload)
+	end
+
+	if ownPick and cards then
 		title.Text = "YOU HIT YOUR OWN SKULL"
 		subtitle.Text = "Choose one of your cards to lose for good."
 		for i, cardType in ipairs(cards) do
-			local button = makeCardButton(row, i, cardType, setId)
-			button.Activated:Connect(function()
-				if hasPicked or not pickCallback then
-					return
-				end
-				hasPicked = true
-				pickCallback({ cardType = cardType })
+			makeCardButton(row, i, cardType, setId).Activated:Connect(function()
+				pick({ cardType = cardType })
 			end)
 		end
 	else
 		title.Text = "REMOVE A CARD"
 		subtitle.Text = "Pick one of " .. victimName .. "'s cards, face-down. Nobody sees what it was."
 		for i = 1, math.max(1, info.cardCount) do
-			local button = makeCardButton(row, i, nil, setId)
-			button.Activated:Connect(function()
-				if hasPicked or not pickCallback then
-					return
-				end
-				hasPicked = true
-				pickCallback({ index = i })
+			makeCardButton(row, i, nil, setId).Activated:Connect(function()
+				pick({ index = i })
 			end)
 		end
 	end
 
-	frame.Visible = true
+	if not isOpen then
+		isOpen = true
+		UIKit.Pop(frame, true)
+	end
 end
 
 function DiscardModal.Hide()
-	if root then
-		root.Visible = false
+	shownKey = ""
+	if root and isOpen then
+		isOpen = false
+		UIKit.Pop(root, false)
 	end
 end
 
