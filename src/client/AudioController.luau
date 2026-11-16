@@ -8,7 +8,6 @@
 -- To swap a sound, change its id here; keep it an Audio asset you are allowed to use.
 
 local SoundService = game:GetService("SoundService")
-local ContentProvider = game:GetService("ContentProvider")
 
 local AudioController = {}
 
@@ -66,16 +65,15 @@ function AudioController.Init()
 	end
 
 	soundFolder = folder
+end
 
-	task.spawn(function()
-		local preloadList = {}
-		for _, snd in pairs(activeSounds) do
-			table.insert(preloadList, snd)
-		end
-		pcall(function()
-			ContentProvider:PreloadAsync(preloadList)
-		end)
-	end)
+-- Every sound, for preloading (init.client preloads them behind the loading screen)
+function AudioController.GetSounds(): { Instance }
+	local list: { Instance } = {}
+	for _, snd in pairs(activeSounds) do
+		table.insert(list, snd)
+	end
+	return list
 end
 
 -- ============================================================================

@@ -40,11 +40,20 @@ print("[Skulls & Roses] Client UI initializing for " .. localPlayer.Name .. "...
 CameraController.Init()
 AudioController.Init()
 
--- Preload all card art so faces don't pop in blank the first time they're shown
+-- Preload all card art and sounds so nothing pops in blank the first time it's used.
+-- The loading screen (ReplicatedFirst/LoadingScreen) waits for "ClientReady".
 task.spawn(function()
+	local assets: { any } = {}
+	for _, image in ipairs(CardArt.AllImages()) do
+		table.insert(assets, image)
+	end
+	for _, snd in ipairs(AudioController.GetSounds()) do
+		table.insert(assets, snd)
+	end
 	pcall(function()
-		game:GetService("ContentProvider"):PreloadAsync(CardArt.AllImages())
+		game:GetService("ContentProvider"):PreloadAsync(assets)
 	end)
+	localPlayer:SetAttribute("ClientReady", true)
 end)
 
 -- ============================================================================
@@ -195,13 +204,12 @@ local function buildUI()
 		cam:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
 	end
 
-	-- Roblox's player list would sit on top of the status strip, and the seat tags
-	-- already show every player
+	-- Roblox's player list only repeats what the seat tags already show
 	pcall(function()
 		game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
 	end)
 
-	-- 1. Status strip (top right: phase, whose turn, the one timer) and event pop-ups (above the hand)
+	-- 1. Status card (bottom left: phase, whose turn, the one timer) and event pop-ups (above the hand)
 	StatusBar.Create(screenGui)
 	Toast.Create(screenGui)
 

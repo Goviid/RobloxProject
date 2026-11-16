@@ -14,6 +14,7 @@ print("[Skulls & Roses] Server initializing...")
 
 -- Build the 3D Table Arena in Workspace
 TableBuilder.Build()
+workspace:SetAttribute("TableReady", true) -- the client loading screen waits for this
 
 -- Action Dispatcher from Client
 Network.SubmitAction.OnServerInvoke = function(player: Player, action: string, data: any)

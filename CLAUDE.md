@@ -11,7 +11,7 @@ Multiplayer bluffing card game for Roblox (2–6 players, human + bots), Day of 
 - Every file is Luau with `--!strict`. Keep it that way; no `--!nonstrict` escapes.
 - **Server-authoritative.** Hidden information (hands, stacks, skull positions) lives only on the server. Clients send intents via `src/shared/Network.luau`; the server validates everything. Never trust or send secret state to clients.
 - **Zero external dependencies** (no Wally packages). Use Roblox services only.
-- Sync with Rojo (`default.project.json`): `src/shared` → ReplicatedStorage.Shared, `src/server` → ServerScriptService.Server, `src/client` → StarterPlayerScripts.Client.
+- Sync with Rojo (`default.project.json`): `src/shared` → ReplicatedStorage.Shared, `src/server` → ServerScriptService.Server, `src/client` → StarterPlayerScripts.Client, `src/first/LoadingScreen.client.luau` → ReplicatedFirst.
 - Work happens on the `claude-assisted` branch. `main` is the stable base (`v1.0-base-game`).
 
 ## Checking code (no Studio needed)

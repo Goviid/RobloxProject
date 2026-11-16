@@ -9,6 +9,12 @@
       }
     },
 
+    "ReplicatedFirst": {
+      "LoadingScreen": {
+        "$path": "src/first/LoadingScreen.client.luau"
+      }
+    },
+
     "ServerScriptService": {
       "Server": {
         "$path": "src/server"
@@ -25,7 +31,8 @@
 
     "Workspace": {
       "$properties": {
-        "FilteringEnabled": true
+        "FilteringEnabled": true,
+        "StreamingEnabled": false
       },
       "Baseplate": {
         "$className": "Part",
