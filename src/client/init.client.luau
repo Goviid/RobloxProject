@@ -14,6 +14,7 @@ end)
 local Constants = require(ReplicatedStorage.Shared.Constants)
 local Enums = require(ReplicatedStorage.Shared.Enums)
 local Network = require(ReplicatedStorage.Shared.Network)
+local CardArt = require(ReplicatedStorage.Shared.CardArt)
 
 local NotificationBanner = require(script.UI.NotificationBanner)
 local TableView = require(script.UI.TableView)
@@ -39,6 +40,13 @@ print("[Skulls & Roses] Client UI initializing for " .. localPlayer.Name .. "...
 -- ============================================================================
 CameraController.Init()
 AudioController.Init()
+
+-- Preload all card art so faces don't pop in blank the first time they're shown
+task.spawn(function()
+	pcall(function()
+		game:GetService("ContentProvider"):PreloadAsync(CardArt.AllImages())
+	end)
+end)
 
 -- ============================================================================
 -- 2. SCREEN GUI & MODULAR UI SETUP (Guaranteed persistence on spawn)
@@ -144,7 +152,7 @@ local function buildUI()
 					local myData = lastKnownPlayers[tostring(localPlayer.UserId)]
 					local target = getSeatPileScreenPos(myData and myData.seatIndex)
 					if target then
-						CardAnimation.PlayCardFly(screenGui, HAND_DOCK_POS, target, cardType)
+						CardAnimation.PlayCardFly(screenGui, HAND_DOCK_POS, target, cardType, myData and myData.cardSet)
 					end
 				else
 					NotificationBanner.Show(err or "Not your turn to place a card!", "warning")
@@ -291,7 +299,8 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 
 		-- 2. Update Hand Tray (Remains visible across all phases matching reference)
 		local canPlace = (payload.gameState == Enums.GameState.Placement)
-		HandBar.UpdateHand(myHand, isMyTurn, canPlace)
+		local isNewRound = payload.gameState == Enums.GameState.Placement and previousGameState ~= Enums.GameState.Placement
+		HandBar.UpdateHand(myHand, isMyTurn, canPlace, isNewRound, myData and myData.cardSet)
 		HandBar.SetVisible(#myHand > 0)
 
 		-- 3. Update Action Buttons
@@ -366,7 +375,7 @@ Network.GameStateChanged.OnClientEvent:Connect(function(payload: any)
 			and tonumber(discard.chooserId) == localPlayer.UserId
 		if isMyDiscard then
 			local victimData = lastKnownPlayers[tostring(discard.victimId)]
-			DiscardModal.Show(discard, victimData and victimData.name or "the challenger")
+			DiscardModal.Show(discard, victimData and victimData.name or "the challenger", victimData and victimData.cardSet)
 		else
 			DiscardModal.Hide()
 		end
@@ -462,7 +471,7 @@ Network.CardRevealed.OnClientEvent:Connect(function(data: any)
 	end
 
 	-- Trigger center screen flip animation popup
-	CardRevealModal.ShowCard(data.cardType, targetName, data.cardsFlipped, data.targetCards)
+	CardRevealModal.ShowCard(data.cardType, targetName, data.cardsFlipped, data.targetCards, targetP and targetP.cardSet)
 
 	if isSkull then
 		CameraController.ShakeOnSkull()
@@ -478,7 +487,8 @@ Network.CardLost.OnClientEvent:Connect(function(data: any)
 	NotificationBanner.Show("You lost " .. cardName .. "!", "alert")
 	-- The lost card flies off the top of the screen
 	if data and data.cardType then
-		CardAnimation.PlayCardFly(screenGui, HAND_DOCK_POS, UDim2.fromScale(0.5, -0.15), data.cardType)
+		local myData = lastKnownPlayers[tostring(localPlayer.UserId)]
+		CardAnimation.PlayCardFly(screenGui, HAND_DOCK_POS, UDim2.fromScale(0.5, -0.15), data.cardType, myData and myData.cardSet)
 	end
 	ChatBox.AddMessage("SYSTEM", "You lost " .. cardName .. ".", "#FF6B6B")
 end)

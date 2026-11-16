@@ -4,13 +4,12 @@
 
 local TweenService = game:GetService("TweenService")
 local Theme = require(script.Parent.Theme)
-local Enums = require(game:GetService("ReplicatedStorage").Shared.Enums)
+local CardArt = require(game:GetService("ReplicatedStorage").Shared.CardArt)
 
 local CardAnimation = {}
 
 -- Fly a card from the hand dock into the center table stack
-function CardAnimation.PlayCardFly(parentGui: Instance, startPos: UDim2, endPos: UDim2, cardType: string)
-	local isRose = (cardType == Enums.CardType.Rose)
+function CardAnimation.PlayCardFly(parentGui: Instance, startPos: UDim2, endPos: UDim2, cardType: string, setId: string?)
 
 	-- Temp flying card element
 	local flying = Instance.new("Frame")
@@ -18,7 +17,7 @@ function CardAnimation.PlayCardFly(parentGui: Instance, startPos: UDim2, endPos:
 	flying.Size = UDim2.fromOffset(72, 72)
 	flying.Position = startPos
 	flying.AnchorPoint = Vector2.new(0.5, 0.5)
-	flying.BackgroundColor3 = isRose and Theme.Colors.RosePrimary or Theme.Colors.SkullPrimary
+	flying.BackgroundTransparency = 1
 	flying.BorderSizePixel = 0
 	flying.ZIndex = 50
 	flying.Parent = parentGui
@@ -32,13 +31,13 @@ function CardAnimation.PlayCardFly(parentGui: Instance, startPos: UDim2, endPos:
 	stroke.Thickness = 2.5
 	stroke.Parent = flying
 
-	local icon = Instance.new("TextLabel")
+	local icon = Instance.new("ImageLabel")
 	icon.Size = UDim2.fromScale(1, 1)
 	icon.BackgroundTransparency = 1
-	icon.Font = Theme.Fonts.Title
-	icon.TextSize = 32
-	icon.Text = isRose and "🌹" or "💀"
+	icon.Image = CardArt.Face(setId, cardType)
+	icon.ZIndex = 51
 	icon.Parent = flying
+	Instance.new("UICorner", icon).CornerRadius = UDim.new(1, 0)
 
 	-- Arc trajectory tween
 	local tween = TweenService:Create(flying, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {

@@ -65,6 +65,11 @@ F:\RobloxProject\
 * **`GameState`**: `Lobby` &rarr; `Placement` &rarr; `Bidding` &rarr; `Revealing` &rarr; (`Discarding` on a skull hit) &rarr; `RoundEnd` &rarr; `MatchEnd`.
 * **`PlayerAction`**: Commands sent by players through `Network.SubmitAction`: `PlaceCard`, `StartBid`, `RaiseBid`, `Pass`, `RevealCard`, `DiscardCard` (`{ cardType }` on own skull, `{ index }` for a blind pick).
 
+#### `CardArt.luau`
+* **Purpose:** The 8 card art sets (back / skull / rose image IDs, display name, accent colour). `CardArt.Face(setId, cardType)`, `CardArt.Back(setId)`.
+* Each player is dealt a random, unique set at match start (`PlayerManager.AssignCardSets`, called from `RoundManager.StartMatch`) and it replicates as `cardSet` in the client state. The set is public; card faces are only applied to a 3D card at reveal time.
+* Source art: `Artwork assets/Cards` (8 sheets); cropped 512×512 round PNGs in `Artwork assets/Cards/cropped`.
+
 #### `Network.luau`
 * **Purpose:** Manages RemoteEvents and RemoteFunctions automatically in `ReplicatedStorage`.
 * **Server &rarr; Client Events:** `GameStateChanged`, `CardPlayed`, `BidUpdated`, `CardRevealed`, `CardLost` (sent only to the penalised challenger, with the card type they lost), `Notification`, `GameOver`, `LobbyState` (`{ inLobby, hostId, addBots, seats, waitingCount, countdown, canStart }`). `GameStateChanged` also carries `isSeated` (false = waiting for the next match) and `discard = { chooserId, victimId, isOwnSkull, cardCount, cards? }` during `Discarding`; `cards` is only sent to a challenger choosing among their own cards.
@@ -80,6 +85,7 @@ F:\RobloxProject\
 * **Regular Bright Lighting:** Standard Roblox daytime lighting (`Brightness: 2.0`, `ClockTime: 14.0`, `ShadowMap`, natural ambient fill) with zero dark walls or dim gloom.
 * **Spawn & Positioning:** Placed an invisible `SpawnLocation` directly at Seat 1 and anchors `HumanoidRootPart` with disabled locomotion so the player never spawns in the middle or slides off.
 * **Standing Avatars:** Positions human players and builds stylish custom-suited dummy avatars for bots around the circular table facing inward.
+* **Deal Animation:** Fanned hand tokens are only rebuilt when a seat's card count changes; tokens a hand gains (cards returning at round start) fly in from the table centre, staggered by seat. Your own 2D hand does the same via `HandBar.UpdateHand(..., deal)`.
 * **Seat Tags:** Every seat (bots and humans; your own tag is hidden from you) shows name, score pips (`●○ 1/2`), a badge with total cards left (hand + table), and greys out with "ELIMINATED". Driven by `UpdateScore`, `UpdateCardCount(seat, handCount, totalCards)` and `SetEliminated` from `RoundManager.broadcastState`.
 
 #### `Card3DManager.luau`
@@ -87,6 +93,7 @@ F:\RobloxProject\
 * **3D Physical Stacking:** Spawns physical oversized 3D cylinder cards (2.9 studs wide) on table coasters (3.2 studs wide) in front of each avatar, stacking vertically with rotational jitter.
 * **Interactive Flipping:** Equipped with `ClickDetector` so challengers can click physical 3D cards directly on the table.
 * **Reveal Animation:** Card lifts +2.5 studs into the air and physically spins 180° to reveal its true face (`🌹 Rose` or `💀 Skull`).
+* **Burn (`BurnCard`):** On a skull penalty, a face-down card rises from the challenger's pile, catches fire (Fire + ember particles + glow) and burns away over ~1.6 s. Called from `RoundManager.finishChallengerFailed`; never shows which card was lost.
 * **Round Cleanup:** Smooth shrink-and-destroy animation between rounds.
 
 #### `PlayerManager.luau`

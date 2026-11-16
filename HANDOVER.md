@@ -281,6 +281,7 @@ Replaced 2026-11-16: the original IDs were mostly not audio at all (places, scri
 | `Eliminated` | `96795857757261` | Daily Sounds "Power Down" | You lose your last card |
 | `MatchStart` | `87058958593472` | Daily Sounds "Church Bell Toll" | Round 1 of a match |
 | `ErrorBuzz` | `91501650514390` | Daily Sounds "Error Buzz" | The server rejects your action |
+| `BurnSound` (server, `Card3DManager`) | `9117983605` | Pro Sound Effects "Pyro Fire Ball Burst 9" | A lost card burns on the table (positional, from that pile) |
 
 ---
 
@@ -311,7 +312,7 @@ Replaced 2026-11-16: the original IDs were mostly not audio at all (places, scri
    - *TODO*: Implement `DataStoreService` to persist player wins, win streaks, games played, and unlockable custom card/coaster skins.
 3. **Custom Calavera Texture Assets**:
    - *Current State*: 3D cards and 2D tokens use clean procedural shapes and unicode emoji (`🌹`, `💀`, `✦`).
-   - *TODO*: Import custom high-resolution (512x512) Calavera floral and ornate skull PNG decals to replace emojis.
+   - *Done (2026-11-16)*: 8 Calavera card sets (back / skull / rose) uploaded and wired in via `src/shared/CardArt.luau`: hand, 3D table cards and hand tokens, reveal pop-up, card-loss picker, flying and burning cards. Each player gets a random unique set per match.
 4. **Spectator Camera**:
    - *Current State*: Eliminated players remain seated at the table.
    - *TODO*: Add an overhead free-orbit spectator camera mode for players once eliminated.

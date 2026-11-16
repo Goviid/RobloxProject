@@ -43,6 +43,7 @@ local turnLock = false
 
 local function broadcastState()
 	for _, p in pairs(PlayerManager.GetAllPlayers()) do
+		TableBuilder.SetSeatCardSet(p.seatIndex, p.cardSet)
 		TableBuilder.UpdateScore(p.seatIndex, p.score)
 		TableBuilder.UpdateCardCount(p.seatIndex, #p.hand, #p.hand + #p.playedStack + #p.revealedCards)
 		TableBuilder.SetEliminated(p.seatIndex, p.isEliminated)
@@ -458,6 +459,7 @@ end
 
 function RoundManager.StartMatch()
 	PlayerManager.ResetMatch()
+	PlayerManager.AssignCardSets()
 	RoundManager.StartRound()
 end
 
@@ -576,6 +578,8 @@ local function finishChallengerFailed(lostCard: string?)
 		end)
 		return
 	end
+
+	Card3DManager.BurnCard(challenger.seatIndex)
 
 	local chooser = PlayerManager.GetPlayer(discard.chooserId)
 	if discard.isOwnSkull then

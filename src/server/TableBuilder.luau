@@ -9,9 +9,11 @@
 -- 5. Floating glassmorphism gradient nametags & standing fanned circular hand displays
 
 local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Constants = require(ReplicatedStorage.Shared.Constants)
+local CardArt = require(ReplicatedStorage.Shared.CardArt)
 
 local TableBuilder = {}
 
@@ -22,6 +24,7 @@ local pileMats: { [number]: Part } = {}
 local botDummies: { [number]: Model } = {}
 local seatBillboards: { [number]: BillboardGui } = {}
 local opponentHands: { [number]: Model } = {}
+local seatCardSets: { [number]: string } = {} -- CardArt set per seat (card backs)
 local cardCountLabels: { [number]: TextLabel } = {}
 local scoreLabels: { [number]: TextLabel } = {}
 -- Last known per-seat status, re-applied when a tag is rebuilt (e.g. a player respawns)
@@ -627,10 +630,23 @@ local function renderOpponentFannedHand(seatIdx: number, cardCount: number)
 		return
 	end
 
+	local setId = seatCardSets[seatIdx] or CardArt.DefaultSetId
 	local existing = opponentHands[seatIdx]
+	local prevCount = 0
 	if existing and existing.Parent then
+		local stored = existing:GetAttribute("CardCount")
+		prevCount = if type(stored) == "number" then stored else 0
+		-- State updates arrive constantly; only rebuild when the count or art changes,
+		-- otherwise running deal animations would be cut off
+		if prevCount == cardCount and existing:GetAttribute("CardSet") == setId then
+			return
+		end
+		if existing:GetAttribute("CardSet") ~= setId then
+			prevCount = 0 -- new art (new match): deal the whole hand again
+		end
 		existing:Destroy()
 	end
+	opponentHands[seatIdx] = nil
 
 	if cardCount <= 0 then
 		return
@@ -638,6 +654,8 @@ local function renderOpponentFannedHand(seatIdx: number, cardCount: number)
 
 	local handModel = Instance.new("Model")
 	handModel.Name = "OpponentHand_" .. seatIdx
+	handModel:SetAttribute("CardCount", cardCount)
+	handModel:SetAttribute("CardSet", setId)
 	handModel.Parent = arenaModel
 	opponentHands[seatIdx] = handModel
 
@@ -660,51 +678,36 @@ local function renderOpponentFannedHand(seatIdx: number, cardCount: number)
 		token.Anchored = true
 		token.CanCollide = false
 		token.Material = Enum.Material.SmoothPlastic
-		token.Color = Color3.fromRGB(26, 22, 32) -- Sleek dark backing
+		token.Color = CardArt.Get(setId).accent:Lerp(Color3.new(0, 0, 0), 0.6) -- rim in the set's colour
 		token.Parent = handModel
 
-		-- Attach identical card backs to both faces so cards are 100% unpeekable (Locofficial style)
+		-- The player's card back on both faces, so tokens never reveal anything
 		for _, faceNormal in ipairs({ Enum.NormalId.Right, Enum.NormalId.Left }) do
 			local sg = Instance.new("SurfaceGui")
 			sg.Name = "TokenGui_" .. faceNormal.Name
 			sg.Face = faceNormal
-			sg.CanvasSize = Vector2.new(128, 128)
+			sg.CanvasSize = Vector2.new(256, 256)
 			sg.Adornee = token
 			sg.Parent = token
 
-			local bg = Instance.new("Frame")
-			bg.Size = UDim2.fromScale(1, 1)
-			bg.BackgroundColor3 = Color3.fromRGB(26, 22, 32)
-			bg.BorderSizePixel = 0
-			bg.Parent = sg
-			Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
+			local art = Instance.new("ImageLabel")
+			art.Name = "CardArt"
+			art.Size = UDim2.fromScale(1, 1)
+			art.BackgroundTransparency = 1
+			art.Image = CardArt.Back(setId)
+			art.Parent = sg
+		end
 
-			local tStroke = Instance.new("UIStroke")
-			tStroke.Color = Color3.fromRGB(245, 205, 80) -- Gold rim
-			tStroke.Thickness = 2.6
-			tStroke.Parent = bg
-
-			local inner = Instance.new("Frame")
-			inner.Size = UDim2.new(1, -12, 1, -12)
-			inner.Position = UDim2.fromOffset(6, 6)
-			inner.BackgroundTransparency = 1
-			inner.Parent = bg
-			Instance.new("UICorner", inner).CornerRadius = UDim.new(1, 0)
-
-			local innerStroke = Instance.new("UIStroke")
-			innerStroke.Color = Color3.fromRGB(255, 230, 140)
-			innerStroke.Transparency = 0.45
-			innerStroke.Thickness = 1.4
-			innerStroke.Parent = inner
-
-			local icon = Instance.new("TextLabel")
-			icon.Size = UDim2.fromScale(1, 1)
-			icon.BackgroundTransparency = 1
-			icon.Font = Enum.Font.FredokaOne
-			icon.TextSize = 52
-			icon.TextColor3 = Color3.fromRGB(245, 210, 80)
-			icon.Text = "✦" -- Anonymous geometric luxury medallion emblem
-			icon.Parent = bg
+		-- Deal: tokens the hand just gained (cards back at round start) fly in from the table
+		-- centre, staggered by seat and by card so it reads as a dealer going round the table
+		if i > prevCount then
+			token.CFrame = CFrame.new(0, 3.6, 0) * CFrame.Angles(0, 0, math.rad(90))
+			token.Size = Vector3.new(0.06, TOKEN_DIAMETER * 0.4, TOKEN_DIAMETER * 0.4)
+			local delayTime = (seatIdx - 1) * 0.12 + (i - prevCount - 1) * 0.09
+			TweenService:Create(token, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, delayTime), {
+				CFrame = tokenCF,
+				Size = Vector3.new(0.06, TOKEN_DIAMETER, TOKEN_DIAMETER),
+			}):Play()
 		end
 	end
 end
@@ -854,6 +857,13 @@ function TableBuilder.UpdateCardCount(seatIndex: number, handCount: number, tota
 	applySeatStatus(seatIndex)
 end
 
+-- Which card art set a seat uses (backs on its hand tokens); applied on the next render
+function TableBuilder.SetSeatCardSet(seatIndex: number, setId: string?)
+	if setId then
+		seatCardSets[seatIndex] = setId
+	end
+end
+
 function TableBuilder.SetEliminated(seatIndex: number, eliminated: boolean)
 	getStatus(seatIndex).eliminated = eliminated
 	applySeatStatus(seatIndex)
@@ -894,6 +904,7 @@ function TableBuilder.ClearSeat(seatIndex: number)
 	scoreLabels[seatIndex] = nil
 	cardCountLabels[seatIndex] = nil
 	seatStatus[seatIndex] = nil
+	seatCardSets[seatIndex] = nil
 end
 
 -- Players without a seat (waiting for the next match) stand back from the table

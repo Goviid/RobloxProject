@@ -6,6 +6,7 @@
 -- The server decides who sees what; this module only renders the payload it is given.
 
 local Enums = require(game:GetService("ReplicatedStorage").Shared.Enums)
+local CardArt = require(game:GetService("ReplicatedStorage").Shared.CardArt)
 local Theme = require(script.Parent.Theme)
 
 local DiscardModal = {}
@@ -101,7 +102,7 @@ function DiscardModal.Create(parent: Instance, onPick: (pick: { [string]: any })
 	return frame
 end
 
-local function makeCardButton(row: Frame, order: number, cardType: string?): TextButton
+local function makeCardButton(row: Frame, order: number, cardType: string?, setId: string?): TextButton
 	local isSkull = cardType == Enums.CardType.Skull
 	local faceUp = cardType ~= nil
 
@@ -129,18 +130,32 @@ local function makeCardButton(row: Frame, order: number, cardType: string?): Tex
 	end
 	button.Parent = row
 
+	-- Card art: the face for your own cards, the back for a blind pick
+	button.Text = ""
+	button.BackgroundTransparency = 1
+	local art = Instance.new("ImageLabel")
+	art.Name = "CardArt"
+	art.AnchorPoint = Vector2.new(0.5, 0.5)
+	art.Position = UDim2.fromScale(0.5, 0.5)
+	art.Size = UDim2.fromOffset(CARD_W, CARD_W)
+	art.BackgroundTransparency = 1
+	art.Image = if faceUp then CardArt.Face(setId, cardType) else CardArt.Back(setId)
+	art.ZIndex = 63
+	art.Parent = button
+	Instance.new("UICorner", art).CornerRadius = UDim.new(1, 0)
+
 	Instance.new("UICorner", button).CornerRadius = Theme.CornerRadius.Medium
 	local stroke = Instance.new("UIStroke")
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Color = faceUp and (isSkull and Theme.Colors.SkullAccent or Theme.Colors.RoseAccent) or Theme.Colors.CardBorder
 	stroke.Thickness = 2
-	stroke.Parent = button
+	stroke.Parent = art -- round rim around the card art
 
 	return button
 end
 
--- Show the picker. `victimName` is the challenger who loses the card.
-function DiscardModal.Show(info: DiscardInfo, victimName: string)
+-- Show the picker. `victimName` is the challenger who loses the card; `setId` their art set.
+function DiscardModal.Show(info: DiscardInfo, victimName: string, setId: string?)
 	local frame, row, title, subtitle = root, cardRow, titleLabel, subtitleLabel
 	if not frame or not row or not title or not subtitle then
 		return
@@ -158,7 +173,7 @@ function DiscardModal.Show(info: DiscardInfo, victimName: string)
 		title.Text = "YOU HIT YOUR OWN SKULL"
 		subtitle.Text = "Choose one of your cards to lose for good."
 		for i, cardType in ipairs(cards) do
-			local button = makeCardButton(row, i, cardType)
+			local button = makeCardButton(row, i, cardType, setId)
 			button.Activated:Connect(function()
 				if hasPicked or not pickCallback then
 					return
@@ -171,7 +186,7 @@ function DiscardModal.Show(info: DiscardInfo, victimName: string)
 		title.Text = "REMOVE A CARD"
 		subtitle.Text = "Pick one of " .. victimName .. "'s cards, face-down. Nobody sees what it was."
 		for i = 1, math.max(1, info.cardCount) do
-			local button = makeCardButton(row, i, nil)
+			local button = makeCardButton(row, i, nil, setId)
 			button.Activated:Connect(function()
 				if hasPicked or not pickCallback then
 					return

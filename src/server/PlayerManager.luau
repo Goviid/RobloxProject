@@ -4,6 +4,7 @@
 
 local Enums = require(game:GetService("ReplicatedStorage").Shared.Enums)
 local Constants = require(game:GetService("ReplicatedStorage").Shared.Constants)
+local CardArt = require(game:GetService("ReplicatedStorage").Shared.CardArt)
 
 export type PlayerData = {
 	userId: number,
@@ -13,6 +14,7 @@ export type PlayerData = {
 	score: number,
 	isEliminated: boolean,
 	hasPassedBid: boolean,
+	cardSet: string?, -- CardArt set id, dealt at match start (public)
 	-- SECRET DATA (Never replicate to other clients!)
 	hand: { string },        -- Available cards in hand
 	playedStack: { string }, -- Cards placed on table face-down (1st placed is index 1, top is #playedStack)
@@ -230,6 +232,20 @@ function PlayerManager.ResetMatch()
 	end
 end
 
+-- Deal every seated player a different card art set (random each match)
+function PlayerManager.AssignCardSets()
+	local pool = table.clone(CardArt.SetIds)
+	for i = #pool, 2, -1 do
+		local j = math.random(1, i)
+		pool[i], pool[j] = pool[j], pool[i]
+	end
+	local n = 0
+	for _, p in ipairs(PlayerManager.GetActivePlayers()) do
+		n += 1
+		p.cardSet = pool[((n - 1) % #pool) + 1]
+	end
+end
+
 -- Play a card from hand to the top of player's playedStack
 function PlayerManager.PlayCard(userId: number, cardType: string): boolean
 	local p = players[userId]
@@ -321,6 +337,7 @@ function PlayerManager.GetClientState(forUserId: number?)
 			score = p.score,
 			isEliminated = p.isEliminated,
 			hasPassedBid = p.hasPassedBid,
+			cardSet = p.cardSet,
 			handCount = #p.hand,
 			stackCount = #p.playedStack,
 			-- Only the player themselves gets to see the true cards in their hand

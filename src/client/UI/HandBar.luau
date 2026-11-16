@@ -9,7 +9,7 @@
 -- 5. Snappy card consumption with dynamic re-centering
 
 local TweenService = game:GetService("TweenService")
-local Theme = require(script.Parent.Theme)
+local CardArt = require(game:GetService("ReplicatedStorage").Shared.CardArt)
 local Enums = require(game:GetService("ReplicatedStorage").Shared.Enums)
 
 local HandBar = {}
@@ -20,6 +20,7 @@ local onCardClickedCallback: CardSelectCallback? = nil
 local dockFrame: Frame? = nil
 local cardContainers: { Frame } = {}
 local currentHand: { string } = {}
+local currentSetId: string? = nil -- CardArt set for this match
 local canCurrentlyPlace = false
 local isPlayerTurn = false
 local selectedCard: string? = nil
@@ -165,18 +166,15 @@ local function createCircularToken(
 	innerStroke.Thickness = 1.4
 	innerStroke.Parent = inner
 
-	-- Center Icon (🌹 or 💀)
-	local icon = Instance.new("TextLabel")
+	-- Card face art from this match's set (covers the button's backing)
+	local icon = Instance.new("ImageLabel")
 	icon.Name = "CenterIcon"
 	icon.Size = UDim2.fromScale(1, 1)
-	icon.Position = UDim2.fromOffset(0, 0)
 	icon.BackgroundTransparency = 1
-	icon.Font = Theme.Fonts.Title
-	icon.TextSize = 58
-	icon.Text = isRose and "🌹" or "💀"
-	icon.TextColor3 = isRose and Color3.fromRGB(215, 30, 50) or Color3.fromRGB(245, 235, 250)
+	icon.Image = CardArt.Face(currentSetId, cardType)
 	icon.ZIndex = baseZIndex + 3
 	icon.Parent = btn
+	Instance.new("UICorner", icon).CornerRadius = UDim.new(1, 0)
 
 	-- Hover & Elevation
 	btn.MouseEnter:Connect(function()
@@ -451,7 +449,8 @@ function HandBar.Create(parent: Instance, onSelect: CardSelectCallback?): Frame
 	return dock
 end
 
-function HandBar.UpdateHand(hand: { string }, isTurn: boolean, canPlace: boolean)
+-- `deal`: the round just started, so the cards rise into the dock one after another
+function HandBar.UpdateHand(hand: { string }, isTurn: boolean, canPlace: boolean, deal: boolean?, setId: string?)
 	if not dockFrame then
 		return
 	end
@@ -481,7 +480,9 @@ function HandBar.UpdateHand(hand: { string }, isTurn: boolean, canPlace: boolean
 
 	-- If the cards themselves haven't changed, do NOT destroy/recreate DOM elements!
 	-- This preserves hover state and prevents button recreation drops.
-	if cardsMatch and #cardContainers == #hand then
+	local artChanged = setId ~= currentSetId
+	currentSetId = setId
+	if cardsMatch and #cardContainers == #hand and not deal and not artChanged then
 		for _, container in ipairs(cardContainers) do
 			local btn = container:FindFirstChild("TokenButton") :: ImageButton?
 			if btn then
@@ -509,6 +510,16 @@ function HandBar.UpdateHand(hand: { string }, isTurn: boolean, canPlace: boolean
 		local tokenHolder = createCircularToken(cardType, i, total, xOffset, canPlace and isTurn)
 		tokenHolder.Parent = dockFrame
 		table.insert(cardContainers, tokenHolder)
+
+		if deal then
+			local target = tokenHolder.Position
+			tokenHolder.Position = target + UDim2.fromOffset(0, 220)
+			TweenService:Create(
+				tokenHolder,
+				TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0.25 + (i - 1) * 0.1),
+				{ Position = target }
+			):Play()
+		end
 	end
 end
 

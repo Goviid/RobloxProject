@@ -1,268 +1,126 @@
 --!strict
 -- CardRevealModal.luau
--- Clean LOCOfficial-style Card Flip Announcement (Zero black boxes!)
--- Displays a floating 3D circular medallion in the center of the screen with smooth flip animation
+-- Centre-screen reveal: the flipped card's face in its owner's art set, flipping in
+-- like a coin, with who it came from and the challenge progress.
 
 local TweenService = game:GetService("TweenService")
-local Enums = require(game:GetService("ReplicatedStorage").Shared.Enums)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Enums = require(ReplicatedStorage.Shared.Enums)
+local CardArt = require(ReplicatedStorage.Shared.CardArt)
+local Theme = require(script.Parent.Theme)
 
 local CardRevealModal = {}
 
+local CARD_SIZE = 180
+
 local modalContainer: Frame? = nil
-local cardBadge: Frame? = nil
-local iconLabel: TextLabel? = nil
+local cardFace: ImageLabel? = nil
+local cardStroke: UIStroke? = nil
 local typeLabel: TextLabel? = nil
 local sourceLabel: TextLabel? = nil
+local showToken = 0
 
--- ============================================================================
--- 1. SETUP (Clean Floating Medallion, No Dark Box!)
--- ============================================================================
 function CardRevealModal.Create(parent: Instance): Frame
 	local container = Instance.new("Frame")
 	container.Name = "CardRevealModal"
 	container.AnchorPoint = Vector2.new(0.5, 0.5)
 	container.Size = UDim2.fromOffset(260, 260)
 	container.Position = UDim2.fromScale(0.5, 0.44)
-	container.BackgroundTransparency = 1 -- Zero black box!
+	container.BackgroundTransparency = 1
 	container.BorderSizePixel = 0
 	container.Visible = false
 	container.ZIndex = 50
 	container.Parent = parent
 
-	-- Who was flipped from (e.g. "Doña Flor's Stack")
+	-- Whose pile it came from, and challenge progress
 	local source = Instance.new("TextLabel")
 	source.Name = "SourceLabel"
 	source.Size = UDim2.new(1, 0, 0, 24)
-	source.Position = UDim2.fromOffset(0, 0)
 	source.BackgroundTransparency = 1
-	source.Font = Enum.Font.FredokaOne
+	source.Font = Theme.Fonts.Title
 	source.TextSize = 15
-	source.TextColor3 = Color3.fromRGB(240, 248, 255)
+	source.TextColor3 = Theme.Colors.TextPrimary
 	source.TextStrokeTransparency = 0.4
-	source.TextStrokeColor3 = Color3.fromRGB(15, 30, 55)
-	source.Text = "Revealed from Stack"
+	source.TextStrokeColor3 = Theme.Colors.PanelBackground
+	source.Text = ""
 	source.ZIndex = 51
 	source.Parent = container
 
-	-- Vertical Playing Card Face (LOCOfficial Uno Style)
-	local card = Instance.new("Frame")
-	card.Name = "CardFace"
-	card.AnchorPoint = Vector2.new(0.5, 0.5)
-	card.Size = UDim2.fromOffset(130, 185)
-	card.Position = UDim2.new(0.5, 0, 0.5, -4)
-	card.BackgroundColor3 = Color3.fromRGB(235, 42, 75)
-	card.BorderSizePixel = 0
-	card.ZIndex = 51
-	card.Parent = container
+	-- The round card face
+	local face = Instance.new("ImageLabel")
+	face.Name = "CardFace"
+	face.AnchorPoint = Vector2.new(0.5, 0.5)
+	face.Size = UDim2.fromOffset(CARD_SIZE, CARD_SIZE)
+	face.Position = UDim2.new(0.5, 0, 0.5, -4)
+	face.BackgroundTransparency = 1
+	face.ScaleType = Enum.ScaleType.Fit
+	face.ZIndex = 51
+	face.Parent = container
+	Instance.new("UICorner", face).CornerRadius = UDim.new(1, 0)
 
-	local cardCorner = Instance.new("UICorner")
-	cardCorner.CornerRadius = UDim.new(0, 14)
-	cardCorner.Parent = card
+	local stroke = Instance.new("UIStroke")
+	stroke.Name = "CardStroke"
+	stroke.Color = Theme.Colors.Gold
+	stroke.Thickness = 3
+	stroke.Parent = face
 
-	local cardStroke = Instance.new("UIStroke")
-	cardStroke.Name = "CardStroke"
-	cardStroke.Color = Color3.fromRGB(255, 255, 255)
-	cardStroke.Thickness = 3.5
-	cardStroke.Parent = card
-
-	-- Top-Left Mini Pip
-	local tlPip = Instance.new("Frame")
-	tlPip.Name = "TLPip"
-	tlPip.Size = UDim2.fromOffset(24, 26)
-	tlPip.Position = UDim2.fromOffset(7, 7)
-	tlPip.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	tlPip.BorderSizePixel = 0
-	tlPip.ZIndex = 52
-	tlPip.Parent = card
-	Instance.new("UICorner", tlPip).CornerRadius = UDim.new(0, 6)
-
-	local tlIcon = Instance.new("TextLabel")
-	tlIcon.Name = "TLIcon"
-	tlIcon.Size = UDim2.fromScale(1, 1)
-	tlIcon.BackgroundTransparency = 1
-	tlIcon.Font = Enum.Font.FredokaOne
-	tlIcon.TextSize = 14
-	tlIcon.Text = "🌹"
-	tlIcon.ZIndex = 53
-	tlIcon.Parent = tlPip
-
-	-- Bottom-Right Mini Pip
-	local brPip = Instance.new("Frame")
-	brPip.Name = "BRPip"
-	brPip.Size = UDim2.fromOffset(24, 26)
-	brPip.Position = UDim2.new(1, -31, 1, -33)
-	brPip.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	brPip.BorderSizePixel = 0
-	brPip.ZIndex = 52
-	brPip.Parent = card
-	Instance.new("UICorner", brPip).CornerRadius = UDim.new(0, 6)
-
-	local brIcon = Instance.new("TextLabel")
-	brIcon.Name = "BRIcon"
-	brIcon.Size = UDim2.fromScale(1, 1)
-	brIcon.BackgroundTransparency = 1
-	brIcon.Font = Enum.Font.FredokaOne
-	brIcon.TextSize = 14
-	brIcon.Text = "🌹"
-	brIcon.ZIndex = 53
-	brIcon.Parent = brPip
-
-	-- Center White Oval Graphic
-	local centerOval = Instance.new("Frame")
-	centerOval.Name = "CenterOval"
-	centerOval.Size = UDim2.fromOffset(84, 96)
-	centerOval.Position = UDim2.new(0.5, -42, 0.5, -48)
-	centerOval.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	centerOval.BorderSizePixel = 0
-	centerOval.ZIndex = 52
-	centerOval.Parent = card
-	Instance.new("UICorner", centerOval).CornerRadius = UDim.new(0, 22)
-
-	-- Icon (🌹 or 💀)
-	local icon = Instance.new("TextLabel")
-	icon.Name = "Icon"
-	icon.Size = UDim2.new(1, 0, 0, 56)
-	icon.Position = UDim2.fromOffset(0, 8)
-	icon.BackgroundTransparency = 1
-	icon.Font = Enum.Font.FredokaOne
-	icon.TextSize = 56
-	icon.Text = "🌹"
-	icon.ZIndex = 53
-	icon.Parent = centerOval
-
-	local nameSub = Instance.new("TextLabel")
-	nameSub.Name = "NameSub"
-	nameSub.Size = UDim2.new(1, 0, 0, 18)
-	nameSub.Position = UDim2.new(0, 0, 1, -26)
-	nameSub.BackgroundTransparency = 1
-	nameSub.Font = Enum.Font.FredokaOne
-	nameSub.TextSize = 13
-	nameSub.TextColor3 = Color3.fromRGB(205, 30, 55)
-	nameSub.Text = "ROSE"
-	nameSub.ZIndex = 53
-	nameSub.Parent = centerOval
-
-	-- Card Type Announcement ("ROSE REVEALED" or "SKULL REVEALED!")
+	-- "ROSE REVEALED" / "SKULL REVEALED!"
 	local typeText = Instance.new("TextLabel")
 	typeText.Name = "TypeLabel"
 	typeText.Size = UDim2.new(1, 0, 0, 30)
 	typeText.Position = UDim2.new(0, 0, 1, -30)
 	typeText.BackgroundTransparency = 1
-	typeText.Font = Enum.Font.FredokaOne
+	typeText.Font = Theme.Fonts.Title
 	typeText.TextSize = 22
-	typeText.TextColor3 = Color3.fromRGB(255, 225, 80)
 	typeText.TextStrokeTransparency = 0.35
-	typeText.TextStrokeColor3 = Color3.fromRGB(20, 15, 30)
-	typeText.Text = "ROSE REVEALED"
+	typeText.TextStrokeColor3 = Theme.Colors.PanelBackground
+	typeText.Text = ""
 	typeText.ZIndex = 51
 	typeText.Parent = container
 
 	modalContainer = container
-	cardBadge = card
-	iconLabel = icon
+	cardFace = face
+	cardStroke = stroke
 	typeLabel = typeText
 	sourceLabel = source
-
 	return container
 end
 
--- ============================================================================
--- 2. TRIGGER REVEAL POPUP ANIMATION
--- ============================================================================
-function CardRevealModal.ShowCard(cardType: string, playerName: string, flippedCount: number, targetCount: number)
-	if not modalContainer or not cardBadge or not iconLabel or not typeLabel or not sourceLabel then
+-- `setId`: the card owner's CardArt set
+function CardRevealModal.ShowCard(cardType: string, playerName: string, flippedCount: number, targetCount: number, setId: string?)
+	local container, face, stroke, typeText, source = modalContainer, cardFace, cardStroke, typeLabel, sourceLabel
+	if not container or not face or not stroke or not typeText or not source then
 		return
 	end
+	showToken += 1
+	local token = showToken
 
-	local isSkull = (cardType == Enums.CardType.Skull)
+	local isSkull = cardType == Enums.CardType.Skull
+	source.Text = playerName .. "'s pile (" .. flippedCount .. "/" .. targetCount .. ")"
+	face.Image = CardArt.Face(setId, cardType)
+	stroke.Color = if isSkull then Theme.Colors.AlertRed else CardArt.Get(setId).accent
+	typeText.Text = if isSkull then "SKULL REVEALED!" else "ROSE REVEALED"
+	typeText.TextColor3 = if isSkull then Theme.Colors.AlertRed else Theme.Colors.TextGold
 
-	sourceLabel.Text = playerName .. "'s Stack (" .. flippedCount .. "/" .. targetCount .. ")"
-	iconLabel.Text = isSkull and "💀" or "🌹"
+	container.Visible = true
 
-	if isSkull then
-		cardBadge.BackgroundColor3 = Color3.fromRGB(26, 26, 32)
-		typeLabel.Text = "💀 SKULL REVEALED!"
-		typeLabel.TextColor3 = Color3.fromRGB(255, 75, 75)
-		local stroke = cardBadge:FindFirstChild("CardStroke") :: UIStroke?
-		if stroke then
-			stroke.Color = Color3.fromRGB(255, 255, 255)
-		end
-
-		local co = cardBadge:FindFirstChild("CenterOval")
-		if co then
-			local ns = co:FindFirstChild("NameSub") :: TextLabel?
-			if ns then
-				ns.Text = "SKULL"
-				ns.TextColor3 = Color3.fromRGB(25, 25, 30)
-			end
-		end
-		local tl = cardBadge:FindFirstChild("TLPip")
-		if tl then
-			local ic = tl:FindFirstChild("TLIcon") :: TextLabel?
-			if ic then
-				ic.Text = "💀"
-			end
-		end
-		local br = cardBadge:FindFirstChild("BRPip")
-		if br then
-			local ic = br:FindFirstChild("BRIcon") :: TextLabel?
-			if ic then
-				ic.Text = "💀"
-			end
-		end
-	else
-		cardBadge.BackgroundColor3 = Color3.fromRGB(235, 42, 75)
-		typeLabel.Text = "🌹 ROSE REVEALED"
-		typeLabel.TextColor3 = Color3.fromRGB(255, 230, 90)
-		local stroke = cardBadge:FindFirstChild("CardStroke") :: UIStroke?
-		if stroke then
-			stroke.Color = Color3.fromRGB(255, 255, 255)
-		end
-
-		local co = cardBadge:FindFirstChild("CenterOval")
-		if co then
-			local ns = co:FindFirstChild("NameSub") :: TextLabel?
-			if ns then
-				ns.Text = "ROSE"
-				ns.TextColor3 = Color3.fromRGB(205, 30, 55)
-			end
-		end
-		local tl = cardBadge:FindFirstChild("TLPip")
-		if tl then
-			local ic = tl:FindFirstChild("TLIcon") :: TextLabel?
-			if ic then
-				ic.Text = "🌹"
-			end
-		end
-		local br = cardBadge:FindFirstChild("BRPip")
-		if br then
-			local ic = br:FindFirstChild("BRIcon") :: TextLabel?
-			if ic then
-				ic.Text = "🌹"
-			end
-		end
-	end
-
-	modalContainer.Visible = true
-
-	-- Flip scale animation (horizontal flip effect)
-	cardBadge.Size = UDim2.fromOffset(10, 185)
-	TweenService:Create(cardBadge, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Size = UDim2.fromOffset(130, 185),
+	-- Coin flip: squash to a sliver, then open up
+	face.Size = UDim2.fromOffset(8, CARD_SIZE)
+	TweenService:Create(face, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Size = UDim2.fromOffset(CARD_SIZE, CARD_SIZE),
 	}):Play()
 
-	-- Auto-dismiss after 2.2 seconds
 	task.delay(2.2, function()
-		if not modalContainer then
+		if token ~= showToken then
 			return
 		end
-		local fade = TweenService:Create(cardBadge, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		local shrink = TweenService:Create(face, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			Size = UDim2.fromOffset(0, 0),
 		})
-		fade:Play()
-		fade.Completed:Connect(function()
-			if modalContainer then
-				modalContainer.Visible = false
+		shrink:Play()
+		shrink.Completed:Connect(function()
+			if token == showToken then
+				container.Visible = false
 			end
 		end)
 	end)
