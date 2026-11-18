@@ -12,7 +12,10 @@ Multiplayer bluffing card game for Roblox (2–6 players, human + bots), Day of 
 - **Server-authoritative.** Hidden information (hands, stacks, skull positions) lives only on the server. Clients send intents via `src/shared/Network.luau`; the server validates everything. Never trust or send secret state to clients.
 - **Zero external dependencies** (no Wally packages). Use Roblox services only.
 - Sync with Rojo (`default.project.json`): `src/shared` → ReplicatedStorage.Shared, `src/server` → ServerScriptService.Server, `src/client` → StarterPlayerScripts.Client, `src/first/LoadingScreen.client.luau` → ReplicatedFirst.
-- Work happens on the `claude-assisted` branch. `main` is the stable base (`v1.0-base-game`).
+- 0.3 work happens on the `v0.3` branch in this folder (`F:\RobloxProject-v0.3`, a git worktree). It started on 2026-11-19 as an exact copy of 0.2.
+- 0.2 lives on `claude-assisted` in `F:\RobloxProject` (tag `v0.2-pre-alpha` marks an earlier 0.2 release). `main` is the stable base (`v1.0-base-game`).
+- Run `rojo serve` from the folder of the version you're working on (both use port 34872, so only one at a time).
+- The earlier, dropped 0.3 prototype (void world, standing avatars) is kept only on the local branch `v0.3-old-prototype`.
 
 ## Checking code (no Studio needed)
 - `bash scripts/check.sh` — type-checks `src/` with luau-lsp + Roblox definitions. Add `--lint` to also run selene.
