@@ -5,6 +5,7 @@
 local Enums = require(game:GetService("ReplicatedStorage").Shared.Enums)
 local Constants = require(game:GetService("ReplicatedStorage").Shared.Constants)
 local CardArt = require(game:GetService("ReplicatedStorage").Shared.CardArt)
+local TableContext = require(script.Parent.TableContext)
 
 export type PlayerData = {
 	userId: number,
@@ -53,7 +54,7 @@ local function findOpenSeat(isBot: boolean): number?
 	end
 	if isBot then
 		-- Bots start at seat 2 so seat 1 is reserved for the local human player
-		for i = 2, Constants.MAX_PLAYERS do
+		for i = 2, TableContext.maxPlayers do
 			if not taken[i] then
 				return i
 			end
@@ -66,7 +67,7 @@ local function findOpenSeat(isBot: boolean): number?
 		if not taken[1] then
 			return 1
 		end
-		for i = 2, Constants.MAX_PLAYERS do
+		for i = 2, TableContext.maxPlayers do
 			if not taken[i] then
 				return i
 			end

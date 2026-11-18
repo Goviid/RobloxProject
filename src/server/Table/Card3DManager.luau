@@ -8,9 +8,9 @@ local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Enums = require(ReplicatedStorage.Shared.Enums)
 local CardArt = require(ReplicatedStorage.Shared.CardArt)
-local Constants = require(ReplicatedStorage.Shared.Constants)
 local TableBuilder = require(script.Parent.TableBuilder)
 local PlayerManager = require(script.Parent.PlayerManager)
+local TableContext = require(script.Parent.TableContext)
 
 local Card3DManager = {}
 
@@ -20,9 +20,9 @@ local function seatCardSet(seatIndex: number): string?
 	return p and p.cardSet or nil
 end
 
--- Container folder inside Workspace.SkullsArena
+-- Container folder inside this table's arena (Workspace.SkullsArena_<table id>)
 local function getCardsFolder(): Folder
-	local arena = Workspace:WaitForChild("SkullsArena", 5)
+	local arena = Workspace:WaitForChild("SkullsArena_" .. TableContext.id, 5)
 	local existing = arena and arena:FindFirstChild("TableCardStacks")
 	if existing and existing:IsA("Folder") then
 		return existing
@@ -61,7 +61,7 @@ function Card3DManager.SetRevealingEnabled(enabled: boolean)
 	end
 
 	-- Also enable ClickDetectors on coasters so clicking anywhere on the player's mat flips their top card!
-	for seatIdx = 1, Constants.MAX_PLAYERS do
+	for seatIdx = 1, TableContext.maxPlayers do
 		local mat = TableBuilder.GetCoasterPart(seatIdx)
 		if mat then
 			local clicker = mat:FindFirstChildWhichIsA("ClickDetector")
@@ -339,7 +339,7 @@ function Card3DManager.ClearAllCards()
 			end)
 		end
 	end
-	for seatIdx = 1, Constants.MAX_PLAYERS do
+	for seatIdx = 1, TableContext.maxPlayers do
 		table.clear(seatStacks[seatIdx])
 	end
 	table.clear(revealedCards)

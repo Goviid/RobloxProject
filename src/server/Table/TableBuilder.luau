@@ -16,6 +16,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Constants = require(ReplicatedStorage.Shared.Constants)
 local CardArt = require(ReplicatedStorage.Shared.CardArt)
 local Theme = require(ReplicatedStorage.Shared.Theme)
+local TableContext = require(script.Parent.TableContext)
 
 local TableBuilder = {}
 
@@ -48,47 +49,43 @@ local function setStandHook(player: Player, place: (char: Model) -> ())
 	end
 end
 
--- Table Seat Coordinates (4-Player Layout: 1=Front/You, 2=Left, 3=Back, 4=Right)
-local SEAT_CONFIGS = {
-	[1] = { -- You (Front) - Centered directly in front
-		standPos = Vector3.new(0, 3.4, 7.8),
-		lookAt = Vector3.new(0, 3.0, 0),
-		pilePos = Vector3.new(0, 3.06, 4.4),
-		handPos = Vector3.new(0, 4.4, 6.5),
-		isLocal = true,
-		label = "PILE", -- each client relabels its own mat "YOUR PILE" locally
-	},
-	[2] = { -- Left (BLUFFER_99) - Centered directly in front
-		standPos = Vector3.new(-7.8, 3.4, 0),
-		lookAt = Vector3.new(0, 3.0, 0),
-		pilePos = Vector3.new(-4.4, 3.06, 0),
-		handPos = Vector3.new(-6.5, 4.4, 0),
-		isLocal = false,
-		label = "PILE",
-	},
-	[3] = { -- Back (BLUFFE_99) - Centered directly in front
-		standPos = Vector3.new(0, 3.4, -7.8),
-		lookAt = Vector3.new(0, 3.0, 0),
-		pilePos = Vector3.new(0, 3.06, -4.4),
-		handPos = Vector3.new(0, 4.4, -6.5),
-		isLocal = false,
-		label = "PILE",
-	},
-	[4] = { -- Right (ROSE_KING) - Centered directly in front
-		standPos = Vector3.new(7.8, 3.4, 0),
-		lookAt = Vector3.new(0, 3.0, 0),
-		pilePos = Vector3.new(4.4, 3.06, 0),
-		handPos = Vector3.new(6.5, 4.4, 0),
-		isLocal = false,
-		label = "PILE",
-	},
+-- Seat positions, in world space (this table's origin already added). Laid out evenly
+-- round the table for however many seats it has (4 or 6): seat 1 at the front (+Z),
+-- then on round the table. Filled by layoutSeats() at the start of Build.
+type SeatConfig = {
+	standPos: Vector3, -- avatar root (seated)
+	lookAt: Vector3, -- table centre
+	pilePos: Vector3, -- this seat's pile mat
+	handPos: Vector3, -- held card fan (opponents)
+	label: string,
 }
+local SEAT_CONFIGS: { [number]: SeatConfig } = {}
+
+local STAND_RADIUS = 7.8
+local PILE_RADIUS = 4.4
+local HAND_RADIUS = 6.5
+
+local function layoutSeats(seatCount: number, origin: Vector3)
+	table.clear(SEAT_CONFIGS)
+	for i = 1, seatCount do
+		local angle = -(i - 1) * 2 * math.pi / seatCount
+		local dir = Vector3.new(math.sin(angle), 0, math.cos(angle))
+		SEAT_CONFIGS[i] = {
+			standPos = origin + dir * STAND_RADIUS + Vector3.new(0, 3.4, 0),
+			lookAt = origin + Vector3.new(0, 3.0, 0),
+			pilePos = origin + dir * PILE_RADIUS + Vector3.new(0, 3.06, 0),
+			handPos = origin + dir * HAND_RADIUS + Vector3.new(0, 4.4, 0),
+			label = "PILE", -- each client relabels its own mat "YOUR PILE" locally
+		}
+	end
+end
 
 -- ============================================================================
 -- 1. BUILD THE COMPLETE PARLOR ROOM & TABLE
 -- ============================================================================
 function TableBuilder.Build()
-	local existing = Workspace:FindFirstChild("SkullsArena")
+	local arenaName = "SkullsArena_" .. TableContext.id
+	local existing = Workspace:FindFirstChild(arenaName)
 	if existing then
 		existing:Destroy()
 	end
@@ -104,7 +101,11 @@ function TableBuilder.Build()
 	table.clear(turnDots)
 
 	local arena = Instance.new("Model")
-	arena.Name = "SkullsArena"
+	arena.Name = arenaName
+	-- Clients find their table's arena and centre through these (the camera faces the
+	-- table from the player's seat around this centre)
+	arena:SetAttribute("TableId", TableContext.id)
+	arena:SetAttribute("Origin", TableContext.origin)
 	arena.Parent = Workspace
 	arenaModel = arena
 
@@ -340,6 +341,24 @@ function TableBuilder.Build()
 	particles.EmissionDirection = Enum.NormalId.Right
 	particles.Parent = centerPile
 
+	-- Sections 2-4 are written around (0, 0, 0); move them to this table's spot. Seats
+	-- below are laid out in world space already. Folders (the room) have no pivot, so
+	-- move what's inside them.
+	local origin = TableContext.origin
+	local function shift(container: Instance)
+		for _, child in ipairs(container:GetChildren()) do
+			if child:IsA("PVInstance") then
+				child:PivotTo(child:GetPivot() + origin)
+			elseif child:IsA("Folder") then
+				shift(child)
+			end
+		end
+	end
+	if origin.Magnitude > 0 then
+		shift(arena)
+	end
+	layoutSeats(TableContext.maxPlayers, origin)
+
 	-- 5. Individual Player Mats ("YOUR PILE" and "PILE")
 	for seatIdx, cfg in pairs(SEAT_CONFIGS) do
 		standingCFrames[seatIdx] = CFrame.lookAt(cfg.standPos, cfg.lookAt)
@@ -389,7 +408,7 @@ function TableBuilder.Build()
 
 		local matStroke = Instance.new("UIStroke")
 		matStroke.Name = "MatBorder"
-		matStroke.Color = cfg.isLocal and Color3.fromRGB(255, 235, 180) or Color3.fromRGB(200, 200, 215)
+		matStroke.Color = Color3.fromRGB(200, 200, 215)
 		matStroke.Transparency = 0.35
 		matStroke.Thickness = 2.8
 		matStroke.Parent = matFrame
@@ -405,7 +424,7 @@ function TableBuilder.Build()
 
 		local ringStroke = Instance.new("UIStroke")
 		ringStroke.Name = "NeonRingGlow"
-		ringStroke.Color = cfg.isLocal and Color3.fromRGB(255, 215, 140) or Color3.fromRGB(255, 235, 200)
+		ringStroke.Color = Color3.fromRGB(255, 235, 200)
 		ringStroke.Thickness = 4.5
 		ringStroke.Parent = ring
 
@@ -422,20 +441,6 @@ function TableBuilder.Build()
 		label.TextStrokeColor3 = Color3.fromRGB(15, 15, 20)
 		label.Text = cfg.label
 		label.Parent = matFrame
-
-		-- Seat 1 Spawn Location (anchored right at the front seat)
-		if seatIdx == 1 then
-			local spawn = Instance.new("SpawnLocation")
-			spawn.Name = "Seat1_SpawnLocation"
-			spawn.Size = Vector3.new(2, 0.2, 2)
-			spawn.CFrame = CFrame.new(cfg.standPos.X, 1.0, cfg.standPos.Z)
-			spawn.Anchored = true
-			spawn.CanCollide = false
-			spawn.Transparency = 1
-			spawn.Neutral = true
-			spawn.Duration = 0
-			spawn.Parent = arena
-		end
 	end
 
 
@@ -752,7 +757,8 @@ local function renderOpponentFannedHand(seatIdx: number, cardCount: number)
 	local SPACING = 0.65
 	local FAN_DEGREES = 9
 	local startZ = -(cardCount - 1) * SPACING / 2
-	local facing = CFrame.lookAt(cfg.handPos, Vector3.new(0, cfg.handPos.Y, 0)) * CFrame.Angles(0, math.rad(90), 0)
+	local centre = Vector3.new(TableContext.origin.X, cfg.handPos.Y, TableContext.origin.Z)
+	local facing = CFrame.lookAt(cfg.handPos, centre) * CFrame.Angles(0, math.rad(90), 0)
 
 	for i = 1, cardCount do
 		local t = i - (cardCount + 1) / 2 -- -n..n around the middle card
@@ -791,7 +797,7 @@ local function renderOpponentFannedHand(seatIdx: number, cardCount: number)
 		-- Deal: tokens the hand just gained (cards back at round start) fly in from the table
 		-- centre, staggered by seat and by card so it reads as a dealer going round the table
 		if i > prevCount then
-			token.CFrame = CFrame.new(0, cfg.handPos.Y, 0) * facing.Rotation
+			token.CFrame = CFrame.new(centre) * facing.Rotation
 			token.Size = Vector3.new(0.06, TOKEN_DIAMETER * 0.4, TOKEN_DIAMETER * 0.4)
 			local delayTime = (seatIdx - 1) * 0.12 + (i - prevCount - 1) * 0.09
 			TweenService:Create(token, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, delayTime), {
@@ -1271,15 +1277,17 @@ local function getPileCounter(seatIndex: number): BillboardGui?
 		return nil
 	end
 
-	-- Just outside the pile, on the owner's side, so cards never cover it
-	local flat = Vector3.new(mat.Position.X, 0, mat.Position.Z)
-	local outward = if flat.Magnitude > 0 then flat.Unit else Vector3.new(0, 0, 1)
+	-- Just past the pile toward the table centre (above it from the owner's seat), clear
+	-- of the cards so they never cover it
+	local fromCentre = mat.Position - TableContext.origin
+	local flat = Vector3.new(fromCentre.X, 0, fromCentre.Z)
+	local inward = if flat.Magnitude > 0 then -flat.Unit else Vector3.new(0, 0, -1)
 
 	local bill = Instance.new("BillboardGui")
 	bill.Name = "PileCount_" .. seatIndex
 	bill.Adornee = mat
 	bill.Size = UDim2.fromOffset(72, 34)
-	bill.StudsOffsetWorldSpace = outward * 2.1 + Vector3.new(0, 0.5, 0)
+	bill.StudsOffsetWorldSpace = inward * 1.9 + Vector3.new(0, 0.5, 0)
 	bill.AlwaysOnTop = true
 	bill.LightInfluence = 0
 	bill.MaxDistance = 80
@@ -1434,7 +1442,8 @@ function TableBuilder.StandSpectator(player: Player)
 		if dotGui then
 			dotGui:Destroy()
 		end
-		local cf = CFrame.lookAt(Vector3.new(0, 3.4, 15), Vector3.new(0, 3.0, 0))
+		local o = TableContext.origin
+		local cf = CFrame.lookAt(o + Vector3.new(0, 3.4, 15), o + Vector3.new(0, 3.0, 0))
 		setTablePose(char, false) -- standing back from the table
 		char:PivotTo(cf)
 		hrp.Anchored = true

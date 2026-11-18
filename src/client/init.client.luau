@@ -27,6 +27,9 @@ local PhaseOverlay = require(script.UI.PhaseOverlay)
 local LobbyPanel = require(script.UI.LobbyPanel)
 local CardAnimation = require(script.UI.CardAnimation)
 local CameraController = require(script.CameraController)
+local TableView = require(script.TableView)
+local MainMenu = require(script.UI.MainMenu)
+local LeaveTable = require(script.UI.LeaveTable)
 local AudioController = require(script.AudioController)
 
 local localPlayer = Players.LocalPlayer
@@ -83,7 +86,7 @@ end
 
 local function applySeatView(seatIndex: number?)
 	mySeatIndex = seatIndex
-	local arena = workspace:FindFirstChild("SkullsArena")
+	local arena = TableView.GetArena()
 	if not arena then
 		return
 	end
@@ -99,11 +102,8 @@ local function applySeatView(seatIndex: number?)
 	end
 end
 
-task.spawn(function()
-	local arena = workspace:WaitForChild("SkullsArena", 30)
-	if arena then
-		arena.ChildAdded:Connect(hideOwnHandModel)
-	end
+TableView.OnJoined(function(arena: Model)
+	arena.ChildAdded:Connect(hideOwnHandModel)
 end)
 
 -- Hovering a pile (its mat or any of its cards) enlarges that pile's card counter.
@@ -118,7 +118,7 @@ local function setPileHover(seatIndex: number?, hovered: boolean)
 	if not seatIndex then
 		return
 	end
-	local arena = workspace:FindFirstChild("SkullsArena")
+	local arena = TableView.GetArena()
 	local bill = arena and arena:FindFirstChild("PileCount_" .. seatIndex, true)
 	local pill = bill and bill:FindFirstChild("Pill")
 	local scale = pill and pill:FindFirstChild("HoverScale")
@@ -163,6 +163,7 @@ local function buildUI()
 	screenGui.ResetOnSpawn = false
 	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	screenGui.IgnoreGuiInset = false
+	screenGui.Enabled = TableView.GetTableId() ~= nil -- hidden while the main menu is up
 	screenGui.Parent = playerGui
 
 	-- Big monitors: Roblox draws UI in real pixels, so scale it up on large screens
@@ -195,7 +196,7 @@ local function buildUI()
 	-- 3. Your hand: oversized 3D cards floating at the bottom of the view
 	HandBar.SetPileTarget(function(): Vector3?
 		local myData = lastKnownPlayers[tostring(localPlayer.UserId)]
-		local arena = workspace:FindFirstChild("SkullsArena")
+		local arena = TableView.GetArena()
 		local mat = myData and arena and arena:FindFirstChild("PlayerMat_" .. tostring(myData.seatIndex), true)
 		return if mat and mat:IsA("BasePart") then mat.Position + Vector3.new(0, 0.6, 0) else nil
 	end)
@@ -252,6 +253,12 @@ local function buildUI()
 				DiscardModal.Reset()
 			end
 		end)
+	end)
+
+	-- 10. Leave the table (small corner pill, asks first)
+	LeaveTable.Create(screenGui, function()
+		AudioController.PlayButtonClick()
+		Network.LeaveTable:FireServer()
 	end)
 
 	print("[Skulls & Roses] Fresh SkullsGui built and parented successfully.")
@@ -582,10 +589,27 @@ Network.GameOver.OnClientEvent:Connect(function(winnerId: number, reason: string
 end)
 
 -- ============================================================================
--- 5. INITIAL STATE SYNC (Request current game state from server)
+-- 5. MAIN MENU, THEN INITIAL STATE SYNC (once the player has picked a table)
 -- ============================================================================
-task.spawn(function()
-	task.wait(0.2)
+if not TableView.GetTableId() then
+	MainMenu.Show(playerGui)
+end
+
+-- Left the table: forget it, rebuild the game UI fresh (hidden) and show the menu again
+TableView.OnLeft(function()
+	lastKnownPlayers = {}
+	lastTurnKey = nil
+	lastLobbyCountdown = nil
+	HandBar.UpdateHand({}, false, false)
+	CameraController.SetSeat(nil)
+	CameraController.SetTurnFocus(false)
+	mySeatIndex = nil
+	buildUI()
+	MainMenu.Show(playerGui)
+end)
+
+TableView.OnJoined(function()
+	screenGui.Enabled = true
 	print("[Skulls & Roses] Requesting initial game state from server...")
 	Network.RequestState:FireServer()
 

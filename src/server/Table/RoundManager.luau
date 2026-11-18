@@ -11,6 +11,7 @@ local PlayerManager = require(script.Parent.PlayerManager)
 local BotController = require(script.Parent.BotController)
 local Card3DManager = require(script.Parent.Card3DManager)
 local TableBuilder = require(script.Parent.TableBuilder)
+local TableContext = require(script.Parent.TableContext)
 
 local RoundManager = {}
 
@@ -52,8 +53,8 @@ local function broadcastState()
 			or currentGameState == Enums.GameState.Discarding
 		TableBuilder.UpdatePileCount(p.seatIndex, if p.isEliminated then 0 else #p.playedStack, emphasis)
 	end
-	-- Everyone in the server gets state, including players waiting for the next match
-	for _, plr in ipairs(Players:GetPlayers()) do
+	-- Everyone at this table gets state, including players waiting for the next match
+	for _, plr in ipairs(TableContext.GetPlayers()) do
 		RoundManager.SendStateToPlayer(plr.UserId)
 	end
 
@@ -102,7 +103,7 @@ function RoundManager.SendStateToPlayer(userId: number)
 end
 
 local function broadcastNotification(text: string, style: string?)
-	Network.Notification:FireAllClients({
+	TableContext.FireAll(Network.Notification, {
 		text = text,
 		style = style or "info", -- "info", "warning", "success", "alert"
 	})
@@ -441,7 +442,7 @@ local function declareMatchWinner(winnerId: number, reason: string)
 	if winner then
 		TableBuilder.PlayReaction(winner.seatIndex, "Dance", Constants.MATCH_OVER_DELAY - 1)
 	end
-	Network.GameOver:FireAllClients(winnerId, reason, Constants.MATCH_OVER_DELAY)
+	TableContext.FireAll(Network.GameOver, winnerId, reason, Constants.MATCH_OVER_DELAY)
 	broadcastState()
 
 	task.delay(Constants.MATCH_OVER_DELAY, function()
@@ -604,7 +605,7 @@ local function finishChallengerFailed(lostCard: string?)
 
 	if challenger.isEliminated then
 		broadcastNotification("❌ " .. challenger.name .. " has no cards left and is ELIMINATED!", "alert")
-		Network.PlayerEliminated:FireAllClients(victimId)
+		TableContext.FireAll(Network.PlayerEliminated, victimId)
 	end
 
 	if challenger.isBot then
@@ -803,7 +804,7 @@ function RoundManager._ProcessPlayerAction(userId: number, action: string, data:
 			if success then
 				cancelTurnTimer()
 				Card3DManager.PlaceCard3D(p.seatIndex, #p.playedStack)
-				Network.CardPlayed:FireAllClients(userId, #p.playedStack)
+				TableContext.FireAll(Network.CardPlayed, userId, #p.playedStack)
 				broadcastNotification(p.name .. " placed a card face-down.", "info")
 
 				advanceToNextActivePlayer()
@@ -826,7 +827,7 @@ function RoundManager._ProcessPlayerAction(userId: number, action: string, data:
 			currentGameState = Enums.GameState.Bidding
 			highestBid = bid
 			highestBidderId = userId
-			Network.BidUpdated:FireAllClients(userId, highestBid)
+			TableContext.FireAll(Network.BidUpdated, userId, highestBid)
 			broadcastNotification(p.name .. " opened the bid at " .. highestBid .. " cards!", "warning")
 
 			-- Check if max possible bid immediately reached
@@ -859,7 +860,7 @@ function RoundManager._ProcessPlayerAction(userId: number, action: string, data:
 			cancelTurnTimer()
 			highestBid = bid
 			highestBidderId = userId
-			Network.BidUpdated:FireAllClients(userId, highestBid)
+			TableContext.FireAll(Network.BidUpdated, userId, highestBid)
 			broadcastNotification(p.name .. " raised the bid to " .. highestBid .. "!", "warning")
 
 			-- If bid equals total cards on the table, bidding ends immediately
@@ -954,7 +955,7 @@ function RoundManager._ProcessPlayerAction(userId: number, action: string, data:
 
 			Card3DManager.RevealCard3D(targetPlayer.seatIndex, revealedCard)
 
-			Network.CardRevealed:FireAllClients({
+			TableContext.FireAll(Network.CardRevealed, {
 				targetUserId = targetUserId,
 				cardType = revealedCard,
 				stackRemaining = #targetPlayer.playedStack,

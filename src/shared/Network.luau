@@ -63,11 +63,15 @@ local Network = {
 	Notification = getOrCreateRemoteEvent("Notification"),
 	GameOver = getOrCreateRemoteEvent("GameOver"),
 	LobbyState = getOrCreateRemoteEvent("LobbyState"),
+	TableList = getOrCreateRemoteEvent("TableList"), -- ({ id, name, seated, maxPlayers, inMatch }) for the menu
 
 	-- Client -> Server Actions
 	SubmitAction = getOrCreateRemoteFunction("SubmitAction"),
 	RequestState = getOrCreateRemoteEvent("RequestState"),
-	LobbyAction = getOrCreateRemoteEvent("LobbyAction"), -- (action: "ToggleReady" | "SetAddBots" | "Start", value: any)
+	LobbyAction = getOrCreateRemoteEvent("LobbyAction"),
+	JoinTable = getOrCreateRemoteEvent("JoinTable"), -- (tableId: number) from the menu
+	LeaveTable = getOrCreateRemoteEvent("LeaveTable"), -- back to the menu from a table
+	RequestTables = getOrCreateRemoteEvent("RequestTables"), -- the menu asks for the table list -- (action: "ToggleReady" | "SetAddBots" | "Start", value: any)
 }
 
 return Network

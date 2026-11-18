@@ -9,6 +9,8 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local ContextActionService = game:GetService("ContextActionService")
 
+local TableView = require(script.Parent.TableView)
+
 local CameraController = {}
 
 local localPlayer = Players.LocalPlayer
@@ -20,10 +22,13 @@ local function getCameraConfig(): (Vector3, Vector3)
 	return lookTarget, camPos
 end
 
--- The camera config above is written for seat 1 (front). Each client rotates it around
--- the table's vertical axis to face the table from its own seat.
+-- The camera config above is written for seat 1 (front) of a table at (0, 0, 0). Each
+-- client rotates it around its table's vertical axis to face the table from its own
+-- seat, then moves it to that table's centre. In the menu (no table yet) it slowly
+-- circles table 1 as a backdrop.
 local seatRotation = CFrame.identity
 local currentSeat: number? = nil
+local MENU_ORBIT_SPEED = 0.06 -- radians per second
 
 local DEFAULT_FOV = 65
 local isShakeActive = false
@@ -72,8 +77,13 @@ function CameraController.Init()
 		end
 
 		local lookTarget, defaultCamPos = getCameraConfig()
-		local camPos = seatRotation * (defaultCamPos + currentTurnOffset) + shakeOffset
-		cam.CFrame = CFrame.lookAt(camPos, seatRotation * lookTarget)
+		local rotation = seatRotation
+		if not TableView.GetTableId() then
+			rotation = CFrame.Angles(0, os.clock() * MENU_ORBIT_SPEED, 0)
+		end
+		local tableOrigin = TableView.GetOrigin()
+		local camPos = tableOrigin + rotation * (defaultCamPos + currentTurnOffset) + shakeOffset
+		cam.CFrame = CFrame.lookAt(camPos, tableOrigin + rotation * lookTarget)
 		cam.FieldOfView = currentTargetFOV
 	end
 
@@ -123,11 +133,12 @@ function CameraController.SetSeat(seatIndex: number?)
 	if seatIndex == currentSeat then
 		return
 	end
-	local arena = Workspace:FindFirstChild("SkullsArena")
+	local arena = TableView.GetArena()
 	local mat = seatIndex and arena and arena:FindFirstChild("PlayerMat_" .. seatIndex, true)
 	if mat and mat:IsA("BasePart") then
 		currentSeat = seatIndex
-		seatRotation = CFrame.Angles(0, math.atan2(mat.Position.X, mat.Position.Z), 0)
+		local fromCentre = mat.Position - TableView.GetOrigin()
+		seatRotation = CFrame.Angles(0, math.atan2(fromCentre.X, fromCentre.Z), 0)
 	elseif seatIndex == nil then
 		currentSeat = nil
 		seatRotation = CFrame.identity

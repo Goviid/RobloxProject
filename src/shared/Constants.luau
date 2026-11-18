@@ -5,7 +5,16 @@
 local Constants = {
 	-- Player Constraints
 	MIN_PLAYERS = 2,
-	MAX_PLAYERS = 4, -- The 3D table has 4 seats (TableBuilder.SEAT_CONFIGS)
+	MAX_PLAYERS = 6, -- The biggest table; each table's own size is in TABLES
+
+	-- Tables in each server, picked from the main menu. Each is built TABLE_SPACING studs
+	-- along +X from the previous one, with its seats laid out evenly round it.
+	TABLES = {
+		{ name = "Table 1", maxPlayers = 4 },
+		{ name = "Table 2", maxPlayers = 6 },
+	},
+	TABLE_SPACING = 300,
+	MENU_SPAWN = Vector3.new(0, 200, -300), -- hidden platform players stand on while in the menu
 	ENABLE_BOTS = true, -- Lets the lobby host fill empty seats with bots
 
 	-- Arena / Visual Mode ("Void" for LOCOfficial Light Blue Void, "Table" for Classic Parlor Table)
@@ -24,15 +33,6 @@ local Constants = {
 	REVEAL_ANIMATION_DELAY = 1.2,
 	MATCH_OVER_DELAY = 30, -- How long the winner screen stays up before a new match
 	BOT_THINK_DELAY = 3, -- Seconds a bot waits before acting, so humans can follow along
-
-	-- Table Positions (Degrees for radial seat distribution)
-	SEAT_DISTRIBUTIONS = {
-		[2] = { 180, 0 },
-		[3] = { 210, 330, 90 },
-		[4] = { 225, 315, 45, 135 },
-		[5] = { 252, 324, 36, 108, 180 },
-		[6] = { 240, 300, 0, 60, 120, 180 },
-	},
 }
 
 return table.freeze(Constants)

@@ -7,7 +7,6 @@
 -- Seating: humans take seats 1..MAX_PLAYERS while in the lobby. Anyone who joins during
 -- a match (or when the table is full) waits and is seated at the next lobby.
 
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Constants = require(ReplicatedStorage.Shared.Constants)
 local Enums = require(ReplicatedStorage.Shared.Enums)
@@ -15,10 +14,11 @@ local Network = require(ReplicatedStorage.Shared.Network)
 local PlayerManager = require(script.Parent.PlayerManager)
 local RoundManager = require(script.Parent.RoundManager)
 local TableBuilder = require(script.Parent.TableBuilder)
+local TableContext = require(script.Parent.TableContext)
 
 local LobbyManager = {}
 
-local BOT_NAMES = { "BLUFFER_99", "BLUFFE_99", "ROSE_KING" }
+local BOT_NAMES = { "BLUFFER_99", "BLUFFE_99", "ROSE_KING", "MARIGOLD", "LA_CALACA" }
 
 local ready: { [number]: boolean } = {}
 local joinOrder: { number } = {} -- userIds in the order they joined (host = first still here)
@@ -54,7 +54,7 @@ local function canStart(): boolean
 	if humans == 0 then
 		return false
 	end
-	local total = humans + (if addBots then Constants.MAX_PLAYERS - humans else 0)
+	local total = humans + (if addBots then TableContext.maxPlayers - humans else 0)
 	return total >= Constants.MIN_PLAYERS
 end
 
@@ -86,22 +86,23 @@ function LobbyManager.Broadcast()
 		end
 	end
 	local waiting = 0
-	for _, plr in ipairs(Players:GetPlayers()) do
+	for _, plr in ipairs(TableContext.GetPlayers()) do
 		if not PlayerManager.GetPlayer(plr.UserId) then
 			waiting += 1
 		end
 	end
-	Network.LobbyState:FireAllClients({
+	TableContext.FireAll(Network.LobbyState, {
 		inLobby = inLobby(),
 		hostId = hostId,
 		addBots = addBots,
 		botsAllowed = Constants.ENABLE_BOTS,
 		seats = seats,
-		maxSeats = Constants.MAX_PLAYERS,
+		maxSeats = TableContext.maxPlayers,
 		waitingCount = waiting,
 		countdown = countdownLeft,
 		canStart = canStart(),
 	})
+	TableContext.NotifyChanged()
 end
 
 local function cancelCountdown()
@@ -122,7 +123,7 @@ local function startMatch()
 	-- Fill empty seats with bots
 	if addBots then
 		local nameIndex = 1
-		while #PlayerManager.GetActivePlayers() < Constants.MAX_PLAYERS and nameIndex <= #BOT_NAMES + 3 do
+		while #PlayerManager.GetActivePlayers() < TableContext.maxPlayers and nameIndex <= #BOT_NAMES + 3 do
 			local name = BOT_NAMES[nameIndex] or ("BOT_" .. nameIndex)
 			nameIndex += 1
 			local bot = PlayerManager.AddBot(name)
@@ -184,7 +185,7 @@ function LobbyManager.EnterLobby()
 	table.clear(ready)
 	RoundManager.EnterLobby()
 
-	for _, plr in ipairs(Players:GetPlayers()) do
+	for _, plr in ipairs(TableContext.GetPlayers()) do
 		if not PlayerManager.GetPlayer(plr.UserId) then
 			seatPlayer(plr)
 		end
@@ -225,6 +226,10 @@ function LobbyManager.OnPlayerRemoving(player: Player)
 		if inLobby() then
 			refreshCountdown()
 			RoundManager.EnterLobby()
+		elseif #seatedHumans() == 0 then
+			-- Only bots left: stop the match so they don't play on at an empty table
+			LobbyManager.EnterLobby()
+			return
 		else
 			RoundManager.OnPlayerLeft(name)
 		end
@@ -253,8 +258,21 @@ end
 
 function LobbyManager.Init()
 	RoundManager.SetMatchOverHandler(LobbyManager.EnterLobby)
-	Network.LobbyAction.OnServerEvent:Connect(onLobbyAction)
 	RoundManager.EnterLobby()
+end
+
+-- Lobby buttons from a player at this table (init.server routes LobbyAction here)
+function LobbyManager.HandleAction(player: Player, action: any, value: any)
+	onLobbyAction(player, action, value)
+end
+
+-- For the table list in the main menu
+function LobbyManager.GetSummary(): { seated: number, maxPlayers: number, inMatch: boolean }
+	return {
+		seated = #seatedHumans(),
+		maxPlayers = TableContext.maxPlayers,
+		inMatch = not inLobby(),
+	}
 end
 
 return LobbyManager

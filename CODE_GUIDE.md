@@ -21,17 +21,22 @@ F:\RobloxProject\
 │   │   └── Network.luau           <-- RemoteEvents & RemoteFunctions
 │   │
 │   ├── server/                    <-- ServerScriptService.Server (Runs strictly on the Roblox Server)
-│   │   ├── init.server.luau       <-- Server entry point & player join/leave hooks
-│   │   ├── TableBuilder.luau      <-- Builds 3D table arena, standing floor pads, and bot avatars
-│   │   ├── Card3DManager.luau     <-- Spawns and flips physical 3D cards/coasters on the table
-│   │   ├── PlayerManager.luau     <-- Secret hands, played stacks, scores, seats, bot data
-│   │   ├── BotController.luau     <-- AI decision making (bluffing, bidding, revealing)
-│   │   └── RoundManager.luau      <-- State machine enforcing all Skull & Roses rules
+│   │   ├── init.server.luau       <-- Table directory: runs one copy of Table/ per table, routes players
+│   │   └── Table/                 <-- One game at one table (cloned per table at startup)
+│   │       ├── TableContext.luau  <-- Which table this copy is (id, size, origin) and who is at it
+│   │       ├── TableBuilder.luau  <-- Builds the 3D table arena, chairs and bot avatars
+│   │       ├── Card3DManager.luau <-- Spawns and flips physical 3D cards/coasters on the table
+│   │       ├── PlayerManager.luau <-- Secret hands, played stacks, scores, seats, bot data
+│   │       ├── BotController.luau <-- AI decision making (bluffing, bidding, revealing)
+│   │       ├── LobbyManager.luau  <-- Pre-match lobby: seats, ready check, bots
+│   │       └── RoundManager.luau  <-- State machine enforcing all Skull & Roses rules
 │   │
 │   └── client/                    <-- StarterPlayerScripts.Client (Runs on each player's computer)
 │       ├── init.client.luau       <-- Client bootstrapper & network listeners
+│       ├── TableView.luau         <-- Which table you joined, its arena and centre
 │       ├── CameraController.luau  <-- 2.5D fixed tabletop camera (LOCOfficial style)
 │       └── UI/                    <-- Modular 2D tabletop interface (Theme A: Calavera)
+│           ├── MainMenu.luau      <-- Title + PLAY, then the table picker
 │           ├── UIKit.luau         <-- Shared panel / label / button / row / pop animation for every pop-up
 │           ├── StatusBar.luau     <-- Bottom-left status card: phase, whose turn, the one turn timer
 │           ├── Toast.luau         <-- Short queued event pop-ups above the hand
@@ -56,7 +61,9 @@ F:\RobloxProject\
 
 #### `Constants.luau`
 * **Purpose:** Single source of truth for all game settings, balance numbers, and layout angles.
-* **`MIN_PLAYERS / MAX_PLAYERS`**: `2` and `4` (the 3D table has 4 seats).
+* **`MIN_PLAYERS / MAX_PLAYERS`**: `2` and `6` (`MAX_PLAYERS` is the biggest table; each table's own size is in `TABLES`).
+* **`TABLES`**: the tables in every server, shown in the main menu: `Table 1` (4 players) and `Table 2` (6 players). Table N is built `TABLE_SPACING` (300) studs along +X from table 1.
+* **`MENU_SPAWN`**: a hidden platform far from the tables where players stand while in the menu.
 * **`ENABLE_BOTS`**: Lets the lobby host fill empty seats with bots (on by default, so a solo Studio test plays against 3 bots).
 * **`LOBBY_COUNTDOWN = 5`**: Seconds between everyone being ready and the match starting.
 * **`POINTS_TO_WIN = 2`**: Standard Skull rule — first player to win 2 rounds wins the whole match.
@@ -64,7 +71,6 @@ F:\RobloxProject\
 * **`TURN_TIMEOUT = 30`**: Seconds allowed per turn (including the skull-penalty pick) before the game takes an automatic action so games never freeze.
 * **`MATCH_OVER_DELAY = 30`**: How long the winner screen stays up before a new match starts.
 * **`BOT_THINK_DELAY = 3`**: Seconds a bot waits before acting, so humans can follow along.
-* **`SEAT_DISTRIBUTIONS`**: Legacy radial seat angles (unused since the 3D table took over seating).
 
 #### `Enums.luau`
 * **Purpose:** Centralized dictionary of constants to avoid typos and keep states consistent.
@@ -79,25 +85,33 @@ F:\RobloxProject\
 
 #### `Network.luau`
 * **Purpose:** Manages RemoteEvents and RemoteFunctions automatically in `ReplicatedStorage`.
-* **Server &rarr; Client Events:** `GameStateChanged`, `CardPlayed`, `BidUpdated`, `CardRevealed`, `CardLost` (sent only to the penalised challenger, with the card type they lost), `Notification`, `GameOver`, `LobbyState` (`{ inLobby, hostId, addBots, seats, waitingCount, countdown, canStart }`). `GameStateChanged` also carries `isSeated` (false = waiting for the next match) and `discard = { chooserId, victimId, isOwnSkull, cardCount, cards? }` during `Discarding`; `cards` is only sent to a challenger choosing among their own cards.
-* **Client &rarr; Server:** `SubmitAction` (function, in-match actions), `RequestState`, `LobbyAction` (`"ToggleReady"`, `"SetAddBots"` host only, `"Start"` host only).
+* **Server &rarr; Client Events:** `GameStateChanged`, `CardPlayed`, `BidUpdated`, `CardRevealed`, `CardLost` (sent only to the penalised challenger, with the card type they lost), `Notification`, `GameOver`, `LobbyState` (`{ inLobby, hostId, addBots, seats, maxSeats, waitingCount, countdown, canStart }`), `TableList` (for the menu: `{ id, name, seated, maxPlayers, inMatch }` per table). Every table shares these remotes, so table code sends to its own table's players only (`TableContext.FireAll`), never `FireAllClients`. `GameStateChanged` also carries `isSeated` (false = waiting for the next match) and `discard = { chooserId, victimId, isOwnSkull, cardCount, cards? }` during `Discarding`; `cards` is only sent to a challenger choosing among their own cards.
+* **Client &rarr; Server:** `SubmitAction` (function, in-match actions), `RequestState`, `LobbyAction` (`"ToggleReady"`, `"SetAddBots"` host only, `"Start"` host only), `JoinTable` (`tableId`, from the menu), `LeaveTable`, `RequestTables`. `init.server` routes each one to the player's table.
 
 ---
 
 ### 2. Server Modules (`src/server/`)
 
+#### Several tables in one server
+* Every module in `src/server/Table/` keeps its state at module level, i.e. one game. `init.server` clones the whole `Table` folder once per entry in `Constants.TABLES` (into `ServerStorage.Tables`) and requires each clone separately, so each table has its own lobby, round, players and arena. `TableContext.Configure` runs first in each clone and tells it its id, size (`maxPlayers`) and `origin`.
+* Arenas are `Workspace.SkullsArena_<id>` with `TableId` and `Origin` attributes. `TableBuilder.Build` writes the room and table around (0, 0, 0) and then moves them to `origin`; seats are laid out in world space by `layoutSeats` (evenly round the table: seat 1 at the front, +Z). Tables are only shifted sideways, so the fixed heights used for cards stay valid.
+* To add a table: add an entry to `Constants.TABLES`. A table bigger than 6 also needs bot names in `LobbyManager.BOT_NAMES` and enough `CardArt` sets.
+
+#### `TableContext.luau`
+* **Purpose:** This table's `id`, `name`, `maxPlayers`, `origin`, and its members (players who joined it, seated or watching). `FireAll(remote, ...)` / `GetPlayers()` replace `FireAllClients` / `Players:GetPlayers()` in table code. `NotifyChanged()` (called from `LobbyManager.Broadcast`) refreshes the menu's table list.
+
 #### `TableBuilder.luau`
 * **Purpose:** Builds the clean, open 3D tabletop environment with regular bright lighting (LOCOfficial 1-to-1 style).
 * **Open Studio Arena:** Clean, spacious warm wood floor (120x120 studs) with a circular center rug and circular mahogany table with rich burgundy felt.
 * **Regular Bright Lighting:** Standard Roblox daytime lighting (`Brightness: 2.0`, `ClockTime: 14.0`, `ShadowMap`, natural ambient fill) with zero dark walls or dim gloom.
-* **Spawn & Positioning:** Placed an invisible `SpawnLocation` directly at Seat 1 and anchors `HumanoidRootPart` with disabled locomotion so the player never spawns in the middle or slides off.
+* **Spawn & Positioning:** Players spawn at the menu platform (`init.server`); joining a table seats them (`StandPlayer`) or stands them back from it (`StandSpectator`), anchoring `HumanoidRootPart` with locomotion disabled.
 * **Seated Avatars:** Everyone sits in a low-backed wooden chair (`Chair_<seat>`: cushion, frame, a back that stops below the shoulders, pedestal). Human players are their own Roblox avatar, anchored at the root. `setTablePose` turns the rig attachments the joints follow (`AnimationConstraint.Attachment0` on today's R15 rigs; `Motor6D.C0` plus its attachment on older ones; original orientation kept in a `BaseRotation` attribute so it never stacks): elbows bent so the hands hold the card fan from just behind it (they don't poke through), hips and knees bent as if seated; the root doesn't move, so heads keep their height. Any looping animation holds the arms down over the pose, so seated characters play none: the server removes the `Animate` script and sets a `SeatedAtTable` attribute, and `init.client` stops its own character's looping tracks when it sees it. Reactions still play over the pose. Spectators get the pose undone. Bots are calavera skeletons: R15 avatars (`Players:CreateHumanoidModelFromDescription`) with skinny proportions (width/depth 0.7) and a big skull head (1.3), deep brown head and hands, a dark suit, a sombrero in a darkened card colour, a skull and sombrero. The default (mesh) head is hidden, because decals stretch over its curves. A `Calavera_<bot>` model beside the bot holds a classic Roblox head shape (`SpecialMesh` Head, which shows decals flat like a classic face) carrying the sugar-skull decal (`Artwork assets/Bots/skull_face.png`, uploaded as `rbxassetid://94176651222783`; its white flowers are tinted), plus a part-built sombrero, all welded to the hidden head. It sits beside the bot, not inside it, because Roblox's avatar scaling squashed parts inside the character. It is built a frame after the bot is placed, because before the rig settles the welds lock in the wrong height. Face flowers and sombrero take the bot's card colour (re-applied in `SetSeatCardSet` once sets are dealt). Only the root is anchored; they play no idle loop (see the pose above). Falls back to the old dark silhouette if an avatar can't be built.
 * **Reactions (`PlayReaction(seat, kind, seconds?)`):** plays one of Roblox's R15 emotes on whoever stands at a seat (bot or player): `Cheer` when a challenger scores, `Shock` on the challenger and `Laugh` on the skull's owner when a skull is hit, `Dance` for the match winner. Called from `RoundManager`; does nothing if the animation can't load.
 * **Turn dot:** `createPlayerTag` adds a 10px gold dot just below each name tag (its own `TurnDot` billboard on the head); `HighlightTurn` shows only the active player's.
 * **Glow:** `Build` softens the place's `BloomEffect` (intensity 0.35, threshold 2.6) so only neon (the LED rings) glows, not lit bodies.
 * **Opponent hands:** each player's card backs are held upright and fanned in front of them at chest height, facing the centre.
 * **Deal Animation:** Fanned hand tokens are only rebuilt when a seat's card count changes; tokens a hand gains (cards returning at round start) fly in from the table centre, staggered by seat. Your own 2D hand does the same via `HandBar.UpdateHand(..., deal)`.
-* **Pile Counters (`UpdatePileCount`):** A label beside each pile with the owner's card-back icon and the number of face-down cards. Muted during placement, bold gold during bidding / challenge / card-loss pick, hidden when empty. Clients enlarge it on mouse hover (`HoverScale`).
+* **Pile Counters (`UpdatePileCount`):** A label just past each pile toward the table centre (1.9 studs from the pile's middle, clear of the cards), with the owner's card-back icon and the number of face-down cards. Muted during placement, bold gold during bidding / challenge / card-loss pick, hidden when empty. Clients enlarge it on mouse hover (`HoverScale`).
 * **Seat Tags:** Every seat (bots and humans; your own tag is hidden from you) shows name, score pips (`●○ 1/2`), lives as small card shapes (cards left, hand + table) in the player's card colour, an outline gradient from their card colour to gold, and greys out with "ELIMINATED". Driven by `UpdateScore`, `UpdateCardCount(seat, handCount, totalCards)` and `SetEliminated` from `RoundManager.broadcastState`.
 
 #### `Card3DManager.luau`
@@ -128,12 +142,11 @@ F:\RobloxProject\
 * **Match End (`declareMatchWinner`):** Reached by scoring `POINTS_TO_WIN` or by being the last player with cards left. Fires `GameOver(winnerId, reason, duration)`, holds `MatchEnd` for `MATCH_OVER_DELAY`, then resets the match.
 
 #### `LobbyManager.luau`
-* **Purpose:** Pre-match lobby. Humans take seats 1–4 while in the lobby; anyone joining mid-match (or when the table is full) waits and spectates. Ready check with `LOBBY_COUNTDOWN`; the host (first joined still present) can force-start and toggle bots. Bots fill empty seats at match start and are removed when the match ends (`RoundManager.SetMatchOverHandler(LobbyManager.EnterLobby)`).
-* A player leaving mid-match → `RoundManager.OnPlayerLeft`: the round restarts without them, or the last remaining player wins.
+* **Purpose:** Pre-match lobby for one table. Humans who join the table take its seats while in the lobby; anyone joining mid-match (or when the table is full) waits and spectates. Ready check with `LOBBY_COUNTDOWN`; the host (first joined still present) can force-start and toggle bots. Bots fill empty seats at match start and are removed when the match ends (`RoundManager.SetMatchOverHandler(LobbyManager.EnterLobby)`).
+* A player leaving mid-match → `RoundManager.OnPlayerLeft`: the round restarts without them, or the last remaining player wins. If only bots are left, the table goes straight back to the lobby (bots removed) instead of playing on empty.
 
 #### `init.server.luau`
-* **Purpose:** Bootstrapper that ties the server together.
-* Builds the table, binds `SubmitAction` / `RequestState`, and routes player join/leave to `LobbyManager`.
+* **Purpose:** The table directory. Builds the menu spawn and every table (see "Several tables in one server"), keeps `tableOf[player]`, and routes `JoinTable`, `SubmitAction`, `RequestState`, `LobbyAction` and player leaving to the player's table. Joining sets the player's `TableId` attribute, which switches their client from the menu to the game. Broadcasts `TableList` whenever a table's lobby changes. `LeaveTable` (from the corner Leave pill) takes the player out of the table the same way as leaving the game, clears `TableId` and respawns them on the menu platform (`LoadCharacterAsync`). The player is removed from the table's members before its lobby cleanup, so a reset doesn't seat them again.
 
 ---
 
@@ -186,7 +199,7 @@ F:\RobloxProject\
 * **Cues (wired in `init.client.luau`):** card place / flip / rose / skull, point scored, victory, your-turn pop, ticks over the last 5 s of your turn and during the lobby countdown, match-start bell, elimination, and an error buzz when the server rejects an action.
 
 #### `CameraController.luau` (per-seat view)
-* `SetSeat(seatIndex)` rotates the seat-1 camera setup around the table to face it from the local player's seat (angle taken from `PlayerMat_<seat>`). `init.client.luau` also relabels your own mat "YOUR PILE" and hides your own fanned hand tokens locally.
+* `SetSeat(seatIndex)` rotates the seat-1 camera setup around the table to face it from the local player's seat (angle taken from `PlayerMat_<seat>` relative to the table's `Origin`); the camera is then moved to that table's centre. In the menu (no table yet) it slowly circles table 1 as a backdrop. `init.client.luau` also relabels your own mat "YOUR PILE" and hides your own fanned hand tokens locally.
 
 #### `UI/DiscardModal.luau`
 * **Purpose:** Skull penalty picker (UIKit panel, red border), shown only to the chooser; cards lift on hover. State re-syncs don't rebuild an already-open picker. Own skull: the challenger's cards face-up, pick one to lose. Someone else's skull: N face-down cards, the skull owner removes one blindly.
@@ -201,5 +214,14 @@ F:\RobloxProject\
 * **Purpose:** Flying card physics animation (LOCOfficial style).
 * Animates cards physically flying from the bottom floating hand dock onto the 3D table stack with an elastic bounce when played. Called from `init.client.luau` when your placement is confirmed (target = your `PlayerMat_<seat>` projected to screen) and when you lose a card to a skull penalty (flies off the top).
 
+#### `TableView.luau`
+* **Purpose:** The player's table on the client: `GetTableId()` (player attribute `TableId`), `GetArena()` (`SkullsArena_<id>`), `GetOrigin()`, `OnJoined(callback)` and `OnLeft(callback)` (each fires every time).
+
+#### `UI/MainMenu.luau`
+* **Purpose:** First screen (and where Leave brings you back): title and PLAY, then "Pick a table" with one card per table (`Table 1 (4 Players)`, seats taken, whether a match is on) and JOIN. Sends `JoinTable`, closes when the server sets `TableId`. Drawn over the camera's orbit of table 1.
+
+#### `UI/LeaveTable.luau`
+* **Purpose:** A small dim "Leave" pill in the top-right corner, out of the way. It only opens a "Leave this table?" question (STAY / LEAVE); LEAVE sends `LeaveTable`. When `TableId` clears, `init.client` resets its view (hand, camera, seat), rebuilds the game UI hidden and shows the main menu again.
+
 #### `init.client.luau`
-* **Purpose:** Client entry point. Builds the `ScreenGui`, coordinates all UI components, and binds server events.
+* **Purpose:** Client entry point. Builds the `ScreenGui` (disabled until you join a table), shows the main menu, coordinates all UI components, and binds server events. The first `RequestState` goes out once you've joined.

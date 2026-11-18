@@ -30,5 +30,5 @@ Multiplayer bluffing card game for Roblox (2–6 players, human + bots), Day of 
 - `graphify-out/graph.json` is committed. **Don't explore by reading every file.** To orient or answer cross-module questions, query the graph first (`python -m graphify query "<question>"`, or `path` / `explain`), then read only the files and line ranges it points to.
 - After a feature lands, run `python scripts/graph_update.py` and commit the graph as a separate commit. Don't use plain `graphify update` / `/graphify . --update`: graphify parses `.luau` with the Lua grammar and drops symbols after Luau type syntax. The script feeds it a Lua-compatible copy (line numbers unchanged). `--full` re-extracts everything; `--check` lists files that still fail to parse.
 
-## Known issues (as of 2026-11-15)
-- The 3D table has 4 seats, so matches are capped at 4 players (`Constants.MAX_PLAYERS`). More seats need new `SEAT_CONFIGS` entries.
+## Known issues (as of 2026-11-18)
+- Each server runs two tables (`Constants.TABLES`: 4 and 6 seats), picked from the main menu. The small Leave pill (top right) takes a player back to the menu.
