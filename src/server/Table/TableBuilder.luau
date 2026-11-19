@@ -30,6 +30,10 @@ local opponentHands: { [number]: Model } = {}
 local seatCardSets: { [number]: string } = {} -- CardArt set per seat (card backs)
 local pileCounters: { [number]: BillboardGui } = {}
 local turnDots: { [number]: BillboardGui } = {} -- small gold dot just above the active player's name tag
+-- Bid bubbles: a thought bubble beside each name tag during bidding with the number that
+-- player is on, or "Pass" (dimmed) once they've passed; hidden from the player themselves
+local bidBubbles: { [number]: BillboardGui } = {}
+local seatBids: { [number]: string? } = {} -- what each seat's bubble shows (nil = hidden)
 local activeTurnSeat: number? = nil -- "N cards" label beside each pile
 local cardCountLabels: { [number]: TextLabel } = {}
 local scoreLabels: { [number]: TextLabel } = {}
@@ -265,6 +269,60 @@ local function createPlayerTag(adornee: BasePart, displayName: string, seatIdx: 
 	dot.Parent = dotGui
 	Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
 	turnDots[seatIdx] = dotGui
+
+	-- Bid bubble: to the right of the capsule (220 px wide), a little higher, with two
+	-- small dots trailing back toward the tag like a thought bubble
+	local oldBubble = adornee:FindFirstChild("BidBubble")
+	if oldBubble then
+		oldBubble:Destroy()
+	end
+	local bubbleGui = Instance.new("BillboardGui")
+	bubbleGui.Name = "BidBubble"
+	if hideFrom then
+		bubbleGui.PlayerToHideFrom = hideFrom -- you know your own bid
+	end
+	bubbleGui.Size = UDim2.fromOffset(64, 56)
+	bubbleGui.StudsOffset = bill.StudsOffset
+	bubbleGui.SizeOffset = Vector2.new(2.2, 0.3) -- 141 px right (its left edge just past the capsule), 17 px up
+	bubbleGui.AlwaysOnTop = true
+	bubbleGui.Enabled = false
+	bubbleGui.Adornee = adornee
+	bubbleGui.Parent = adornee
+	local function blob(name: string, size: number, x: number, y: number): Frame
+		local f = Instance.new("Frame")
+		f.Name = name
+		f.AnchorPoint = Vector2.new(0.5, 0.5)
+		f.Position = UDim2.fromOffset(x, y)
+		f.Size = UDim2.fromOffset(size, size)
+		f.BorderSizePixel = 0
+		f.Parent = bubbleGui
+		Instance.new("UICorner", f).CornerRadius = UDim.new(1, 0)
+		local edge = Instance.new("UIStroke")
+		edge.Color = Color3.fromRGB(60, 34, 22)
+		edge.Thickness = 1.5
+		edge.Transparency = 0.3
+		edge.Parent = f
+		return f
+	end
+	blob("DotSmall", 6, 5, 47)
+	blob("DotLarge", 10, 13, 38)
+	local cloud = blob("Cloud", 42, 40, 22)
+	local number = Instance.new("TextLabel")
+	number.Name = "Bid"
+	number.Size = UDim2.fromScale(1, 1)
+	number.BackgroundTransparency = 1
+	number.Font = Enum.Font.FredokaOne
+	number.TextScaled = true
+	number.TextColor3 = Color3.fromRGB(60, 32, 20)
+	number.Parent = cloud
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0, 7)
+	pad.PaddingBottom = UDim.new(0, 7)
+	pad.PaddingLeft = UDim.new(0, 6)
+	pad.PaddingRight = UDim.new(0, 6)
+	pad.Parent = number
+	bidBubbles[seatIdx] = bubbleGui
+	TableBuilder.SetBid(seatIdx, seatBids[seatIdx]) -- carry the current bid over to a rebuilt tag
 
 
 	-- Capsule background
@@ -1248,6 +1306,34 @@ function TableBuilder.SetSeatCardSet(seatIndex: number, setId: string?)
 	end
 end
 
+-- What a seat's bid bubble shows: a number (the bid they're on), "Pass" (dimmed), or nil
+-- to hide it. RoundManager sets these during bidding and clears them after.
+local BUBBLE_ON = Color3.fromRGB(250, 238, 214) -- warm cream
+local BUBBLE_PASSED = Color3.fromRGB(92, 80, 74)
+function TableBuilder.SetBid(seatIndex: number, text: string?)
+	seatBids[seatIndex] = text
+	local gui = bidBubbles[seatIndex]
+	if not gui or not gui.Parent then
+		return
+	end
+	gui.Enabled = text ~= nil
+	if not text then
+		return
+	end
+	local passed = text == "Pass"
+	for _, part in ipairs(gui:GetChildren()) do
+		if part:IsA("Frame") then
+			part.BackgroundColor3 = if passed then BUBBLE_PASSED else BUBBLE_ON
+		end
+	end
+	local cloud = gui:FindFirstChild("Cloud")
+	local label = cloud and cloud:FindFirstChild("Bid")
+	if label and label:IsA("TextLabel") then
+		label.Text = text
+		label.TextColor3 = if passed then Color3.fromRGB(205, 195, 186) else Color3.fromRGB(60, 32, 20)
+	end
+end
+
 function TableBuilder.SetEliminated(seatIndex: number, eliminated: boolean)
 	getStatus(seatIndex).eliminated = eliminated
 	applySeatStatus(seatIndex)
@@ -1286,6 +1372,8 @@ function TableBuilder.ClearSeat(seatIndex: number)
 	end
 	seatBillboards[seatIndex] = nil
 	seatOccupants[seatIndex] = nil
+	seatBids[seatIndex] = nil
+	bidBubbles[seatIndex] = nil
 	local dotGui = turnDots[seatIndex]
 	if dotGui then
 		dotGui:Destroy()

@@ -20,6 +20,8 @@ local currentGameState = Enums.GameState.Lobby
 local activePlayerIndex = 1
 local challengerId: number? = nil
 local highestBid = 0
+-- The last bid each player made this round (for the bid bubbles beside their tags)
+local playerBids: { [number]: number } = {}
 local highestBidderId: number? = nil
 local cardsFlippedThisRound = 0
 local targetCardsToFlip = 0
@@ -52,6 +54,16 @@ local function broadcastState()
 			or currentGameState == Enums.GameState.Revealing
 			or currentGameState == Enums.GameState.Discarding
 		TableBuilder.UpdatePileCount(p.seatIndex, if p.isEliminated then 0 else #p.playedStack, emphasis)
+		-- Bid bubble while bidding: the number they're on, or "Pass" once they've passed
+		local bubble: string? = nil
+		if currentGameState == Enums.GameState.Bidding and not p.isEliminated then
+			if p.hasPassedBid then
+				bubble = "Pass"
+			elseif playerBids[p.userId] then
+				bubble = tostring(playerBids[p.userId])
+			end
+		end
+		TableBuilder.SetBid(p.seatIndex, bubble)
 	end
 	-- Everyone at this table gets state, including players waiting for the next match
 	for _, plr in ipairs(TableContext.GetPlayers()) do
@@ -370,6 +382,7 @@ function RoundManager.StartRound(leaderId: number?)
 
 	challengerId = nil
 	highestBid = 0
+	table.clear(playerBids)
 	highestBidderId = nil
 	cardsFlippedThisRound = 0
 	targetCardsToFlip = 0
@@ -478,6 +491,7 @@ function RoundManager.EnterLobby()
 	pendingDiscard = nil
 	challengerId = nil
 	highestBid = 0
+	table.clear(playerBids)
 	highestBidderId = nil
 	cardsFlippedThisRound = 0
 	targetCardsToFlip = 0
@@ -827,6 +841,7 @@ function RoundManager._ProcessPlayerAction(userId: number, action: string, data:
 			currentGameState = Enums.GameState.Bidding
 			highestBid = bid
 			highestBidderId = userId
+			playerBids[userId] = bid
 			TableContext.FireAll(Network.BidUpdated, userId, highestBid)
 			broadcastNotification(p.name .. " opened the bid at " .. highestBid .. " cards!", "warning")
 
@@ -860,6 +875,7 @@ function RoundManager._ProcessPlayerAction(userId: number, action: string, data:
 			cancelTurnTimer()
 			highestBid = bid
 			highestBidderId = userId
+			playerBids[userId] = bid
 			TableContext.FireAll(Network.BidUpdated, userId, highestBid)
 			broadcastNotification(p.name .. " raised the bid to " .. highestBid .. "!", "warning")
 
