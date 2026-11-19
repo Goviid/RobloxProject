@@ -114,15 +114,15 @@
     "semantic_hash": ""
   },
   "CODE_GUIDE.md": {
-    "mtime": 1795056772.0272253,
-    "seen": 1795056990.5792918,
-    "ast_hash": "f6dd6db4e184ecc6984cd43d141c7234",
+    "mtime": 1795059380.707758,
+    "seen": 1795059412.320242,
+    "ast_hash": "54aa9804d33a1099687fd97f00dbf37d",
     "semantic_hash": ""
   },
   "HANDOVER.md": {
-    "mtime": 1795055879.5050828,
-    "seen": 1795056058.474952,
-    "ast_hash": "1106a8ec3694a66d7dfe4224fbf14bee",
+    "mtime": 1795059380.7082748,
+    "seen": 1795059412.3202426,
+    "ast_hash": "67d328e85cd3998f656f13adc7ae8143",
     "semantic_hash": ""
   },
   "IMPLEMENTATION_PLAN.md": {
@@ -138,9 +138,9 @@
     "semantic_hash": ""
   },
   "src/shared/CardArt.luau": {
-    "mtime": 1794811382.4647927,
-    "seen": 1795052252.0960298,
-    "ast_hash": "dc69856b171dc2695789fe069c92de4f",
+    "mtime": 1795059199.142912,
+    "seen": 1795059412.3202343,
+    "ast_hash": "bb21335d74503227418e13307a2bd6c9",
     "semantic_hash": ""
   },
   "Artwork assets/Cards/cropped/amethyst_back.png": {
@@ -447,6 +447,42 @@
     "mtime": 1795055861.4490008,
     "seen": 1795056058.4749115,
     "ast_hash": "3c78f0da10a286393eeab3bc9f4cfb91",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/ivory_back.png": {
+    "mtime": 1795059150.4594119,
+    "seen": 1795059412.3202553,
+    "ast_hash": "689732cecb3c241662223f48e3dcf359",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/ivory_rose.png": {
+    "mtime": 1795059150.596501,
+    "seen": 1795059412.3202562,
+    "ast_hash": "e74c31a0e10273ef0a43259751888e0e",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/ivory_skull.png": {
+    "mtime": 1795059150.5268235,
+    "seen": 1795059412.3202572,
+    "ast_hash": "ae5e93027627195de796cac52c4d1c15",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/magenta_back.png": {
+    "mtime": 1795059150.6841414,
+    "seen": 1795059412.3202584,
+    "ast_hash": "88e8984c84d33908108f0567841529a8",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/magenta_rose.png": {
+    "mtime": 1795059150.8170695,
+    "seen": 1795059412.320259,
+    "ast_hash": "dbc9d803c6b7757c7b2ed6b2ac6d1029",
+    "semantic_hash": ""
+  },
+  "Artwork assets/Cards/cropped/magenta_skull.png": {
+    "mtime": 1795059150.749828,
+    "seen": 1795059412.3202596,
+    "ast_hash": "f9d584079a1fe1f1b21c6b1ff465e529",
     "semantic_hash": ""
   }
 }
