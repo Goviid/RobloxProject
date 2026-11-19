@@ -4,6 +4,7 @@
 -- round pile-mat outlines on the table on or off. Off by default; local to this player.
 
 local Theme = require(game:GetService("ReplicatedStorage").Shared.Theme)
+local CornerPill = require(script.Parent.CornerPill)
 
 local PileOutlines = {}
 
@@ -26,31 +27,12 @@ function PileOutlines.Apply(arena: Instance?)
 end
 
 function PileOutlines.Create(parent: Instance, getArena: () -> Instance?)
-	local pill = Instance.new("TextButton")
-	pill.Name = "PileOutlinesPill"
-	pill.AnchorPoint = Vector2.new(1, 0)
-	pill.Position = UDim2.new(1, -78, 0, 10) -- just left of the Leave pill
-	pill.Size = UDim2.fromOffset(62, 24)
-	pill.BackgroundColor3 = Theme.Colors.Backing
-	pill.BorderSizePixel = 0
-	pill.AutoButtonColor = true
-	pill.Font = Theme.Fonts.Sub
-	pill.TextSize = Theme.TextSize.Small
-	pill.Text = "Piles"
-	pill.ZIndex = 5
-	pill.Parent = parent
-	Instance.new("UICorner", pill).CornerRadius = Theme.CornerRadius.Circular
+	local pill = CornerPill.Create(parent, "PileOutlinesPill", Theme.Images.IconPiles, "Piles", 2) -- left of Leave
+	pill.setLit(shown)
 
-	local function style()
-		pill.BackgroundTransparency = if shown then 0.2 else 0.45
-		pill.TextColor3 = if shown then Theme.Colors.TextPrimary else Theme.Colors.TextMuted
-		pill.TextTransparency = if shown then 0 else 0.2
-	end
-	style()
-
-	pill.Activated:Connect(function()
+	pill.button.Activated:Connect(function()
 		shown = not shown
-		style()
+		pill.setLit(shown)
 		PileOutlines.Apply(getArena())
 	end)
 end

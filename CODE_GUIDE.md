@@ -161,7 +161,7 @@ F:\RobloxProject\
 ### 3. Client Modules (`src/client/`)
 
 #### `first/LoadingScreen.client.luau` (ReplicatedFirst)
-* **Purpose:** Replaces Roblox's default loading screen with a themed one (title, step text, progress bar) that stays up until: the game has loaded, the server has built the table (`workspace` attribute `TableReady`, set in `init.server.luau`), card art and sounds are preloaded (player attribute `ClientReady`, set by `init.client.luau`), and your avatar has spawned. Each step has a timeout and the whole screen is capped at 25 s, then it fades out. Colours mirror `Theme` because Shared may not have replicated yet.
+* **Purpose:** Replaces Roblox's default loading screen with a themed one: a dark screen with a soft dark-rose glow (`Glow` image, tinted), the logo (preloaded first; the text title shows until it has loaded, then it pops in), step text and a progress bar. It that stays up until: the game has loaded, the server has built the table (`workspace` attribute `TableReady`, set in `init.server.luau`), card art and sounds are preloaded (player attribute `ClientReady`, set by `init.client.luau`), and your avatar has spawned. Each step has a timeout and the whole screen is capped at 25 s, then it fades out. Colours and image ids mirror `Theme` because Shared may not have replicated yet.
 
 #### `CameraController.luau`
 * **Purpose:** 3D tabletop over-the-shoulder camera elevated behind Seat 1 framing your avatar, the circular table, and opponent bots (LOCOfficial style).
@@ -172,6 +172,7 @@ F:\RobloxProject\
 #### `Theme.luau` (shared: `src/shared/Theme.luau`)
 * **Purpose:** Theme A (Calavera / Day of the Dead) design tokens, shared by the screen UI and server-built 3D labels.
 * **Readability rules:** `Theme.TextSize` (nothing below `Min` = 14), `Theme.Outline(label)` for any text over the 3D scene, `Colors.Backing` for floating label pills. New UI takes colours from `Theme.Colors`, not `Color3.fromRGB` literals.
+* `Theme.Images`: uploaded UI images (the menu logo and the corner-pill icons). Their sources are in `Artwork assets/UI`; a changed image has to be uploaded again and its new asset id put here.
 * `init.client.luau` adds a `ScreenScale` UIScale that enlarges the UI on big monitors (1.0–1.5×); code placing GUI at raw screen positions must divide by it.
 * Defines the warm wood colors (`TableDark`, `TableSurface`), gold filigree accents (`Gold`, `GoldGlow`), crimson velvet (`RosePrimary`), and obsidian charcoal (`SkullPrimary`).
 
@@ -226,16 +227,19 @@ F:\RobloxProject\
 * **Purpose:** The player's table on the client: `GetTableId()` (player attribute `TableId`), `GetArena()` (`SkullsArena_<id>`), `GetOrigin()`, `OnJoined(callback)` and `OnLeft(callback)` (each fires every time).
 
 #### `UI/MainMenu.luau`
-* **Purpose:** First screen (and where Leave brings you back): title and PLAY, then "Pick a table" with one card per table (`Table 1 (4 Players)`, seats taken, whether a match is on) and JOIN. Sends `JoinTable`, closes when the server sets `TableId`. Drawn over the camera's orbit of table 1.
+* **Purpose:** First screen (and where Leave brings you back): the logo (`Theme.Images.Logo`, cut out of the artwork on a transparent background, from `Artwork assets/UI/logo.png`) floating over the dimmed tavern with no panel behind it, the tagline and PLAY, then "Pick a table" with one card per table (`Table 1 (4 Players)`, seats taken, whether a match is on) and JOIN. Sends `JoinTable`, closes when the server sets `TableId`. Drawn over the camera's orbit of table 1.
+
+#### `UI/CornerPill.luau`
+* **Purpose:** The top-right corner options. Only a small dim cogwheel shows there; clicking it opens the pills (an icon from `Theme.Images`, white and tinted with the text, plus a short word) in a row to its left and turns the cog into an X, which closes them. The pills (`CornerBar.Pills`) are ordered Look, Piles, Leave, and each one sizes to its text. `setLit` highlights a pill while its setting is on.
 
 #### `UI/LeaveTable.luau`
-* **Purpose:** A small dim "Leave" pill in the top-right corner, out of the way. It only opens a "Leave this table?" question (STAY / LEAVE); LEAVE sends `LeaveTable`. When `TableId` clears, `init.client` resets its view (hand, camera, seat), rebuilds the game UI hidden and shows the main menu again.
+* **Purpose:** A small dim "Leave" pill (door-and-arrow icon) in the top-right corner, out of the way. It only opens a "Leave this table?" question (STAY / LEAVE); LEAVE sends `LeaveTable`. When `TableId` clears, `init.client` resets its view (hand, camera, seat), rebuilds the game UI hidden and shows the main menu again.
 
 #### `UI/CharacterLook.luau`
-* **Purpose:** The test switch between the two character looks: a dim "Look: Classic" / "Look: Bean" pill left of Piles. It shows the table's current look (the arena's `CharacterLook` attribute) and asks the server for the other one (`SetCharacterLook`). It changes the look for everyone at the table.
+* **Purpose:** The test switch between the two character looks: a dim pill left of Piles with a t-shirt icon and the current look ("Classic" / "Bean"). It shows the table's current look (the arena's `CharacterLook` attribute) and asks the server for the other one (`SetCharacterLook`). It changes the look for everyone at the table.
 
 #### `UI/PileOutlines.luau`
-* **Purpose:** A small dim "Piles" pill just left of Leave. It turns the round pile-mat outlines (each mat's `MatGui` SurfaceGui, built disabled by `TableBuilder`) on or off for this player only. Off by default; the choice holds across leaving and rejoining. `init.client` re-applies it whenever you join a table or take a seat.
+* **Purpose:** A small dim "Piles" pill (stacked-cards icon) just left of Leave. It turns the round pile-mat outlines (each mat's `MatGui` SurfaceGui, built disabled by `TableBuilder`) on or off for this player only. Off by default; the choice holds across leaving and rejoining. `init.client` re-applies it whenever you join a table or take a seat.
 
 #### `init.client.luau`
 * **Purpose:** Client entry point. Builds the `ScreenGui` (disabled until you join a table), shows the main menu, coordinates all UI components, and binds server events. The first `RequestState` goes out once you've joined.

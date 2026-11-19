@@ -6,28 +6,13 @@
 
 local Theme = require(game:GetService("ReplicatedStorage").Shared.Theme)
 local UIKit = require(script.Parent.UIKit)
+local CornerPill = require(script.Parent.CornerPill)
 
 local LeaveTable = {}
 
 function LeaveTable.Create(parent: Instance, onConfirm: () -> ())
-	-- The pill: small, low-contrast, in the corner, away from every other control
-	local pill = Instance.new("TextButton")
-	pill.Name = "LeaveTablePill"
-	pill.AnchorPoint = Vector2.new(1, 0)
-	pill.Position = UDim2.new(1, -10, 0, 10)
-	pill.Size = UDim2.fromOffset(62, 24)
-	pill.BackgroundColor3 = Theme.Colors.Backing
-	pill.BackgroundTransparency = 0.45
-	pill.BorderSizePixel = 0
-	pill.AutoButtonColor = true
-	pill.Font = Theme.Fonts.Sub
-	pill.TextSize = Theme.TextSize.Small
-	pill.TextColor3 = Theme.Colors.TextMuted
-	pill.TextTransparency = 0.2
-	pill.Text = "Leave"
-	pill.ZIndex = 5
-	pill.Parent = parent
-	Instance.new("UICorner", pill).CornerRadius = Theme.CornerRadius.Circular
+	-- The pill: small, low-contrast, rightmost in the corner, away from every other control
+	local pill = CornerPill.Create(parent, "LeaveTablePill", Theme.Images.IconLeave, "Leave", 3).button
 
 	-- The question
 	local panel = UIKit.Panel(parent, { name = "LeaveTableConfirm", width = 340, accent = Theme.Colors.AlertRed, zIndex = 80 })

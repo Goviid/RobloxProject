@@ -97,10 +97,27 @@ function MainMenu.Show(playerGui: PlayerGui)
 	shade.Parent = gui
 
 	-- Page 1: title and PLAY
-	local home = UIKit.Panel(gui, { name = "Home", width = 380, gap = 14, padding = 26 })
-	UIKit.Label(home, { text = "Skulls & Roses", style = "display", order = 1 })
-	UIKit.Label(home, { text = "Bluff, bid and flip. Don't hit a skull.", style = "body", order = 2 })
-	local play = UIKit.Button(home, { name = "Play", text = "PLAY", kind = "primary", order = 3, height = 54 })
+	-- No box here: the logo (cut out on transparent) floats over the dimmed tavern, with
+	-- the tagline and PLAY under it
+	local home = UIKit.Panel(gui, { name = "Home", width = 540, gap = 10, padding = 0 })
+	home.BackgroundTransparency = 1
+	local border = home:FindFirstChild("Border")
+	if border then
+		border:Destroy()
+	end
+	local logo = Instance.new("ImageLabel")
+	logo.Name = "Logo"
+	logo.LayoutOrder = 1
+	-- Fixed height: an aspect-ratio constraint collapses to nothing inside the auto-sized
+	-- panel. 540 x 364 keeps the art's 1024 x 690 shape.
+	logo.Size = UDim2.new(1, 0, 0, 364)
+	logo.ScaleType = Enum.ScaleType.Fit
+	logo.BackgroundTransparency = 1
+	logo.Image = Theme.Images.Logo
+	logo.Parent = home
+	local tagline = UIKit.Label(home, { text = "Bluff, bid and flip. Don't hit a skull.", style = "body", order = 2 })
+	Theme.Outline(tagline)
+	local play = UIKit.Button(home, { name = "Play", text = "PLAY", kind = "primary", order = 3, height = 54, width = UDim.new(0, 260) })
 
 	-- Page 2: pick a table
 	local picker = UIKit.Panel(gui, { name = "Tables", width = 460, gap = 12, padding = 22 })

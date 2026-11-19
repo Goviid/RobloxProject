@@ -84,5 +84,17 @@ Theme.CornerRadius = {
 	Circular = UDim.new(1, 0),                      -- Perfect circle for cards & coasters
 }
 
+-- Uploaded UI images (sources in "Artwork assets/UI"). Icons are white on transparent,
+-- so ImageColor3 tints them.
+Theme.Images = {
+	Logo = "rbxassetid://114645623357001",          -- title logo, cut out on transparent (1024 x 690)
+	Glow = "rbxassetid://93681719710337",           -- soft round white glow (tinted), behind the loading logo
+	IconSettings = "rbxassetid://77065799955205",   -- cogwheel (opens the corner options)
+	IconClose = "rbxassetid://94659965491952",      -- X (closes them)
+	IconLeave = "rbxassetid://129890911249185",     -- door with an arrow out
+	IconLook = "rbxassetid://76378751033424",       -- t-shirt (character look)
+	IconPiles = "rbxassetid://114676544442331",     -- stack of round cards
+}
+
 return table.freeze(Theme)
 

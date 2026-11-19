@@ -23,6 +23,7 @@ local HEIGHT = 18
 local TABLE_RADIUS = 7.5
 local TABLE_TOP = 3.0
 local STAND_RADIUS = 7.8
+local DOOR_GAP = 7.2 -- the south door frame is 7 wide; the low wall trim stops either side
 
 local C = {
 	floor = Color3.fromRGB(96, 62, 40),
@@ -38,6 +39,9 @@ local C = {
 	glass = Color3.fromRGB(28, 42, 66),
 	warmLight = Color3.fromRGB(255, 208, 160),
 	fireLight = Color3.fromRGB(255, 130, 55),
+	bark = Color3.fromRGB(84, 54, 34),
+	endGrain = Color3.fromRGB(196, 152, 104),
+	endRing = Color3.fromRGB(150, 108, 70),
 }
 
 local props = ServerStorage:FindFirstChild("WorldProps")
@@ -120,6 +124,44 @@ local function prop(parent: Instance, name: string, cf: CFrame, height: number?)
 	return model
 end
 
+-- A neat woodpile: logs stacked in a pyramid (rows of `rows`, rows - 1, ... 1), their cut
+-- ends facing into the room so the light end grain shows. cf is the bottom centre of the
+-- pile's front, looking into the room. Small fixed variations keep it from looking stamped.
+local function logPile(parent: Instance, name: string, cf: CFrame, rows: number)
+	local pile = Instance.new("Model")
+	pile.Name = name
+	pile.Parent = parent
+	local rng = Random.new(7)
+	local D = 0.78 -- log diameter
+	local LENGTH = 2.6
+	local rowHeight = D * 0.87 -- logs nest into the gaps of the row below
+	for row = 0, rows - 1 do
+		local count = rows - row
+		for i = 1, count do
+			local x = (i - (count + 1) / 2) * D
+			local y = D / 2 + row * rowHeight
+			local d = D * rng:NextNumber(0.9, 1.0)
+			local length = LENGTH + rng:NextNumber(-0.15, 0.15)
+			local front = rng:NextNumber(-0.12, 0.08) -- ends not quite flush
+			-- cf looks into the room (-Z), so the pile runs back along +Z toward the wall. A
+			-- cylinder's axis is X: turned 90 degrees, its +X end faces the room.
+			local logCF = cf * CFrame.new(x, y, length / 2 - front) * CFrame.Angles(0, math.rad(90), 0)
+				* CFrame.Angles(rng:NextNumber(-0.25, 0.25), 0, 0)
+			local log = part(pile, "Log", Vector3.new(length, d, d), logCF, C.bark, Enum.Material.Wood)
+			log.Shape = Enum.PartType.Cylinder
+			-- cut end facing the room: a pale disc with a darker ring inside it
+			local face = logCF * CFrame.new(length / 2 + 0.01, 0, 0)
+			local grain = part(pile, "EndGrain", Vector3.new(0.04, d * 0.86, d * 0.86), face, C.endGrain, Enum.Material.Wood)
+			grain.Shape = Enum.PartType.Cylinder
+			grain.CastShadow = false
+			local ring = part(pile, "EndRing", Vector3.new(0.05, d * 0.42, d * 0.42), face * CFrame.new(0.01, 0, 0), C.endRing, Enum.Material.Wood)
+			ring.Shape = Enum.PartType.Cylinder
+			ring.CastShadow = false
+		end
+	end
+	return pile
+end
+
 local function buildRoom(spec: { id: number, origin: Vector3, half: number, seats: number })
 	local old = world:FindFirstChild("Room_" .. spec.id)
 	if old then
@@ -160,16 +202,27 @@ local function buildRoom(spec: { id: number, origin: Vector3, half: number, seat
 	for _, w in ipairs(walls) do
 		local base = O + w.pos
 		part(shell, "Wall_" .. w.name, Vector3.new(w.size.X, HEIGHT, w.size.Z), CFrame.new(base + Vector3.new(0, HEIGHT / 2, 0)), C.wall, Enum.Material.WoodPlanks)
-		-- Trim strips run the inside length of the wall, standing proud of its inner face
+		-- Trim strips run the inside length of the wall, standing proud of its inner face.
+		-- The low ones stop either side of the south door: running across it, the wainscot's
+		-- face sat exactly where the door's is and the two flickered (z-fighting).
 		local alongX = w.size.X > 1
-		local function strip(name: string, height: number, y: number, depth: number, color: Color3, material: Enum.Material)
-			local size = if alongX then Vector3.new(W, height, depth) else Vector3.new(depth, height, W)
-			local pos = base + w.inward * (0.5 + depth / 2) + Vector3.new(0, y, 0)
-			part(shell, w.name .. "_" .. name, size, CFrame.new(pos), color, material)
+		local function strip(name: string, height: number, y: number, depth: number, color: Color3, material: Enum.Material, skipDoor: boolean?)
+			local spans = { { -W / 2, W / 2 } }
+			if skipDoor and w.name == "South" then
+				spans = { { -W / 2, -DOOR_GAP / 2 }, { DOOR_GAP / 2, W / 2 } }
+			end
+			for _, span in ipairs(spans) do
+				local length = span[2] - span[1]
+				local mid = (span[1] + span[2]) / 2
+				local size = if alongX then Vector3.new(length, height, depth) else Vector3.new(depth, height, length)
+				local along = if alongX then Vector3.new(mid, 0, 0) else Vector3.new(0, 0, mid)
+				local pos = base + along + w.inward * (0.5 + depth / 2) + Vector3.new(0, y, 0)
+				part(shell, w.name .. "_" .. name, size, CFrame.new(pos), color, material)
+			end
 		end
-		strip("Wainscot", 4.2, 2.1, 0.3, C.wainscot, Enum.Material.WoodPlanks)
-		strip("Rail", 0.35, 4.3, 0.5, C.timber, Enum.Material.Wood)
-		strip("Skirting", 0.5, 0.25, 0.45, C.timber, Enum.Material.Wood)
+		strip("Wainscot", 4.2, 2.1, 0.3, C.wainscot, Enum.Material.WoodPlanks, true)
+		strip("Rail", 0.35, 4.3, 0.5, C.timber, Enum.Material.Wood, true)
+		strip("Skirting", 0.5, 0.25, 0.45, C.timber, Enum.Material.Wood, true)
 		strip("TopBeam", 1.2, HEIGHT - 0.6, 0.9, C.timber, Enum.Material.Wood)
 	end
 
@@ -302,8 +355,9 @@ local function buildRoom(spec: { id: number, origin: Vector3, half: number, seat
 	flames.Parent = fireLight
 	-- Skull plaque on the chimney breast, above the mantel
 	prop(decor, "SkullPlaque", facing(0, 9.6, north + 2.4, 0, 1), 3.6)
-	prop(decor, "Firewood", facing(-9, 0, north + 1.6, 0, 1), 2.6)
-	prop(decor, "Firewood", facing(9, 0, north + 1.6, 0, 1), 2.6)
+	-- Woodpiles either side of the hearth (their backs against the wall)
+	logPile(decor, "Woodpile", facing(-9.5, 0, north + 2.9, 0, 1), 5)
+	logPile(decor, "Woodpile", facing(9.5, 0, north + 2.9, 0, 1), 5)
 
 	-- Wall lanterns (each with a small warm light)
 	local function lantern(x: number, y: number, z: number, lookX: number, lookZ: number)
@@ -352,7 +406,7 @@ local function buildRoom(spec: { id: number, origin: Vector3, half: number, seat
 		prop(decor, "Barrel", facing(-h + 2.4, 0, -h + 3, 1, 0), 4)
 		prop(decor, "Barrel", facing(-h + 2.4, 0, -h + 6.4, 1, 0), 4)
 		prop(decor, "Barrel", facing(h - 2.4, 0, h - 3, -1, 0), 4)
-		prop(decor, "Firewood", facing(h - 3, 0, h - 6.5, -1, 0), 2.6)
+		logPile(decor, "Woodpile", facing(h - 3.4, 0, h - 6.5, -1, 0), 4)
 	end
 
 	room.Parent = world
