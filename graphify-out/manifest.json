@@ -1,8 +1,8 @@
 {
   "default.project.json": {
-    "mtime": 1795048149.3341537,
-    "seen": 1795052252.0959961,
-    "ast_hash": "acd2a018dc9e3c1faa7e4250591e038a",
+    "mtime": 1795056461.497136,
+    "seen": 1795056990.5792377,
+    "ast_hash": "847b85fda040289ff6c0d22e71d382e2",
     "semantic_hash": ""
   },
   "scripts/check.sh": {
@@ -114,9 +114,9 @@
     "semantic_hash": ""
   },
   "CODE_GUIDE.md": {
-    "mtime": 1795055879.5050828,
-    "seen": 1795056058.474951,
-    "ast_hash": "16bdc018dafb703fce5b34ae10436127",
+    "mtime": 1795056772.0272253,
+    "seen": 1795056990.5792918,
+    "ast_hash": "f6dd6db4e184ecc6984cd43d141c7234",
     "semantic_hash": ""
   },
   "HANDOVER.md": {
@@ -294,9 +294,9 @@
     "semantic_hash": ""
   },
   "src/first/LoadingScreen.client.luau": {
-    "mtime": 1795054026.3551161,
-    "seen": 1795054952.0762312,
-    "ast_hash": "95b2adf80154c0a81608b2ab258475cd",
+    "mtime": 1795056189.8064847,
+    "seen": 1795056990.5792754,
+    "ast_hash": "6d4d0c21504757d6958ff9048b2a2c37",
     "semantic_hash": ""
   },
   "src/client/UI/Hand3D.luau": {
@@ -354,15 +354,15 @@
     "semantic_hash": ""
   },
   "src/server/Table/RoundManager.luau": {
-    "mtime": 1795055209.704661,
-    "seen": 1795056058.4749403,
-    "ast_hash": "25dc5e8d31ad14d7ebf1f809077da688",
+    "mtime": 1795056705.7323048,
+    "seen": 1795056990.5792816,
+    "ast_hash": "a7660815819c27cbcf719b40cca863fd",
     "semantic_hash": ""
   },
   "src/server/Table/TableBuilder.luau": {
-    "mtime": 1795053123.2252157,
-    "seen": 1795053309.6491108,
-    "ast_hash": "224f2922e231ad20741632a51caceaa5",
+    "mtime": 1795056715.1946092,
+    "seen": 1795056990.5792828,
+    "ast_hash": "fe130fc7183a4431c1e6fc41bb64a6a3",
     "semantic_hash": ""
   },
   "src/server/Table/TableContext.luau": {
