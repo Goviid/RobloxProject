@@ -78,17 +78,27 @@ function CardRevealModal.ShowCard(cardType: string, playerName: string, flippedC
 	typeText.Text = if isSkull then "SKULL!" else "ROSE REVEALED"
 	typeText.TextColor3 = if isSkull then Theme.Colors.AlertRed else Theme.Colors.TextGold
 	source.Text = playerName .. "'s pile  ·  flip " .. flippedCount .. " of " .. targetCount
-	face.Image = CardArt.Face(setId, cardType)
 	stroke.Color = accent
 	UIKit.SetAccent(frame, if isSkull then Theme.Colors.AlertRed else Theme.Colors.Gold)
 
 	UIKit.Pop(frame, true)
 
-	-- Coin flip: squash to a sliver, then open up
-	face.Size = UDim2.fromOffset(8, CARD_SIZE)
-	TweenService:Create(face, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Size = UDim2.fromOffset(CARD_SIZE, CARD_SIZE),
-	}):Play()
+	-- Coin flip: the back narrows to edge-on, the face opens out from edge-on
+	face.Image = CardArt.Back(setId)
+	face.Size = UDim2.fromOffset(CARD_SIZE, CARD_SIZE)
+	local close = TweenService:Create(face, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		Size = UDim2.fromOffset(0, CARD_SIZE),
+	})
+	close.Completed:Connect(function()
+		if token ~= showToken then
+			return
+		end
+		face.Image = CardArt.Face(setId, cardType)
+		TweenService:Create(face, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.fromOffset(CARD_SIZE, CARD_SIZE),
+		}):Play()
+	end)
+	close:Play()
 
 	task.delay(SHOW_SECONDS, function()
 		if token == showToken then

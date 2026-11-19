@@ -43,7 +43,13 @@ local IDLE_DROP = 0.35 -- cards sit lower when it isn't your turn
 local DEAL_SECONDS = 0.45
 
 local onCardClicked: CardSelectCallback? = nil
-local pileTarget: (() -> Vector3?)? = nil
+-- Where the played card lands (top of your pile) and the folder the server's pile cards
+-- are in (see SetPileTarget)
+local pileTarget: (() -> (Vector3?, Instance?))? = nil
+local PILE_CARD_COLOR = Color3.fromRGB(26, 22, 30) -- rim of the server's pile cards
+local FLY_SECONDS = 0.42
+local FLY_ARC = 0.8 -- studs above the straight line at mid-flight
+local HANDOFF_TIMEOUT = 1.5 -- seconds to wait for the server's card before giving up
 local folder: Folder? = nil
 local cards: { Card } = {}
 local currentHand: { string } = {}
@@ -160,23 +166,156 @@ local function cardAt(screenPos: Vector2): Card?
 	return best
 end
 
--- The played card flies from your hand to your pile, then disappears (the server's
--- 3D card lands there at the same moment)
+-- The server's card can arrive before ours lands (it's quick on the first placement):
+-- hide it on this screen until then, so the pile doesn't show it early
+local function setLocallyHidden(card: BasePart, hidden: boolean)
+	card.LocalTransparencyModifier = if hidden then 1 else 0
+	for _, d in ipairs(card:GetDescendants()) do
+		if d:IsA("SurfaceGui") then
+			d.Enabled = not hidden
+		end
+	end
+end
+
+local function isCardAt(child: Instance, target: Vector3): boolean
+	if not child:IsA("BasePart") or string.sub(child.Name, 1, 7) ~= "Card3D_" then
+		return false
+	end
+	local p = child.Position
+	return math.abs(p.Y - target.Y) < 0.04 and (Vector2.new(p.X, p.Z) - Vector2.new(target.X, target.Z)).Magnitude < 0.3
+end
+
+-- Is the server's card for this placement on the pile yet? (the top card, where ours landed)
+local function serverCardAt(stacks: Instance?, target: Vector3): boolean
+	if not stacks then
+		return false
+	end
+	for _, child in ipairs(stacks:GetChildren()) do
+		if isCardAt(child, target) then
+			return true
+		end
+	end
+	return false
+end
+
+-- Show the card's back on its -X side (which faces up once it lies upside down on the pile)
+local function showBack(part: BasePart, gui: SurfaceGui, art: ImageLabel)
+	gui.Face = Enum.NormalId.Left
+	art.Image = CardArt.Back(currentSetId)
+	part.Color = PILE_CARD_COLOR
+end
+
+-- The played card flies from your hand onto the top of your pile in an arc, turning
+-- over on the way: at the moment it's edge-on to your camera it swaps to its card back,
+-- so it lands face down, like the server's pile card. It stays there until that card has
+-- arrived underneath it, then goes, so the handover can't be seen.
 local function flyToPile(card: Card)
 	local part = card.part
-	local target = pileTarget and pileTarget()
-	local info = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-	if target then
-		part.Parent = workspace -- leave the camera so it can travel through the scene
-		TweenService:Create(part, info, {
-			CFrame = CFrame.new(target) * CFrame.Angles(0, 0, math.rad(90)),
-			Size = Vector3.new(0.06, 2.2, 2.2), -- the size of a card in the pile
-		}):Play()
-	else
-		TweenService:Create(part, info, { Size = Vector3.new(0.06, 0.1, 0.1) }):Play()
+	local target: Vector3?, stacks: Instance? = nil, nil
+	if pileTarget then
+		target, stacks = pileTarget()
 	end
-	task.delay(0.4, function()
-		part:Destroy()
+	if not target then
+		TweenService:Create(part, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Size = Vector3.new(0.06, 0.1, 0.1) }):Play()
+		task.delay(0.35, function()
+			part:Destroy()
+		end)
+		return
+	end
+	local landPos: Vector3 = target
+	part.Parent = workspace -- leave the camera so it can travel through the scene
+
+	-- Keep the server's card for this placement hidden here until we've landed on it
+	local landed = false
+	local early: BasePart? = nil
+	local function catch(child: Instance)
+		if not landed and not early and isCardAt(child, landPos) then
+			early = child :: BasePart
+			setLocallyHidden(child :: BasePart, true)
+		end
+	end
+	local addedConn: RBXScriptConnection? = nil
+	if stacks then
+		for _, child in ipairs(stacks:GetChildren()) do
+			catch(child)
+		end
+		addedConn = stacks.ChildAdded:Connect(catch)
+	end
+	local function finishLanding()
+		landed = true
+		if addedConn then
+			addedConn:Disconnect()
+		end
+		local hiddenCard = early
+		if hiddenCard then
+			setLocallyHidden(hiddenCard, false) -- it sits exactly under ours: swap at once
+			part:Destroy()
+		end
+	end
+
+	local gui = part:FindFirstChildWhichIsA("SurfaceGui")
+	local art = gui and gui:FindFirstChildWhichIsA("ImageLabel")
+	local fromCF = part.CFrame
+	local fromSize = part.Size
+	local pileSize = Vector3.new(0.06, 2.2, 2.2) -- the size of a card in the pile
+	-- Aim for the pile card turned upside down (its +X face, the one with the art, pointing
+	-- down): turning toward that, the face passes edge-on to the camera and then faces
+	-- away; from then on the art is drawn on the other side (-X, facing up) as the back.
+	local flipAxis = Vector3.xAxis
+	local cam = workspace.CurrentCamera
+	if cam then
+		local look = cam.CFrame.LookVector
+		local flat = Vector3.new(look.X, 0, look.Z)
+		if flat.Magnitude > 0.01 then
+			flipAxis = flat.Unit:Cross(Vector3.yAxis)
+		end
+	end
+	local downCF = CFrame.fromAxisAngle(flipAxis, math.pi) * CFrame.Angles(0, 0, math.rad(90))
+
+	local start = os.clock()
+	local swapped = false
+	local conn: RBXScriptConnection
+	conn = RunService.RenderStepped:Connect(function()
+		if not part.Parent then
+			conn:Disconnect()
+			return
+		end
+		local t = math.min((os.clock() - start) / FLY_SECONDS, 1)
+		local e = t * t * (3 - 2 * t)
+		local pos = fromCF.Position:Lerp(landPos, e) + Vector3.new(0, FLY_ARC * math.sin(math.pi * t), 0)
+		part.CFrame = CFrame.new(pos) * fromCF.Rotation:Lerp(downCF, e)
+		part.Size = fromSize:Lerp(pileSize, e)
+		if not swapped and gui and art then
+			local camNow = workspace.CurrentCamera
+			local toCamera = if camNow then (camNow.CFrame.Position - pos).Unit else Vector3.yAxis
+			if part.CFrame.RightVector:Dot(toCamera) <= 0 then
+				swapped = true -- edge-on now: the back shows on the side turning toward you
+				showBack(part, gui, art)
+			end
+		end
+		if t >= 1 then
+			conn:Disconnect()
+			if not swapped and gui and art then
+				showBack(part, gui, art)
+			end
+			part.CFrame = CFrame.new(landPos) * downCF
+			part.Size = pileSize
+			finishLanding()
+			if not part.Parent then
+				return -- the server's card was already there (hidden) and is showing now
+			end
+			-- Otherwise wait for the server's card to land under it, then hand over
+			task.spawn(function()
+				local waited = os.clock()
+				while part.Parent and os.clock() - waited < HANDOFF_TIMEOUT do
+					if serverCardAt(stacks, landPos) then
+						break
+					end
+					task.wait()
+				end
+				part:Destroy()
+			end)
+		end
 	end)
 end
 
@@ -241,8 +380,9 @@ function Hand3D.Create(_parent: Instance?, onSelect: CardSelectCallback?)
 	end)
 end
 
--- Where your pile is in the world (for the fly-to-pile animation)
-function Hand3D.SetPileTarget(getter: () -> Vector3?)
+-- Where a played card lands (the top of your pile) and the folder holding the server's
+-- pile cards (to see when the real card has arrived), for the fly-to-pile animation
+function Hand3D.SetPileTarget(getter: () -> (Vector3?, Instance?))
 	pileTarget = getter
 end
 

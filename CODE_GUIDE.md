@@ -124,9 +124,9 @@ F:\RobloxProject\
 
 #### `Card3DManager.luau`
 * **Purpose:** Manages physical oversized 3D cards placed on the table in front of players (LOCOfficial style).
-* **3D Physical Stacking:** Spawns physical oversized 3D cylinder cards (2.9 studs wide) on table coasters (3.2 studs wide) in front of each avatar, stacking vertically with rotational jitter.
+* **3D Physical Stacking:** Spawns physical oversized 3D cylinder cards (2.9 studs wide) on table coasters (3.2 studs wide) in front of each avatar, stacking vertically (from Y 3.08, 0.06 apart). Each card is placed straight where it rests; clients animate its arrival (yours flies in from your hand, `UI/Hand3D`; other players' travel from their held cards in a low arc and lie down flat, `CardFlip3D.Place` on `CardPlayed`).
 * **Interactive Flipping:** Equipped with `ClickDetector` so challengers can click physical 3D cards directly on the table.
-* **Reveal Animation:** Card lifts +2.5 studs into the air and physically spins 180° to reveal its true face (`🌹 Rose` or `💀 Skull`).
+* **Reveal (`RevealCard3D`):** The server only moves the card to where it ends up: face up (face art set), flat, on top of its pile, above any cards still face down there and any revealed before it (`revealedTopY`). It leaves `FlipId`, `FlipFrom` (where it sat) and `FlipBack` (its back image) on the card and returns the `FlipId`, which `RoundManager` sends with `CardRevealed`. Each client plays the flip itself (`client/CardFlip3D`), because a server tween only reaches clients at network rate and stuttered.
 * **Burn (`BurnCard`):** On a skull penalty, a face-down card rises from the challenger's pile, catches fire (Fire + ember particles + glow) and burns away over ~1.6 s. Called from `RoundManager.finishChallengerFailed`; never shows which card was lost.
 * **Round Cleanup:** Smooth shrink-and-destroy animation between rounds.
 
@@ -161,7 +161,7 @@ F:\RobloxProject\
 ### 3. Client Modules (`src/client/`)
 
 #### `first/LoadingScreen.client.luau` (ReplicatedFirst)
-* **Purpose:** Replaces Roblox's default loading screen with a themed one: a dark screen with a soft dark-rose glow (`Glow` image, tinted), the logo (preloaded first; the text title shows until it has loaded, then it pops in), step text and a progress bar. It that stays up until: the game has loaded, the server has built the table (`workspace` attribute `TableReady`, set in `init.server.luau`), card art and sounds are preloaded (player attribute `ClientReady`, set by `init.client.luau`), and your avatar has spawned. Each step has a timeout and the whole screen is capped at 25 s, then it fades out. Colours and image ids mirror `Theme` because Shared may not have replicated yet.
+* **Purpose:** Replaces Roblox's default loading screen with a themed one: a dark screen with a soft dark-rose glow (`Glow` image, tinted), the logo (preloaded first; the text title shows until it has loaded, then it pops in), step text and a progress bar. It that stays up until: the game has loaded, the server has built the table (`workspace` attribute `TableReady`, set in `init.server.luau`), card art and sounds are preloaded (player attribute `ClientReady`, set by `init.client.luau` once every card image, drawn tiny in an `ArtWarmup` ScreenGui under the loading screen, reports `IsLoaded`, or after 12 s), and your avatar has spawned. Each step has a timeout and the whole screen is capped at 25 s, then it fades out. Colours and image ids mirror `Theme` because Shared may not have replicated yet.
 
 #### `CameraController.luau`
 * **Purpose:** 3D tabletop over-the-shoulder camera elevated behind Seat 1 framing your avatar, the circular table, and opponent bots (LOCOfficial style).
@@ -188,7 +188,7 @@ F:\RobloxProject\
 
 #### `UI/Hand3D.luau`
 * **Purpose:** Your hand as oversized round 3D cards floating in a fan at the bottom of your view. The cards are local parts inside the camera (only you see them), repositioned every frame after the camera (`Hand3DLayout`), with a slow bob.
-* Hover a card (mouse raycast) to lift and grow it; click or tap it on your turn and it flies to your pile (`SetPileTarget`) while the placement is sent. Cards sit lower when you can't place. Rejected placements restore the hand from the next state.
+* Hover a card (mouse raycast) to lift and grow it; click or tap it on your turn and it flies to your pile while the placement is sent. The flight (0.42 s, every frame) arcs to the top of your pile (`SetPileTarget` gives that spot and the server's card folder) and turns the card over; at the moment it's edge-on to the camera it swaps to its back, so it lands face down. If the server's card arrives first (it can, on the first placement) it is hidden on your screen until the flight lands; otherwise the flying card waits until it appears underneath (or 1.5 s). Either way the handover can't be seen. Cards sit lower when you can't place. Rejected placements restore the hand from the next state.
 * Same interface as the old `HandBar` (`Create`, `UpdateHand(hand, isTurn, canPlace, deal, setId)`, `SetVisible`, `ConsumeCard`, `GetSelectedCard`, `GetRemainingCardsCount`); `init.client.luau` requires it in HandBar's place.
 
 #### `UI/HandBar.luau` (unused)
@@ -203,9 +203,12 @@ F:\RobloxProject\
 #### `UI/PhaseOverlay.luau`
 * **Purpose:** Round intro card ("ROUND 3 · X starts", shown ~2s when a round's placement begins) and a status pill while not playing (eliminated, or waiting for a seat).
 
+#### `CardFlip3D.luau`
+* **Purpose:** Plays a revealed card's flip on this client, every frame (from `Network.CardRevealed`'s `flipId`). The card lifts in an arc, grows slightly and turns over a horizontal axis toward the table centre; at edge-on its image swaps from the back (`FlipBack`) to the face, then it keeps turning the same way and lands where the server put it. 0.62 s.
+
 #### `AudioController.luau`
 * **Purpose:** All client sound effects, from one `SOUND_CONFIGS` table of verified Audio asset IDs (see `HANDOVER.md` §6.2 for sources and the attribution the card-flip sound needs).
-* **Cues (wired in `init.client.luau`):** card place / flip / rose / skull, point scored, victory, your-turn pop, ticks over the last 5 s of your turn and during the lobby countdown, match-start bell, elimination, and an error buzz when the server rejects an action.
+* **Cues (wired in `init.client.luau`):** card place / flip (soft) / skull. A rose plays one warm pizzicato note ("Violin String Pluck Single Notes 9", Pro Sound Effects) that climbs a major scale with each flip of the challenge (`PlayRoseReveal(step)`, step = `cardsFlipped`), timed to when the card's face comes up. Also point scored, victory, your-turn pop, ticks over the last 5 s of your turn and during the lobby countdown, match-start bell, elimination, and an error buzz when the server rejects an action.
 
 #### `CameraController.luau` (per-seat view)
 * `SetSeat(seatIndex)` rotates the seat-1 camera setup around the table to face it from the local player's seat (angle taken from `PlayerMat_<seat>` relative to the table's `Origin`); the camera is then moved to that table's centre. In the menu (no table yet) it slowly circles table 1 as a backdrop. `init.client.luau` also applies the pile-outline toggle (`UI/PileOutlines`) and hides your own fanned hand tokens locally.
@@ -214,7 +217,7 @@ F:\RobloxProject\
 * **Purpose:** Skull penalty picker (UIKit panel, red border), shown only to the chooser; cards lift on hover. State re-syncs don't rebuild an already-open picker. Own skull: the challenger's cards face-up, pick one to lose. Someone else's skull: N face-down cards, the skull owner removes one blindly.
 
 #### `UI/CardRevealModal.luau`
-* **Purpose:** Centre-screen card flip pop-up (UIKit panel): "ROSE REVEALED" / "SKULL!", the card face in its owner's art set with a coin-flip animation, and "<name>'s pile · flip n of m". Border turns red on a skull. Hides itself after 2.2 s.
+* **Purpose:** Centre-screen card flip pop-up (UIKit panel): "ROSE REVEALED" / "SKULL!", the card in its owner's art set flipping like a coin (its back narrows to edge-on, then the face opens out), and "<name>'s pile · flip n of m". Border turns red on a skull. Hides itself after 2.2 s.
 
 #### `UI/VictoryModal.luau`
 * **Purpose:** Winner screen (UIKit panel): crown, "YOU WIN!" / "<name> wins", the reason (first to 2 points, last standing, everyone left), and a "Back to the lobby in Ns" countdown, with a confetti burst on its own layer.

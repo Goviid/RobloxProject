@@ -270,7 +270,7 @@ Replaced 2026-11-16: the original IDs were mostly not audio at all (places, scri
 | :--- | :--- | :--- | :--- |
 | `CardPlace` | `9118833191` | Pro Sound Effects "Scrapbook Close 1" | Any player places a card |
 | `CardFlip` | `3456145589` | "card_flip" by f4ngy (Freesound, Attribution licence: credit required) | A card is revealed |
-| `RoseReveal` | `130378474223829` | Daily Sounds "Coin Pickup" | Revealed card is a Rose |
+| `RevealNote` | `9120433452` | "Violin String Pluck Single Notes 9" (Pro Sound Effects) | Revealed card is a Rose: one note, a step higher up a major scale per flip in the challenge |
 | `SkullReveal` | `130018094603454` | Daily Sounds "Horror Stinger" | Revealed card is a Skull |
 | `PointScored` | `1840076509` | APM "Through the Roof (sting)" | A challenge succeeds |
 | `Victory` | `1836473422` | APM "Victory Fanfare Sting" | Match won |

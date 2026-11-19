@@ -117,14 +117,15 @@ function Card3DManager.PlaceCard3D(seatIndex: number, stackCount: number)
 	local targetCF = CFrame.new(coasterPos.X, stackY, coasterPos.Z)
 		* CFrame.Angles(0, 0, math.rad(90))
 
-	-- Spawn only slightly above the mat for a snappy physical drop animation
-	local spawnCF = targetCF + Vector3.new(0, 0.15, 0)
+	-- Placed straight where it rests: clients animate the arrival (the placer's card flies
+	-- in from their hand, everyone else sees a short drop; see client Hand3D / CardFlip3D).
+	-- A server tween only reaches clients at network rate and looked jerky.
 
 	local cardPart = Instance.new("Part")
 	cardPart.Name = "Card3D_Seat" .. seatIndex .. "_Card" .. stackCount
 	cardPart.Shape = Enum.PartType.Cylinder
 	cardPart.Size = Vector3.new(0.06, 2.2, 2.2) -- Perfectly sized 2.2-stud circular token
-	cardPart.CFrame = spawnCF
+	cardPart.CFrame = targetCF
 	cardPart.Anchored = true
 	cardPart.CanCollide = false
 	cardPart.Material = Enum.Material.SmoothPlastic
@@ -164,26 +165,32 @@ function Card3DManager.PlaceCard3D(seatIndex: number, stackCount: number)
 		end
 	end)
 
-	-- Smooth drop & settle tween straight down
-	TweenService:Create(cardPart, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		CFrame = targetCF,
-	}):Play()
-
 	table.insert(seatStacks[seatIndex], cardPart)
 end
 
 -- ============================================================================
--- 2. REVEAL 3D CARD (FLIPS UP SNAPPY & SETTLES FLAT, NEVER HOVERING IN AIR)
+-- 2. REVEAL 3D CARD
 -- ============================================================================
-function Card3DManager.RevealCard3D(seatIndex: number, cardType: string)
+-- The server only moves the card to where it ends up: face up, flat, on top of its pile
+-- (above any cards still face down there and any revealed before it). Each client plays
+-- the flip itself (client/CardFlip3D), every frame: a server-side tween only reaches the
+-- clients at network rate and looked jerky. The card carries what the clients need:
+--   FlipId    which reveal this was (sent with Network.CardRevealed)
+--   FlipFrom  where it sat face down (CFrame)
+--   FlipBack  its card-back image, shown for the first half of the flip
+local flipCounter = 0
+local revealedTopY: { [number]: number } = {} -- seat -> height of its highest revealed card
+
+-- Returns the reveal's FlipId (0 if there was no card to reveal)
+function Card3DManager.RevealCard3D(seatIndex: number, cardType: string): number
 	local stack = seatStacks[seatIndex]
 	if not stack or #stack == 0 then
-		return
+		return 0
 	end
 
 	local cardPart = table.remove(stack)
 	if not cardPart or not cardPart.Parent then
-		return
+		return 0
 	end
 	table.insert(revealedCards, cardPart)
 
@@ -193,34 +200,28 @@ function Card3DManager.RevealCard3D(seatIndex: number, cardType: string)
 		clicker.MaxActivationDistance = 0
 	end
 
-	local currentCF = cardPart.CFrame
-	local liftCF = currentCF + Vector3.new(0, 1.2, 0)
-
-	-- Show the face in the owner's art set
+	local fromCF = cardPart.CFrame
 	local sg = cardPart:FindFirstChild("FaceGui")
 	local art = sg and sg:FindFirstChild("CardArt")
+	local backImage = if art and art:IsA("ImageLabel") then art.Image else ""
+
+	flipCounter += 1
+	cardPart:SetAttribute("FlipId", flipCounter)
+	cardPart:SetAttribute("FlipFrom", fromCF)
+	cardPart:SetAttribute("FlipBack", backImage)
+
+	-- Face up in the owner's art set, on top of the pile
 	if art and art:IsA("ImageLabel") then
 		art.Image = CardArt.Face(seatCardSet(seatIndex), cardType)
 	end
-
-	-- Snappy flip reveal
-	local flipTween = TweenService:Create(cardPart, TweenInfo.new(0.40, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		CFrame = liftCF * CFrame.Angles(0, math.rad(180), 0),
-		Size = Vector3.new(0.06, 2.5, 2.5),
-	})
-	flipTween:Play()
-
-	-- Settle smoothly down flat so it NEVER hovers in mid-air
-	task.delay(1.0, function()
-		if cardPart and cardPart.Parent then
-			local settleCF = CFrame.new(currentCF.Position.X, 3.06, currentCF.Position.Z)
-				* CFrame.Angles(0, 0, math.rad(90))
-			TweenService:Create(cardPart, TweenInfo.new(0.30, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				CFrame = settleCF,
-				Size = Vector3.new(0.06, 2.2, 2.2),
-			}):Play()
-		end
-	end)
+	local topY = math.max(fromCF.Position.Y, (revealedTopY[seatIndex] or 0) + 0.06)
+	local remaining = stack[#stack]
+	if remaining then
+		topY = math.max(topY, remaining.Position.Y + 0.06)
+	end
+	revealedTopY[seatIndex] = topY
+	cardPart.CFrame = CFrame.new(fromCF.Position.X, topY, fromCF.Position.Z) * fromCF.Rotation
+	return flipCounter
 end
 
 -- ============================================================================
@@ -343,6 +344,7 @@ function Card3DManager.ClearAllCards()
 		table.clear(seatStacks[seatIdx])
 	end
 	table.clear(revealedCards)
+	table.clear(revealedTopY)
 end
 
 return Card3DManager

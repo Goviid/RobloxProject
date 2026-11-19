@@ -953,10 +953,11 @@ function RoundManager._ProcessPlayerAction(userId: number, action: string, data:
 			table.insert(targetPlayer.revealedCards, revealedCard)
 			cardsFlippedThisRound += 1
 
-			Card3DManager.RevealCard3D(targetPlayer.seatIndex, revealedCard)
+			local flipId = Card3DManager.RevealCard3D(targetPlayer.seatIndex, revealedCard)
 
 			TableContext.FireAll(Network.CardRevealed, {
 				targetUserId = targetUserId,
+				flipId = flipId, -- clients animate this card's flip (client/CardFlip3D)
 				cardType = revealedCard,
 				stackRemaining = #targetPlayer.playedStack,
 				cardsFlipped = cardsFlippedThisRound,

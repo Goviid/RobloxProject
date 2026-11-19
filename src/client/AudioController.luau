@@ -5,6 +5,7 @@
 -- libraries (Pro Sound Effects, APM Music) or creators publishing original free sounds:
 --   card_flip by f4ngy via Freesound (Attribution licence) -> credit "f4ngy (Freesound)"
 --   "Daily Sounds" set by DailySoundsFX (original, free)
+--   Violin String Pluck Single Notes 9 (Pro Sound Effects) -> the reveal note
 -- To swap a sound, change its id here; keep it an Audio asset you are allowed to use.
 
 local SoundService = game:GetService("SoundService")
@@ -15,8 +16,8 @@ type SoundConfig = { id: string, volume: number, pitchMin: number, pitchMax: num
 
 local SOUND_CONFIGS: { [string]: SoundConfig } = {
 	CardPlace = { id = "rbxassetid://9118833191", volume = 0.6, pitchMin = 0.95, pitchMax = 1.08 }, -- Scrapbook Close 1 (PSE)
-	CardFlip = { id = "rbxassetid://3456145589", volume = 0.7, pitchMin = 0.96, pitchMax = 1.04 }, -- card_flip (f4ngy)
-	RoseReveal = { id = "rbxassetid://130378474223829", volume = 0.55, pitchMin = 1.0, pitchMax = 1.06 }, -- Coin Pickup
+	CardFlip = { id = "rbxassetid://3456145589", volume = 0.45, pitchMin = 0.96, pitchMax = 1.04 }, -- card_flip (f4ngy), soft under the note
+	RevealNote = { id = "rbxassetid://9120433452", volume = 0.6, pitchMin = 1.0, pitchMax = 1.0 }, -- Violin String Pluck Single Notes 9 (PSE): one warm pizzicato note
 	SkullReveal = { id = "rbxassetid://130018094603454", volume = 0.8, pitchMin = 0.95, pitchMax = 1.0 }, -- Horror Stinger
 	PointScored = { id = "rbxassetid://1840076509", volume = 0.7, pitchMin = 1.0, pitchMax = 1.0 }, -- Through the Roof (sting, APM)
 	Victory = { id = "rbxassetid://1836473422", volume = 0.8, pitchMin = 1.0, pitchMax = 1.0 }, -- Victory Fanfare Sting (APM)
@@ -87,8 +88,21 @@ function AudioController.PlayCardFlip()
 	playSound("CardFlip")
 end
 
-function AudioController.PlayRoseReveal()
-	playSound("RoseReveal")
+-- Each rose flipped in a challenge plays the pizzicato note one step higher up a major
+-- scale (do, re, mi, ...), so a run of good flips climbs. `step` is 1 for the first flip.
+local MAJOR_SCALE = { 0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19 } -- semitones above the first note
+function AudioController.PlayRoseReveal(step: number?)
+	local sound = activeSounds.RevealNote
+	if not sound then
+		return
+	end
+	local index = math.clamp(math.floor(step or 1), 1, #MAJOR_SCALE)
+	pcall(function()
+		sound.PlaybackSpeed = 2 ^ (MAJOR_SCALE[index] / 12)
+		sound.TimePosition = 0
+		sound.Volume = SOUND_CONFIGS.RevealNote.volume
+		sound:Play()
+	end)
 end
 
 function AudioController.PlaySkullReveal()

@@ -31,6 +31,7 @@ local TableView = require(script.TableView)
 local MainMenu = require(script.UI.MainMenu)
 local LeaveTable = require(script.UI.LeaveTable)
 local PileOutlines = require(script.UI.PileOutlines)
+local CardFlip3D = require(script.CardFlip3D)
 local CharacterLook = require(script.UI.CharacterLook)
 local AudioController = require(script.AudioController)
 
@@ -48,9 +49,27 @@ AudioController.Init()
 -- Preload all card art and sounds so nothing pops in blank the first time it's used.
 -- The loading screen (ReplicatedFirst/LoadingScreen) waits for "ClientReady".
 task.spawn(function()
+	-- Every card image is drawn once, tiny, underneath the loading screen (which covers
+	-- it), and the loading screen stays up until they have all actually loaded: preloading
+	-- bare ids can report a failure without loading anything, and then cards showed up
+	-- blank for a moment. The labels stay (invisible) afterwards so the art stays cached.
+	local warmup = Instance.new("ScreenGui")
+	warmup.Name = "ArtWarmup"
+	warmup.IgnoreGuiInset = true
+	warmup.ResetOnSpawn = false
+	warmup.DisplayOrder = 999 -- just under the loading screen (1000)
+	warmup.Parent = localPlayer:WaitForChild("PlayerGui")
+	local labels: { ImageLabel } = {}
 	local assets: { any } = {}
-	for _, image in ipairs(CardArt.AllImages()) do
-		table.insert(assets, image)
+	for i, image in ipairs(CardArt.AllImages()) do
+		local label = Instance.new("ImageLabel")
+		label.Image = image
+		label.Size = UDim2.fromOffset(8, 8)
+		label.Position = UDim2.new(0.5, i * 9, 0.5, 0)
+		label.BackgroundTransparency = 1
+		label.Parent = warmup
+		table.insert(labels, label)
+		table.insert(assets, label)
 	end
 	for _, snd in ipairs(AudioController.GetSounds()) do
 		table.insert(assets, snd)
@@ -58,6 +77,23 @@ task.spawn(function()
 	pcall(function()
 		game:GetService("ContentProvider"):PreloadAsync(assets)
 	end)
+	local deadline = os.clock() + 12
+	while os.clock() < deadline do
+		local waiting = false
+		for _, label in ipairs(labels) do
+			if not label.IsLoaded then
+				waiting = true
+				break
+			end
+		end
+		if not waiting then
+			break
+		end
+		task.wait(0.1)
+	end
+	for _, label in ipairs(labels) do
+		label.ImageTransparency = 1
+	end
 	localPlayer:SetAttribute("ClientReady", true)
 end)
 
@@ -211,11 +247,26 @@ local function buildUI()
 	Toast.Create(screenGui)
 
 	-- 3. Your hand: oversized 3D cards floating at the bottom of the view
-	HandBar.SetPileTarget(function(): Vector3?
+	-- The top of your pile, where the server will put your next card (Card3DManager stacks
+	-- them from Y 3.08 up, 0.06 apart), and the folder its cards are in
+	HandBar.SetPileTarget(function(): (Vector3?, Instance?)
 		local myData = lastKnownPlayers[tostring(localPlayer.UserId)]
 		local arena = TableView.GetArena()
 		local mat = myData and arena and arena:FindFirstChild("PlayerMat_" .. tostring(myData.seatIndex), true)
-		return if mat and mat:IsA("BasePart") then mat.Position + Vector3.new(0, 0.6, 0) else nil
+		if not mat or not mat:IsA("BasePart") or not arena then
+			return nil, nil
+		end
+		local stacks = arena:FindFirstChild("TableCardStacks")
+		local prefix = "Card3D_Seat" .. tostring(myData.seatIndex) .. "_"
+		local count = 0
+		if stacks then
+			for _, child in ipairs(stacks:GetChildren()) do
+				if string.sub(child.Name, 1, #prefix) == prefix then
+					count += 1
+				end
+			end
+		end
+		return Vector3.new(mat.Position.X, 3.08 + count * 0.06, mat.Position.Z), stacks
 	end)
 	HandBar.Create(screenGui, function(cardType: string, cardIndex: number)
 		print("[HandBar] Selected card: " .. cardType .. " at idx " .. tostring(cardIndex))
@@ -545,8 +596,17 @@ end)
 -- shows the current bid, so BidUpdated needs no extra UI.
 
 -- Card Played SFX / Alert
-Network.CardPlayed.OnClientEvent:Connect(function(_playerId: number, _stackCount: number)
+Network.CardPlayed.OnClientEvent:Connect(function(playerId: number, stackCount: number)
 	AudioController.PlayCardPlace()
+	-- Someone else's card travels from their held cards onto their pile (yours flew there
+	-- from your hand)
+	if playerId ~= localPlayer.UserId then
+		local p = lastKnownPlayers[tostring(playerId)]
+		local seat = p and tonumber(p.seatIndex)
+		if seat then
+			CardFlip3D.Place(seat, stackCount)
+		end
+	end
 end)
 
 -- Card Revealed (Card flipped by Challenger)
@@ -556,16 +616,18 @@ Network.CardRevealed.OnClientEvent:Connect(function(data: any)
 	local targetName = targetP and targetP.name or "Player"
 
 	-- Sound effects
+	-- The card flips on the table (smooth, on this client), with a soft flip sound; when its
+	-- face comes up (halfway) a rose plays a note that climbs with each flip of the
+	-- challenge, a skull its stinger
+	CardFlip3D.Play(data.flipId)
 	AudioController.PlayCardFlip()
-	if isSkull then
-		task.delay(0.12, function()
+	task.delay(0.3, function()
+		if isSkull then
 			AudioController.PlaySkullReveal()
-		end)
-	else
-		task.delay(0.12, function()
-			AudioController.PlayRoseReveal()
-		end)
-	end
+		else
+			AudioController.PlayRoseReveal(data.cardsFlipped)
+		end
+	end)
 
 	-- Trigger center screen flip animation popup
 	CardRevealModal.ShowCard(data.cardType, targetName, data.cardsFlipped, data.targetCards, targetP and targetP.cardSet)
