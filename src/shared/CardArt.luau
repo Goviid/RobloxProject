@@ -1,7 +1,8 @@
 --!strict
 -- CardArt.luau
--- The 8 card art sets (back / skull / rose), uploaded 2026-11-16 from
--- "Artwork assets/Cards" (cropped to round 512x512 PNGs in Artwork assets/Cards/cropped).
+-- The card art sets (back / skull / rose): 8 in play (CardArt.SetIds), round 512x512
+-- PNGs in "Artwork assets/Cards/cropped". The first seven were uploaded 2026-11-16;
+-- Ivory and Magenta were added 2026-11-19 (cut from the sheets in "NEW Card additions").
 -- Each player gets a random, unique set per match (PlayerManager.AssignCardSets).
 -- Which set a player uses is public; which card they hold never leaves the server.
 
@@ -35,19 +36,24 @@ local SETS: { [string]: CardSet } = {
 	obsidian_cyan = set("obsidian_cyan", "Obsidian Cyan", Color3.fromRGB(45, 205, 215), 80132308594232, 95851496099854, 138919229652247),
 	obsidian_gold = set("obsidian_gold", "Obsidian Gold", Color3.fromRGB(230, 185, 60), 129599376214072, 120705604618399, 78597648607092),
 	deep_emerald = set("deep_emerald", "Deep Emerald", Color3.fromRGB(25, 130, 90), 85323079661350, 101846509964646, 122826995712035),
+	ivory = set("ivory", "Ivory", Color3.fromRGB(226, 210, 176), 80152053255412, 112712486406617, 126292369466573),
+	magenta = set("magenta", "Magenta", Color3.fromRGB(215, 55, 140), 82277931670764, 108586738138570, 80900501117347),
 }
 
 local CardArt = {}
 
--- Fixed order, used for shuffling and as a stable fallback
+-- The sets in play, in a fixed order (used for shuffling and as a stable fallback).
+-- Obsidian Cyan is parked: it looked too much like Blue Diamond. Its art and entry
+-- above are kept; add "obsidian_cyan" back here to bring it back.
 CardArt.SetIds = {
 	"scarlet",
 	"blue_diamond",
 	"sunset_orange",
 	"amethyst",
-	"obsidian_cyan",
 	"obsidian_gold",
 	"deep_emerald",
+	"ivory",
+	"magenta",
 }
 
 CardArt.DefaultSetId = "scarlet"

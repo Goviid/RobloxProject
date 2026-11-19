@@ -311,7 +311,7 @@ Replaced 2026-11-16: the original IDs were mostly not audio at all (places, scri
    - *TODO*: Implement `DataStoreService` to persist player wins, win streaks, games played, and unlockable custom card/coaster skins.
 3. **Custom Calavera Texture Assets**:
    - *Current State*: 3D cards and 2D tokens use clean procedural shapes and unicode emoji (`🌹`, `💀`, `✦`).
-   - *Done (2026-11-16)*: 8 Calavera card sets (back / skull / rose) uploaded and wired in via `src/shared/CardArt.luau`: hand, 3D table cards and hand tokens, reveal pop-up, card-loss picker, flying and burning cards. Each player gets a random unique set per match.
+   - *Done (2026-11-16)*: 8 Calavera card sets (back / skull / rose) uploaded and wired in via `src/shared/CardArt.luau`: hand, 3D table cards and hand tokens, reveal pop-up, card-loss picker, flying and burning cards. Each player gets a random unique set per match. *2026-11-19*: Obsidian Cyan parked (too close to Blue Diamond); Ivory and Magenta added, so 8 sets are still in play.
 4. **Spectator Camera**:
    - *Current State*: Eliminated players remain seated at the table.
    - *TODO*: Add an overhead free-orbit spectator camera mode for players once eliminated.

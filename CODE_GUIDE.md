@@ -79,7 +79,7 @@ F:\RobloxProject\
 * **`PlayerAction`**: Commands sent by players through `Network.SubmitAction`: `PlaceCard`, `StartBid`, `RaiseBid`, `Pass`, `RevealCard`, `DiscardCard` (`{ cardType }` on own skull, `{ index }` for a blind pick).
 
 #### `CardArt.luau`
-* **Purpose:** The 8 card art sets (back / skull / rose image IDs, display name, accent colour). `CardArt.Face(setId, cardType)`, `CardArt.Back(setId)`.
+* **Purpose:** The card art sets (back / skull / rose image IDs, display name, accent colour). `CardArt.Face(setId, cardType)`, `CardArt.Back(setId)`. `CardArt.SetIds` lists the 8 in play: Scarlet, Blue Diamond, Sunset Orange, Amethyst, Obsidian Gold, Deep Emerald, Ivory, Magenta. Obsidian Cyan is parked (too close to Blue Diamond): still defined, just not in `SetIds`. Sources are round 512x512 PNGs in `Artwork assets/Cards/cropped`; Ivory and Magenta were cut from the sheets in the 0.2 folder's `Artwork assets/NEW Card additions`.
 * Each player is dealt a random, unique set at match start (`PlayerManager.AssignCardSets`, called from `RoundManager.StartMatch`) and it replicates as `cardSet` in the client state. The set is public; card faces are only applied to a 3D card at reveal time.
 * Source art: `Artwork assets/Cards` (8 sheets); cropped 512×512 round PNGs in `Artwork assets/Cards/cropped`.
 
