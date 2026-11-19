@@ -136,6 +136,44 @@ function MainMenu.Show(playerGui: PlayerGui)
 	local hint = UIKit.Label(picker, { text = "Loading tables...", style = "muted", order = 3 })
 	local back = UIKit.Button(picker, { name = "Back", text = "BACK", kind = "secondary", order = 4, height = 40 })
 
+	-- How to play: a small, quiet "?" under BACK opens the rules
+	local help = Instance.new("TextButton")
+	help.Name = "HowToPlay"
+	help.LayoutOrder = 5
+	help.Size = UDim2.fromOffset(30, 30)
+	help.BackgroundColor3 = Theme.Colors.Backing
+	help.BackgroundTransparency = 0.2
+	help.BorderSizePixel = 0
+	help.AutoButtonColor = true
+	help.Font = Theme.Fonts.Title
+	help.TextSize = Theme.TextSize.Body
+	help.TextColor3 = Theme.Colors.TextMuted
+	help.Text = "?"
+	help.Parent = picker
+	Instance.new("UICorner", help).CornerRadius = Theme.CornerRadius.Circular
+	local helpStroke = Instance.new("UIStroke")
+	helpStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	helpStroke.Color = Theme.Colors.PanelBorder
+	helpStroke.Thickness = 1.5
+	helpStroke.Parent = help
+
+	-- Page 3: the rules, short
+	local rules = UIKit.Panel(gui, { name = "Rules", width = 480, gap = 10, padding = 24 })
+	UIKit.Label(rules, { text = "How to play", style = "title", order = 1 })
+	local RULES = {
+		"Everyone starts with 3 roses and 1 skull.",
+		"Take turns placing a card face down on your pile. Once everyone has placed one, you can open the bidding instead.",
+		"Bid how many cards you can flip without finding a skull. The others raise or pass.",
+		"The highest bidder flips: their own pile first, then anyone's, one card at a time.",
+		"Flip only roses and you score a point. Two points wins the match.",
+		"Hit a skull and you lose a card for good. Lose them all and you're out.",
+	}
+	for i, line in ipairs(RULES) do
+		local label = UIKit.Label(rules, { text = i .. ".  " .. line, style = "body", order = 1 + i })
+		label.TextXAlignment = Enum.TextXAlignment.Left
+	end
+	local gotIt = UIKit.Button(rules, { name = "GotIt", text = "GOT IT", kind = "primary", order = 10, height = 44 })
+
 	local cards: { [number]: { title: TextLabel, status: TextLabel, join: TextButton } } = {}
 	local joining = false
 
@@ -181,6 +219,16 @@ function MainMenu.Show(playerGui: PlayerGui)
 	back.Activated:Connect(function()
 		UIKit.Pop(picker, false, function()
 			UIKit.Pop(home, true)
+		end)
+	end)
+	help.Activated:Connect(function()
+		UIKit.Pop(picker, false, function()
+			UIKit.Pop(rules, true)
+		end)
+	end)
+	gotIt.Activated:Connect(function()
+		UIKit.Pop(rules, false, function()
+			UIKit.Pop(picker, true)
 		end)
 	end)
 

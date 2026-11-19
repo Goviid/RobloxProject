@@ -270,8 +270,10 @@ local function createPlayerTag(adornee: BasePart, displayName: string, seatIdx: 
 	Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
 	turnDots[seatIdx] = dotGui
 
-	-- Bid bubble: to the right of the capsule (220 px wide), a little higher, with two
-	-- small dots trailing back toward the tag like a thought bubble
+	-- Bid bubble: to the right of the capsule (220 px wide) and a little lower, with two
+	-- small dots trailing up toward the tag like a thought bubble. Lower, not higher: on
+	-- your turn the camera moves in and the far players' tags sit near the top of the
+	-- screen, where a raised bubble was cut off
 	local oldBubble = adornee:FindFirstChild("BidBubble")
 	if oldBubble then
 		oldBubble:Destroy()
@@ -283,7 +285,7 @@ local function createPlayerTag(adornee: BasePart, displayName: string, seatIdx: 
 	end
 	bubbleGui.Size = UDim2.fromOffset(64, 56)
 	bubbleGui.StudsOffset = bill.StudsOffset
-	bubbleGui.SizeOffset = Vector2.new(2.2, 0.3) -- 141 px right (its left edge just past the capsule), 17 px up
+	bubbleGui.SizeOffset = Vector2.new(2.2, -0.35) -- 141 px right (its left edge just past the capsule), 20 px down
 	bubbleGui.AlwaysOnTop = true
 	bubbleGui.Enabled = false
 	bubbleGui.Adornee = adornee
@@ -304,9 +306,9 @@ local function createPlayerTag(adornee: BasePart, displayName: string, seatIdx: 
 		edge.Parent = f
 		return f
 	end
-	blob("DotSmall", 6, 5, 47)
-	blob("DotLarge", 10, 13, 38)
-	local cloud = blob("Cloud", 42, 40, 22)
+	blob("DotSmall", 6, 5, 9)
+	blob("DotLarge", 10, 13, 18)
+	local cloud = blob("Cloud", 42, 40, 34)
 	local number = Instance.new("TextLabel")
 	number.Name = "Bid"
 	number.Size = UDim2.fromScale(1, 1)
