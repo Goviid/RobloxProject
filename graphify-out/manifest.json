@@ -78,15 +78,15 @@
     "semantic_hash": ""
   },
   "src/client/init.client.luau": {
-    "mtime": 1795052166.1519918,
-    "seen": 1795052252.0960217,
-    "ast_hash": "e09deabb1a548357fde6376905e23b9c",
+    "mtime": 1795052871.1854036,
+    "seen": 1795053309.6491034,
+    "ast_hash": "5e96ec0a55aa554793455c47c90ab866",
     "semantic_hash": ""
   },
   "src/server/init.server.luau": {
-    "mtime": 1795046422.5790405,
-    "seen": 1795052252.0960286,
-    "ast_hash": "7da2755124f2eb5c0e3179eaa7145f06",
+    "mtime": 1795052845.0262344,
+    "seen": 1795053309.6491122,
+    "ast_hash": "d48e77bacd6dd62c1a5fbdf828b0d698",
     "semantic_hash": ""
   },
   "src/shared/Constants.luau": {
@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "src/shared/Network.luau": {
-    "mtime": 1795045490.7881455,
-    "seen": 1795052252.096032,
-    "ast_hash": "b93da6782458b07728fd1c3835a2b690",
+    "mtime": 1795052844.8544755,
+    "seen": 1795053309.6491156,
+    "ast_hash": "9b77bd798aefd98fcb71a642d60e5ade",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
@@ -114,9 +114,9 @@
     "semantic_hash": ""
   },
   "CODE_GUIDE.md": {
-    "mtime": 1795052184.351963,
-    "seen": 1795052252.0960352,
-    "ast_hash": "594d2382f812b8529cf970a7d0e81a68",
+    "mtime": 1795053220.929218,
+    "seen": 1795053309.6491187,
+    "ast_hash": "5b597259a650c3550175204950fa0d94",
     "semantic_hash": ""
   },
   "HANDOVER.md": {
@@ -360,9 +360,9 @@
     "semantic_hash": ""
   },
   "src/server/Table/TableBuilder.luau": {
-    "mtime": 1795052157.0423605,
-    "seen": 1795052252.0960271,
-    "ast_hash": "ea690f36f40ce03a5c25b6deb003f86c",
+    "mtime": 1795053123.2252157,
+    "seen": 1795053309.6491108,
+    "ast_hash": "224f2922e231ad20741632a51caceaa5",
     "semantic_hash": ""
   },
   "src/server/Table/TableContext.luau": {
@@ -381,6 +381,18 @@
     "mtime": 1795048048.7132657,
     "seen": 1795052252.0960333,
     "ast_hash": "7015975c4c575e806356de9ed4ef3676",
+    "semantic_hash": ""
+  },
+  "src/client/UI/CharacterLook.luau": {
+    "mtime": 1795052845.0669835,
+    "seen": 1795053309.6490903,
+    "ast_hash": "0e973a32e0daae82286320f6a2fc9190",
+    "semantic_hash": ""
+  },
+  "src/server/Table/BeanFigure.luau": {
+    "mtime": 1795053254.7986739,
+    "seen": 1795053309.649105,
+    "ast_hash": "e00e4c79896db8a626e4049132d6a26c",
     "semantic_hash": ""
   }
 }
