@@ -47,6 +47,20 @@ local tableModules = Instance.new("Folder")
 tableModules.Name = "Tables"
 tableModules.Parent = ServerStorage
 
+-- Each table's room is part of the saved world: Workspace.World.Room_<id>, with a
+-- "TableCenter" part on the floor under the middle of the table. Without one (world not
+-- built yet) the table falls back to a spot TABLE_SPACING studs along +X.
+local function tableOrigin(id: number): Vector3
+	local world = workspace:FindFirstChild("World")
+	local room = world and world:FindFirstChild("Room_" .. id)
+	local centre = room and room:FindFirstChild("TableCenter", true)
+	if centre and centre:IsA("BasePart") then
+		return Vector3.new(centre.Position.X, 0, centre.Position.Z)
+	end
+	warn("[Skulls & Roses] No Workspace.World.Room_" .. id .. ".TableCenter; table " .. id .. " has no room")
+	return Vector3.new((id - 1) * Constants.TABLE_SPACING, 0, 0)
+end
+
 for id, info in ipairs(Constants.TABLES) do
 	local copy = template:Clone()
 	copy.Name = "Table_" .. id
@@ -57,7 +71,7 @@ for id, info in ipairs(Constants.TABLES) do
 		id = id,
 		name = info.name,
 		maxPlayers = info.maxPlayers,
-		origin = Vector3.new((id - 1) * Constants.TABLE_SPACING, 0, 0),
+		origin = tableOrigin(id),
 	})
 	local builder = (require :: any)(copy.TableBuilder)
 	builder.Build()

@@ -4,14 +4,13 @@
 -- Features:
 -- 1. Dark-wood & felt poker table with beveled leather trim & center glowing pile
 -- 2. Indoor atmospheric parlor room (dark wood walls, floor neon strips, warm point lights, zero skybox)
--- 3. Individual "YOUR PILE" and "PILE" player mats with subtle glowing neon borders
+-- 3. Individual player pile mats (round outlines, hidden unless a player turns them on)
 -- 4. Sleek dark silhouette opponent avatars seated in black armchairs
 -- 5. Floating glassmorphism gradient nametags & standing fanned circular hand displays
 
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Constants = require(ReplicatedStorage.Shared.Constants)
 local CardArt = require(ReplicatedStorage.Shared.CardArt)
@@ -57,7 +56,6 @@ type SeatConfig = {
 	lookAt: Vector3, -- table centre
 	pilePos: Vector3, -- this seat's pile mat
 	handPos: Vector3, -- held card fan (opponents)
-	label: string,
 }
 local SEAT_CONFIGS: { [number]: SeatConfig } = {}
 
@@ -75,7 +73,6 @@ local function layoutSeats(seatCount: number, origin: Vector3)
 			lookAt = origin + Vector3.new(0, 3.0, 0),
 			pilePos = origin + dir * PILE_RADIUS + Vector3.new(0, 3.06, 0),
 			handPos = origin + dir * HAND_RADIUS + Vector3.new(0, 4.4, 0),
-			label = "PILE", -- each client relabels its own mat "YOUR PILE" locally
 		}
 	end
 end
@@ -117,253 +114,21 @@ function TableBuilder.Build()
 		baseplate.CanCollide = false
 	end
 
-	-- 1. Atmosphere & Lighting: Warm vibrant game-room lighting (High contrast, bright table)
-	pcall(function()
-		Lighting.GlobalShadows = false
-		Lighting.Brightness = 2.2
-		Lighting.ClockTime = 0.0 -- Midnight indoor
-		Lighting.Ambient = Color3.fromRGB(115, 95, 90)
-		Lighting.OutdoorAmbient = Color3.fromRGB(55, 45, 50)
-		Lighting.FogEnd = 1000
-
-		local sky = Lighting:FindFirstChildOfClass("Sky")
-		if sky then
-			sky:Destroy()
-		end
-		local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-		if atmosphere then
-			atmosphere:Destroy()
-		end
-		-- Soft bloom: only neon (the turn orb, LED rings) glows; lit bodies don't
-		local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
-		if bloom then
-			bloom.Intensity = 0.35
-			bloom.Size = 18
-			bloom.Threshold = 2.6
-		end
-	end)
-
-	-- 2. Complete Enclosed Room (No sky visible anywhere)
-	local ROOM_SIZE = 48
-	local ROOM_HEIGHT = 20
-	local wallColor = Color3.fromRGB(36, 22, 18) -- Warm dark mahogany wood
-	local floorColor = Color3.fromRGB(22, 18, 18) -- Dark floor
-
-	local roomFolder = Instance.new("Folder")
-	roomFolder.Name = "RoomEnclosure"
-	roomFolder.Parent = arena
-
-	local function makeWall(name: string, size: Vector3, cf: CFrame, color: Color3, mat: Enum.Material)
-		local p = Instance.new("Part")
-		p.Name = name
-		p.Size = size
-		p.CFrame = cf
-		p.Anchored = true
-		p.CanCollide = true
-		p.CastShadow = false
-		p.Color = color
-		p.Material = mat
-		p.Parent = roomFolder
-		return p
-	end
-
-	-- Floor & Ceiling
-	makeWall("Floor", Vector3.new(ROOM_SIZE, 2, ROOM_SIZE), CFrame.new(0, -1, 0), floorColor, Enum.Material.WoodPlanks)
-	makeWall("Ceiling", Vector3.new(ROOM_SIZE, 2, ROOM_SIZE), CFrame.new(0, ROOM_HEIGHT, 0), Color3.fromRGB(25, 20, 20), Enum.Material.SmoothPlastic)
-
-	-- 4 Walls
-	makeWall("Wall_North", Vector3.new(ROOM_SIZE, ROOM_HEIGHT, 2), CFrame.new(0, ROOM_HEIGHT / 2, -ROOM_SIZE / 2), wallColor, Enum.Material.WoodPlanks)
-	makeWall("Wall_South", Vector3.new(ROOM_SIZE, ROOM_HEIGHT, 2), CFrame.new(0, ROOM_HEIGHT / 2, ROOM_SIZE / 2), wallColor, Enum.Material.WoodPlanks)
-	makeWall("Wall_East", Vector3.new(2, ROOM_HEIGHT, ROOM_SIZE), CFrame.new(ROOM_SIZE / 2, ROOM_HEIGHT / 2, 0), wallColor, Enum.Material.WoodPlanks)
-	makeWall("Wall_West", Vector3.new(2, ROOM_HEIGHT, ROOM_SIZE), CFrame.new(-ROOM_SIZE / 2, ROOM_HEIGHT / 2, 0), wallColor, Enum.Material.WoodPlanks)
-
-	-- Floor Crimson Neon Accent Strips (Matching the concept reference)
-	local neonFloor1 = Instance.new("Part")
-	neonFloor1.Name = "NeonFloorStrip_Left"
-	neonFloor1.Size = Vector3.new(1.2, 0.05, 18)
-	neonFloor1.CFrame = CFrame.new(-8.8, 0.03, 0) * CFrame.Angles(0, math.rad(25), 0)
-	neonFloor1.Anchored = true
-	neonFloor1.CanCollide = false
-	neonFloor1.Material = Enum.Material.Neon
-	neonFloor1.Color = Color3.fromRGB(255, 35, 50)
-	neonFloor1.Parent = roomFolder
-
-	local neonFloor2 = Instance.new("Part")
-	neonFloor2.Name = "NeonFloorStrip_Right"
-	neonFloor2.Size = Vector3.new(1.2, 0.05, 18)
-	neonFloor2.CFrame = CFrame.new(8.8, 0.03, 0) * CFrame.Angles(0, math.rad(-25), 0)
-	neonFloor2.Anchored = true
-	neonFloor2.CanCollide = false
-	neonFloor2.Material = Enum.Material.Neon
-	neonFloor2.Color = Color3.fromRGB(255, 35, 50)
-	neonFloor2.Parent = roomFolder
-
-	-- Ceiling Amber PointLight over Table
-	local lightPart = Instance.new("Part")
-	lightPart.Name = "CeilingChandelier"
-	lightPart.Size = Vector3.new(4, 0.5, 4)
-	lightPart.CFrame = CFrame.new(0, ROOM_HEIGHT - 2, 0)
-	lightPart.Anchored = true
-	lightPart.CanCollide = false
-	lightPart.Transparency = 1
-	lightPart.Parent = arena
-
-	local tableLight = Instance.new("PointLight")
-	tableLight.Color = Color3.fromRGB(255, 230, 200)
-	tableLight.Brightness = 2.4
-	tableLight.Range = 36
-	tableLight.Shadows = false
-	tableLight.Parent = lightPart
-
-	-- Additional warm fill light directly over table felt
-	local centerLightPart = Instance.new("Part")
-	centerLightPart.Name = "TableCenterLight"
-	centerLightPart.Size = Vector3.new(1, 1, 1)
-	centerLightPart.CFrame = CFrame.new(0, 5.2, 0.4)
-	centerLightPart.Anchored = true
-	centerLightPart.CanCollide = false
-	centerLightPart.Transparency = 1
-	centerLightPart.Parent = arena
-
-	local feltFillLight = Instance.new("PointLight")
-	feltFillLight.Color = Color3.fromRGB(255, 235, 210)
-	feltFillLight.Brightness = 2.2
-	feltFillLight.Range = 26
-	feltFillLight.Shadows = false
-	feltFillLight.Parent = centerLightPart
-
-	-- Dedicated Spotlight brightly illuminating Seat 1's "YOUR PILE" (Centered in front)
-	local pileSpotPart = Instance.new("Part")
-	pileSpotPart.Name = "YourPileSpotlight"
-	pileSpotPart.Size = Vector3.new(1, 1, 1)
-	pileSpotPart.CFrame = CFrame.new(0, 7.0, 4.4)
-	pileSpotPart.Anchored = true
-	pileSpotPart.CanCollide = false
-	pileSpotPart.Transparency = 1
-	pileSpotPart.Parent = arena
-
-	local yourPileSpot = Instance.new("SpotLight")
-	yourPileSpot.Color = Color3.fromRGB(255, 235, 185)
-	yourPileSpot.Brightness = 3.0
-	yourPileSpot.Range = 12
-	yourPileSpot.Angle = 70
-	yourPileSpot.Face = Enum.NormalId.Bottom
-	yourPileSpot.Parent = pileSpotPart
-
-	-- 3. The Brightened Wood & Felt Table with Glowing Neon Red & Gold LED Highlights
+	-- The room, table, chairs and lights are part of the saved world (Workspace.World,
+	-- see tools/world/README.md), and lighting is set in default.project.json. This
+	-- builds only what changes during play: each seat's pile mat, laid out for this
+	-- table's size around its centre.
+	layoutSeats(TableContext.maxPlayers, TableContext.origin)
 	local tableModel = Instance.new("Model")
-	tableModel.Name = "PokerTable"
+	tableModel.Name = "PileMats"
 	tableModel.Parent = arena
 
-	-- Table Base Pedestal
-	local pedestal = Instance.new("Part")
-	pedestal.Name = "Pedestal"
-	pedestal.Size = Vector3.new(8, 2.6, 8)
-	pedestal.CFrame = CFrame.new(0, 1.3, 0)
-	pedestal.Anchored = true
-	pedestal.CanCollide = true
-	pedestal.Material = Enum.Material.Wood
-	pedestal.Color = Color3.fromRGB(24, 18, 18)
-	pedestal.Parent = tableModel
-
-	-- Warm Velvet Main Felt Surface (18-stud diameter cylinder)
-	local feltTop = Instance.new("Part")
-	feltTop.Name = "FeltSurface"
-	feltTop.Shape = Enum.PartType.Cylinder
-	feltTop.Size = Vector3.new(0.4, 18, 18)
-	feltTop.CFrame = CFrame.new(0, 2.8, 0) * CFrame.Angles(0, 0, math.rad(90))
-	feltTop.Anchored = true
-	feltTop.CanCollide = true
-	feltTop.Material = Enum.Material.SmoothPlastic
-	feltTop.Color = Color3.fromRGB(36, 30, 40) -- Rich warm velvet felt
-	feltTop.Parent = tableModel
-
-	-- Elevated Polished Mahogany Outer Armrest / Rim
-	local tableRim = Instance.new("Part")
-	tableRim.Name = "TableRim"
-	tableRim.Shape = Enum.PartType.Cylinder
-	tableRim.Size = Vector3.new(0.5, 19.4, 19.4)
-	tableRim.CFrame = CFrame.new(0, 2.85, 0) * CFrame.Angles(0, 0, math.rad(90))
-	tableRim.Anchored = true
-	tableRim.CanCollide = false
-	tableRim.Material = Enum.Material.WoodPlanks
-	tableRim.Color = Color3.fromRGB(48, 26, 20) -- Polished warm mahogany wood
-	tableRim.Parent = tableModel
-
-	-- Glowing Neon Crimson LED Ring around Outer Perimeter
-	local outerNeonLed = Instance.new("Part")
-	outerNeonLed.Name = "OuterNeonLed"
-	outerNeonLed.Shape = Enum.PartType.Cylinder
-	outerNeonLed.Size = Vector3.new(0.08, 19.65, 19.65)
-	outerNeonLed.CFrame = CFrame.new(0, 2.88, 0) * CFrame.Angles(0, 0, math.rad(90))
-	outerNeonLed.Anchored = true
-	outerNeonLed.CanCollide = false
-	outerNeonLed.Material = Enum.Material.Neon
-	outerNeonLed.Color = Color3.fromRGB(255, 35, 50)
-	outerNeonLed.Parent = tableModel
-
-	-- Glowing Neon Gold LED Ring around Felt Border
-	local innerNeonLed = Instance.new("Part")
-	innerNeonLed.Name = "InnerNeonLed"
-	innerNeonLed.Shape = Enum.PartType.Cylinder
-	innerNeonLed.Size = Vector3.new(0.06, 17.6, 17.6)
-	innerNeonLed.CFrame = CFrame.new(0, 2.84, 0) * CFrame.Angles(0, 0, math.rad(90))
-	innerNeonLed.Anchored = true
-	innerNeonLed.CanCollide = false
-	innerNeonLed.Material = Enum.Material.Neon
-	innerNeonLed.Color = Color3.fromRGB(255, 215, 65)
-	innerNeonLed.Parent = tableModel
-
-	-- 4. Center Glowing Circular Pile (Piled with cards & sparkling embers)
-	local centerPile = Instance.new("Part")
-	centerPile.Name = "CenterGlowingPile"
-	centerPile.Shape = Enum.PartType.Cylinder
-	centerPile.Size = Vector3.new(0.04, 5.2, 5.2)
-	centerPile.CFrame = CFrame.new(0, 3.02, 0) * CFrame.Angles(0, 0, math.rad(90))
-	centerPile.Anchored = true
-	centerPile.CanCollide = false
-	centerPile.Material = Enum.Material.Neon
-	centerPile.Color = Color3.fromRGB(255, 235, 210)
-	centerPile.Transparency = 0.25
-	centerPile.Parent = tableModel
-
-	-- Floating spark/ember particles rising from center glowing circle
-	local particles = Instance.new("ParticleEmitter")
-	particles.Name = "CenterEmbers"
-	particles.Color = ColorSequence.new(Color3.fromRGB(255, 220, 160))
-	particles.LightEmission = 0.85
-	particles.Size = NumberSequence.new(0.14, 0.04)
-	particles.Transparency = NumberSequence.new(0.1, 1.0)
-	particles.Lifetime = NumberRange.new(1.2, 2.2)
-	particles.Rate = 18
-	particles.Speed = NumberRange.new(0.8, 1.6)
-	particles.SpreadAngle = Vector2.new(35, 35)
-	particles.EmissionDirection = Enum.NormalId.Right
-	particles.Parent = centerPile
-
-	-- Sections 2-4 are written around (0, 0, 0); move them to this table's spot. Seats
-	-- below are laid out in world space already. Folders (the room) have no pivot, so
-	-- move what's inside them.
-	local origin = TableContext.origin
-	local function shift(container: Instance)
-		for _, child in ipairs(container:GetChildren()) do
-			if child:IsA("PVInstance") then
-				child:PivotTo(child:GetPivot() + origin)
-			elseif child:IsA("Folder") then
-				shift(child)
-			end
-		end
-	end
-	if origin.Magnitude > 0 then
-		shift(arena)
-	end
-	layoutSeats(TableContext.maxPlayers, origin)
-
-	-- 5. Individual Player Mats ("YOUR PILE" and "PILE")
+	-- 5. Individual Player Mats (unlabelled; outlines toggled per client)
 	for seatIdx, cfg in pairs(SEAT_CONFIGS) do
 		standingCFrames[seatIdx] = CFrame.lookAt(cfg.standPos, cfg.lookAt)
 
-		-- Rounded Square Mat Part on Table
+		-- Pile mat: an invisible part carrying a round, softly darkened patch of the table
+		-- (a dark leather coaster look that sits quietly on the wooden table)
 		local mat = Instance.new("Part")
 		mat.Name = "PlayerMat_" .. seatIdx
 		mat.Size = Vector3.new(3.4, 0.04, 3.4)
@@ -372,6 +137,8 @@ function TableBuilder.Build()
 		mat.CanCollide = false
 		mat.Material = Enum.Material.SmoothPlastic
 		mat.Color = Color3.fromRGB(22, 20, 25)
+		mat.Transparency = 1
+		mat.CastShadow = false
 		mat.Parent = tableModel
 		pileMats[seatIdx] = mat
 
@@ -401,23 +168,25 @@ function TableBuilder.Build()
 		local matFrame = Instance.new("Frame")
 		matFrame.Size = UDim2.new(1, -8, 1, -8)
 		matFrame.Position = UDim2.fromOffset(4, 4)
-		matFrame.BackgroundColor3 = Color3.fromRGB(20, 18, 24)
+		matFrame.BackgroundColor3 = Color3.fromRGB(46, 26, 18)
+		matFrame.BackgroundTransparency = 0.35
 		matFrame.BorderSizePixel = 0
 		matFrame.Parent = matSg
-		Instance.new("UICorner", matFrame).CornerRadius = UDim.new(0, 16)
+		Instance.new("UICorner", matFrame).CornerRadius = UDim.new(1, 0)
 
 		local matStroke = Instance.new("UIStroke")
 		matStroke.Name = "MatBorder"
-		matStroke.Color = Color3.fromRGB(200, 200, 215)
-		matStroke.Transparency = 0.35
-		matStroke.Thickness = 2.8
+		matStroke.Color = Color3.fromRGB(196, 150, 80)
+		matStroke.Transparency = 0.45
+		matStroke.Thickness = 2.4
 		matStroke.Parent = matFrame
 
 		-- Glowing Neon Ring Drop Zone in center of mat
 		local ring = Instance.new("Frame")
 		ring.Name = "DropZoneRing"
 		ring.Size = UDim2.fromOffset(160, 160)
-		ring.Position = UDim2.new(0.5, -80, 0.5, -92)
+		ring.AnchorPoint = Vector2.new(0.5, 0.5)
+		ring.Position = UDim2.fromScale(0.5, 0.5) -- dead centre: the cards stack on the mat's centre
 		ring.BackgroundTransparency = 1
 		ring.Parent = matFrame
 		Instance.new("UICorner", ring).CornerRadius = UDim.new(1, 0)
@@ -428,58 +197,17 @@ function TableBuilder.Build()
 		ringStroke.Thickness = 4.5
 		ringStroke.Parent = ring
 
-		-- Mat Label: "YOUR PILE" or "PILE"
-		local label = Instance.new("TextLabel")
-		label.Name = "MatLabel"
-		label.Size = UDim2.new(1, 0, 0, 26)
-		label.Position = UDim2.new(0, 0, 1, -30)
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.FredokaOne
-		label.TextSize = 22
-		label.TextColor3 = Color3.fromRGB(255, 255, 255)
-		label.TextStrokeTransparency = 0.15
-		label.TextStrokeColor3 = Color3.fromRGB(15, 15, 20)
-		label.Text = cfg.label
-		label.Parent = matFrame
+		-- Outlines are hidden by default; each client turns them on with its "Piles" pill
+		matSg.Enabled = false
 	end
 
-
-	-- 6. Low-backed wooden chairs. Players sit with their root where they used to stand
-	-- (the seated pose only folds the legs forward under the table), so heads stay at
-	-- the same height. The back stops below the shoulders and is narrower than a body,
-	-- so it never pokes out past the avatar.
-	local CHAIR_WOOD = Color3.fromRGB(58, 32, 24)
-	local CHAIR_CUSHION = Color3.fromRGB(120, 28, 36)
-	for seatIdx, cfg in pairs(SEAT_CONFIGS) do
-		local seatCF = CFrame.lookAt(cfg.standPos, cfg.lookAt) -- -Z faces the table
-		local chair = Instance.new("Model")
-		chair.Name = "Chair_" .. seatIdx
-		chair.Parent = tableModel
-		local function chairPart(name: string, size: Vector3, offset: Vector3, color: Color3)
-			local p = Instance.new("Part")
-			p.Name = name
-			p.Size = size
-			p.CFrame = seatCF * CFrame.new(offset)
-			p.Anchored = true
-			p.CanCollide = false
-			p.CastShadow = false
-			p.Material = Enum.Material.SmoothPlastic
-			p.Color = color
-			p.Parent = chair
-		end
-		-- Seat top sits just under the thighs (about 1 stud below the avatar's root)
-		chairPart("Cushion", Vector3.new(2.0, 0.3, 1.9), Vector3.new(0, -1.15, -0.35), CHAIR_CUSHION)
-		chairPart("SeatFrame", Vector3.new(2.1, 0.25, 2.0), Vector3.new(0, -1.42, -0.35), CHAIR_WOOD)
-		chairPart("Back", Vector3.new(1.5, 1.4, 0.22), Vector3.new(0, -0.35, 0.72), CHAIR_WOOD)
-		chairPart("Pedestal", Vector3.new(0.45, cfg.standPos.Y - 1.55, 0.45), Vector3.new(0, -(cfg.standPos.Y + 1.55) / 2, -0.35), CHAIR_WOOD)
-	end
 
 	-- Stacks Container
 	local stacksFolder = Instance.new("Folder")
 	stacksFolder.Name = "TableCardStacks"
 	stacksFolder.Parent = arena
 
-	print("[TableBuilder] High-end competitive table parlor built successfully.")
+	print("[TableBuilder] Table " .. TableContext.id .. " ready (" .. TableContext.maxPlayers .. " seats)")
 	return arena
 end
 

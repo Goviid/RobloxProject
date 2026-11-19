@@ -2,25 +2,26 @@
   "name": "RobloxProject",
   "tree": {
     "$className": "DataModel",
-
     "ReplicatedStorage": {
       "Shared": {
         "$path": "src/shared"
       }
     },
-
     "ReplicatedFirst": {
       "LoadingScreen": {
         "$path": "src/first/LoadingScreen.client.luau"
       }
     },
-
     "ServerScriptService": {
       "Server": {
         "$path": "src/server"
       }
     },
-
+    "ServerStorage": {
+      "WorldTools": {
+        "$path": "tools/world"
+      }
+    },
     "StarterPlayer": {
       "StarterPlayerScripts": {
         "Client": {
@@ -28,7 +29,6 @@
         }
       }
     },
-
     "Workspace": {
       "$properties": {
         "FilteringEnabled": true,
@@ -57,21 +57,46 @@
     },
     "Lighting": {
       "$properties": {
+        "Technology": "Future",
+        "GlobalShadows": true,
+        "ClockTime": 0.0,
+        "Brightness": 0.0,
         "Ambient": [
-          0.72,
-          0.85,
-          1.0
+          0.46,
+          0.35,
+          0.28
         ],
         "OutdoorAmbient": [
-          0.68,
-          0.83,
-          0.98
+          0.3,
+          0.23,
+          0.19
         ],
-        "Brightness": 1.6,
-        "ClockTime": 14.0,
-        "GlobalShadows": false,
-        "Outlines": false,
-        "Technology": "ShadowMap"
+        "EnvironmentDiffuseScale": 0.25,
+        "EnvironmentSpecularScale": 0.3,
+        "ExposureCompensation": 0,
+        "FogEnd": 1000,
+        "Outlines": false
+      },
+      "Bloom": {
+        "$className": "BloomEffect",
+        "$properties": {
+          "Intensity": 0.35,
+          "Size": 18,
+          "Threshold": 2.6
+        }
+      },
+      "Warmth": {
+        "$className": "ColorCorrectionEffect",
+        "$properties": {
+          "Brightness": 0.02,
+          "Contrast": 0.08,
+          "Saturation": -0.05,
+          "TintColor": [
+            1.0,
+            0.96,
+            0.9
+          ]
+        }
       }
     },
     "SoundService": {

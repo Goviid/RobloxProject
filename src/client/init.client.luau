@@ -30,6 +30,7 @@ local CameraController = require(script.CameraController)
 local TableView = require(script.TableView)
 local MainMenu = require(script.UI.MainMenu)
 local LeaveTable = require(script.UI.LeaveTable)
+local PileOutlines = require(script.UI.PileOutlines)
 local AudioController = require(script.AudioController)
 
 local localPlayer = Players.LocalPlayer
@@ -74,8 +75,8 @@ local lastLobbyCountdown: number? = nil
 
 local HAND_DOCK_POS = UDim2.fromScale(0.5, 0.86)
 
--- Per-client view of the shared table: "YOUR PILE" on your own mat, and your own
--- fanned hand tokens (rendered by the server for everyone else) hidden from you.
+-- Per-client view of the shared table: pile outlines as set by the "Piles" pill, and
+-- your own fanned hand tokens (rendered by the server for everyone else) hidden from you.
 local mySeatIndex: number? = nil
 
 local function hideOwnHandModel(inst: Instance)
@@ -90,20 +91,32 @@ local function applySeatView(seatIndex: number?)
 	if not arena then
 		return
 	end
-	for i = 1, Constants.MAX_PLAYERS do
-		local mat = arena:FindFirstChild("PlayerMat_" .. i, true)
-		local label = mat and mat:FindFirstChild("MatLabel", true)
-		if label and label:IsA("TextLabel") then
-			label.Text = if i == seatIndex then "YOUR PILE" else ""
-		end
-	end
+	PileOutlines.Apply(arena)
 	for _, child in ipairs(arena:GetChildren()) do
 		hideOwnHandModel(child)
+	end
+	-- Your own chair sits right under the camera; hide it locally like your own avatar
+	-- (chairs are part of the saved world: Workspace.World.Room_<table>.Table.Chair_<seat>)
+	local world = workspace:FindFirstChild("World")
+	local room = world and world:FindFirstChild("Room_" .. tostring(TableView.GetTableId()))
+	local tableModel = room and room:FindFirstChild("Table")
+	if tableModel then
+		for _, chair in ipairs(tableModel:GetChildren()) do
+			local seat = tonumber(string.match(chair.Name, "^Chair_(%d+)$"))
+			if seat then
+				for _, p in ipairs(chair:GetDescendants()) do
+					if p:IsA("BasePart") then
+						p.LocalTransparencyModifier = if seat == seatIndex then 1 else 0
+					end
+				end
+			end
+		end
 	end
 end
 
 TableView.OnJoined(function(arena: Model)
 	arena.ChildAdded:Connect(hideOwnHandModel)
+	PileOutlines.Apply(arena)
 end)
 
 -- Hovering a pile (its mat or any of its cards) enlarges that pile's card counter.
@@ -259,6 +272,11 @@ local function buildUI()
 	LeaveTable.Create(screenGui, function()
 		AudioController.PlayButtonClick()
 		Network.LeaveTable:FireServer()
+	end)
+
+	-- 11. Pile outlines on/off (small corner pill next to Leave; off by default)
+	PileOutlines.Create(screenGui, function()
+		return TableView.GetArena()
 	end)
 
 	print("[Skulls & Roses] Fresh SkullsGui built and parented successfully.")
