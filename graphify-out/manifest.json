@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   "src/client/AudioController.luau": {
-    "mtime": 1794811382.4606397,
-    "seen": 1795052252.0960052,
-    "ast_hash": "094f139827e80fa52fbe95a3072a76f6",
+    "mtime": 1795055861.4490008,
+    "seen": 1795056058.4749079,
+    "ast_hash": "4af1c8bcc7f3c853908f5099b92fafef",
     "semantic_hash": ""
   },
   "src/client/CameraController.luau": {
@@ -42,9 +42,9 @@
     "semantic_hash": ""
   },
   "src/client/UI/CardRevealModal.luau": {
-    "mtime": 1794811382.4606397,
-    "seen": 1795052252.0960104,
-    "ast_hash": "f269d71c5d775c921c73dad8531a62aa",
+    "mtime": 1795055242.0026722,
+    "seen": 1795056058.474917,
+    "ast_hash": "afb26c247126df46977372e5929c10cc",
     "semantic_hash": ""
   },
   "src/client/UI/DiscardModal.luau": {
@@ -78,9 +78,9 @@
     "semantic_hash": ""
   },
   "src/client/init.client.luau": {
-    "mtime": 1795052871.1854036,
-    "seen": 1795053309.6491034,
-    "ast_hash": "5e96ec0a55aa554793455c47c90ab866",
+    "mtime": 1795055861.4490008,
+    "seen": 1795056058.4749334,
+    "ast_hash": "3a8e1a352bddcaa00261b070c74e3651",
     "semantic_hash": ""
   },
   "src/server/init.server.luau": {
@@ -114,15 +114,15 @@
     "semantic_hash": ""
   },
   "CODE_GUIDE.md": {
-    "mtime": 1795054086.8396218,
-    "seen": 1795054952.076246,
-    "ast_hash": "08aaf8882b8ef5d099607a5af128bd0a",
+    "mtime": 1795055879.5050828,
+    "seen": 1795056058.474951,
+    "ast_hash": "16bdc018dafb703fce5b34ae10436127",
     "semantic_hash": ""
   },
   "HANDOVER.md": {
-    "mtime": 1794811382.4428608,
-    "seen": 1795052252.096036,
-    "ast_hash": "c1b8a241bb33ee35a17048eb3592bb5d",
+    "mtime": 1795055879.5050828,
+    "seen": 1795056058.474952,
+    "ast_hash": "1106a8ec3694a66d7dfe4224fbf14bee",
     "semantic_hash": ""
   },
   "IMPLEMENTATION_PLAN.md": {
@@ -300,9 +300,9 @@
     "semantic_hash": ""
   },
   "src/client/UI/Hand3D.luau": {
-    "mtime": 1795045490.7371883,
-    "seen": 1795052252.0960124,
-    "ast_hash": "e171668811e820b9948347713abd65d5",
+    "mtime": 1795055868.7114282,
+    "seen": 1795056058.4749215,
+    "ast_hash": "c9cfaa51b3246aed59e0d85d6f4f367b",
     "semantic_hash": ""
   },
   "Artwork assets/Bots/skull_face.png": {
@@ -336,9 +336,9 @@
     "semantic_hash": ""
   },
   "src/server/Table/Card3DManager.luau": {
-    "mtime": 1795045490.7522905,
-    "seen": 1795052252.096024,
-    "ast_hash": "8753cb61ddd1b0ca2b1d26aeca4ae244",
+    "mtime": 1795055478.4460893,
+    "seen": 1795056058.4749377,
+    "ast_hash": "9661685d882cf32e989fbd5dab135a3b",
     "semantic_hash": ""
   },
   "src/server/Table/LobbyManager.luau": {
@@ -354,9 +354,9 @@
     "semantic_hash": ""
   },
   "src/server/Table/RoundManager.luau": {
-    "mtime": 1795045490.7716107,
-    "seen": 1795052252.0960264,
-    "ast_hash": "d32cf7958f4ba2b595dbec6c8483cce4",
+    "mtime": 1795055209.704661,
+    "seen": 1795056058.4749403,
+    "ast_hash": "25dc5e8d31ad14d7ebf1f809077da688",
     "semantic_hash": ""
   },
   "src/server/Table/TableBuilder.luau": {
@@ -441,6 +441,12 @@
     "mtime": 1795053869.7387128,
     "seen": 1795054952.0762706,
     "ast_hash": "c87c3296a4641029535bf7a02100e86b",
+    "semantic_hash": ""
+  },
+  "src/client/CardFlip3D.luau": {
+    "mtime": 1795055861.4490008,
+    "seen": 1795056058.4749115,
+    "ast_hash": "3c78f0da10a286393eeab3bc9f4cfb91",
     "semantic_hash": ""
   }
 }
