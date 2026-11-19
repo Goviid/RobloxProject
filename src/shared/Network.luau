@@ -71,6 +71,7 @@ local Network = {
 	LobbyAction = getOrCreateRemoteEvent("LobbyAction"),
 	JoinTable = getOrCreateRemoteEvent("JoinTable"), -- (tableId: number) from the menu
 	LeaveTable = getOrCreateRemoteEvent("LeaveTable"), -- back to the menu from a table
+	SetCharacterLook = getOrCreateRemoteEvent("SetCharacterLook"), -- (look: "classic" | "bean") for the player's whole table
 	RequestTables = getOrCreateRemoteEvent("RequestTables"), -- the menu asks for the table list -- (action: "ToggleReady" | "SetAddBots" | "Start", value: any)
 }
 

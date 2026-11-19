@@ -24,6 +24,7 @@ type TableInstance = {
 	context: typeof(require(script.Table.TableContext)),
 	lobby: typeof(require(script.Table.LobbyManager)),
 	round: typeof(require(script.Table.RoundManager)),
+	builder: typeof(require(script.Table.TableBuilder)),
 }
 
 print("[Skulls & Roses] Server initializing...")
@@ -82,6 +83,7 @@ for id, info in ipairs(Constants.TABLES) do
 		context = context,
 		lobby = (require :: any)(copy.LobbyManager),
 		round = (require :: any)(copy.RoundManager),
+		builder = builder,
 	}
 	entry.lobby.Init()
 	table.insert(runningTables, entry)
@@ -183,6 +185,24 @@ Network.RequestState.OnServerEvent:Connect(function(player: Player)
 		t.round.SendStateToPlayer(player.UserId)
 		t.lobby.Broadcast()
 	end
+end)
+
+-- Character look test: anyone at a table can switch it for that table (at most once a second)
+local lastLookChange: { [Player]: number } = {}
+Network.SetCharacterLook.OnServerEvent:Connect(function(player: Player, look: any)
+	local t = tableOf[player]
+	if not t or (look ~= "classic" and look ~= "bean") then
+		return
+	end
+	local now = os.clock()
+	if now - (lastLookChange[player] or 0) < 1 then
+		return
+	end
+	lastLookChange[player] = now
+	t.builder.SetLook(look)
+end)
+Players.PlayerRemoving:Connect(function(player: Player)
+	lastLookChange[player] = nil
 end)
 
 Network.LobbyAction.OnServerEvent:Connect(function(player: Player, action: any, value: any)

@@ -16,6 +16,7 @@ local Constants = require(ReplicatedStorage.Shared.Constants)
 local CardArt = require(ReplicatedStorage.Shared.CardArt)
 local Theme = require(ReplicatedStorage.Shared.Theme)
 local TableContext = require(script.Parent.TableContext)
+local BeanFigure = require(script.Parent.BeanFigure)
 
 local TableBuilder = {}
 
@@ -36,6 +37,10 @@ local scoreLabels: { [number]: TextLabel } = {}
 local seatStatus: { [number]: { score: number, cards: number, eliminated: boolean } } = {}
 -- One respawn hook per player, replaced whenever they are re-seated
 local standConnections: { [Player]: RBXScriptConnection } = {}
+-- Character look of every figure at this table ("classic" or "bean"; see SEAT FIGURES)
+local characterLook = "classic"
+-- Who sits at each seat, so figures can be rebuilt when the look changes
+local seatOccupants: { [number]: { name: string, owner: Player? } } = {}
 
 local function setStandHook(player: Player, place: (char: Model) -> ())
 	local old = standConnections[player]
@@ -103,6 +108,7 @@ function TableBuilder.Build()
 	-- table from the player's seat around this centre)
 	arena:SetAttribute("TableId", TableContext.id)
 	arena:SetAttribute("Origin", TableContext.origin)
+	arena:SetAttribute("CharacterLook", characterLook)
 	arena.Parent = Workspace
 	arenaModel = arena
 
@@ -485,8 +491,14 @@ local function renderOpponentFannedHand(seatIdx: number, cardCount: number)
 	local SPACING = 0.65
 	local FAN_DEGREES = 9
 	local startZ = -(cardCount - 1) * SPACING / 2
-	local centre = Vector3.new(TableContext.origin.X, cfg.handPos.Y, TableContext.origin.Z)
-	local facing = CFrame.lookAt(cfg.handPos, centre) * CFrame.Angles(0, math.rad(90), 0)
+	local handPos = cfg.handPos
+	if characterLook == "bean" then
+		local fromCentre = cfg.handPos - TableContext.origin
+		local dir = Vector3.new(fromCentre.X, 0, fromCentre.Z).Unit
+		handPos = TableContext.origin + dir * BeanFigure.HAND_RADIUS + Vector3.new(0, BeanFigure.HAND_HEIGHT, 0)
+	end
+	local centre = Vector3.new(TableContext.origin.X, handPos.Y, TableContext.origin.Z)
+	local facing = CFrame.lookAt(handPos, centre) * CFrame.Angles(0, math.rad(90), 0)
 
 	for i = 1, cardCount do
 		local t = i - (cardCount + 1) / 2 -- -n..n around the middle card
@@ -689,10 +701,10 @@ end
 -- sombrero. The face's flowers and the sombrero take the bot's card colour.
 -- Face art: "Artwork assets/Bots/skull_face.png" (white parts are tinted, black stays black)
 local SKULL_FACE = "rbxassetid://94176651222783"
-local BONE = Color3.fromRGB(70, 46, 32) -- deep warm brown; light colours glare like bulbs under the room's bright ambient light
+local BONE = Color3.fromRGB(122, 80, 52) -- warm brown; much lighter starts to glare like a bulb under the room light
 local SUIT = Color3.fromRGB(34, 30, 38)
 local HAT_BAND = Color3.fromRGB(140, 100, 36)
-local HAT_SHADE = 0.6 -- sombrero = card colour this much toward black, so it doesn't glare
+local HAT_SHADE = 0.3 -- sombrero = card colour this much toward black, so it doesn't glare
 
 -- Each bot's skull and sombrero live in their own model beside the bot (not inside it):
 -- Roblox's avatar scaling resizes every part inside a character, which squashed the
@@ -716,6 +728,7 @@ local function dressSkeleton(model: Model, parent: Instance)
 
 	local costume = Instance.new("Model")
 	costume.Name = "Calavera_" .. model.Name
+	costume:SetAttribute("OwnerUserId", model:GetAttribute("OwnerUserId")) -- its owner hides it locally
 	local function weldedPart(name: string, size: Vector3, cf: CFrame): Part
 		local p = Instance.new("Part")
 		p.Name = name
@@ -851,41 +864,173 @@ local function buildBotSilhouette(botName: string, targetCF: CFrame): Model
 	return model
 end
 
-function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
-	local cfg = SEAT_CONFIGS[seatIndex]
-	if not cfg or not arenaModel then
+-- ============================================================================
+-- SEAT FIGURES: everyone at the table, bots and players alike, is shown as one of the
+-- game's own characters (players' Roblox avatars are hidden while seated). Two looks,
+-- switched for the whole table with TableBuilder.SetLook (a test; see UI/CharacterLook):
+--   "classic": the calavera R15 avatar (skull head, suit, sombrero)
+--   "bean":    the rounded capsule figure (BeanFigure)
+-- Either way the face flowers and sombrero follow the seat's card colour.
+-- ============================================================================
+local LOOKS = { classic = true, bean = true }
+
+local function colorFigure(seatIndex: number)
+	local figure = botDummies[seatIndex]
+	if not figure then
 		return
 	end
+	local accent = CardArt.Get(seatCardSets[seatIndex]).accent
+	if figure:GetAttribute("Look") == "bean" then
+		BeanFigure.Color(figure, accent)
+	elseif figure:FindFirstChildOfClass("Humanoid") then
+		colorBot(figure, accent)
+	end
+end
 
-	if botDummies[seatIndex] and botDummies[seatIndex].Parent then
-		botDummies[seatIndex]:Destroy()
+-- Build (or rebuild) the figure at a seat in the table's current look. Yields briefly
+-- for the classic avatar (see below).
+local function spawnFigure(seatIndex: number)
+	local cfg = SEAT_CONFIGS[seatIndex]
+	local occupant = seatOccupants[seatIndex]
+	if not cfg or not occupant or not arenaModel then
+		return
+	end
+	local old = botDummies[seatIndex]
+	if old then
+		old:Destroy()
 		botDummies[seatIndex] = nil
 	end
 
-	local targetCF = CFrame.lookAt(cfg.standPos, cfg.lookAt)
-	local avatar = buildBotAvatar(botName)
-	if avatar then
-		avatar:PivotTo(targetCF)
+	local look = characterLook
+	local ownerId = if occupant.owner then occupant.owner.UserId else nil
+	local figure: Model
+	local avatar: Model? = nil
+	if look == "bean" then
+		local fromCentre = cfg.standPos - TableContext.origin
+		local dir = Vector3.new(fromCentre.X, 0, fromCentre.Z).Unit
+		figure = BeanFigure.Build("Figure_" .. seatIndex, TableContext.origin, dir)
+	else
+		local targetCF = CFrame.lookAt(cfg.standPos, cfg.lookAt)
+		avatar = buildBotAvatar(occupant.name)
+		if avatar then
+			avatar:PivotTo(targetCF)
+		end
+		figure = avatar or buildBotSilhouette(occupant.name, targetCF)
+		figure.Name = "Figure_" .. seatIndex
+		figure:SetAttribute("Look", "classic")
 	end
-	local botModel: Model = avatar or buildBotSilhouette(botName, targetCF)
-	botModel.Parent = arenaModel
+	-- The owner's client hides their own figure (it would sit right under their camera)
+	figure:SetAttribute("OwnerUserId", ownerId)
+	figure.Parent = arenaModel
+	botDummies[seatIndex] = figure
+	seatCharacters[seatIndex] = figure
+
 	if avatar then
 		-- No idle loop: it would hold the arms down (see setTablePose)
 		setTablePose(avatar, true)
 		-- Dress once the rig has settled in the world: the head moves into place when the
 		-- joints first solve, and a hat welded before that ends up sunk into the skull
 		RunService.Heartbeat:Wait()
+		if botDummies[seatIndex] ~= figure then
+			return -- replaced or cleared meanwhile
+		end
 		dressSkeleton(avatar, arenaModel)
-		colorBot(avatar, CardArt.Get(seatCardSets[seatIndex]).accent)
 	end
+	colorFigure(seatIndex)
 
-	local head = botModel:FindFirstChild("Head")
+	local head = figure:FindFirstChild("Head")
 	if head and head:IsA("BasePart") then
-		seatBillboards[seatIndex] = createPlayerTag(head, botName, seatIndex)
+		seatBillboards[seatIndex] = createPlayerTag(head, occupant.name, seatIndex, occupant.owner)
 	end
-	botDummies[seatIndex] = botModel
-	seatCharacters[seatIndex] = botModel
+end
 
+-- Switch the whole table to the other character look and rebuild every seated figure
+function TableBuilder.SetLook(look: string)
+	if not LOOKS[look] or look == characterLook then
+		return
+	end
+	characterLook = look
+	if arenaModel then
+		arenaModel:SetAttribute("CharacterLook", look) -- clients show it on the Look pill
+	end
+	for seatIndex in pairs(seatOccupants) do
+		task.spawn(spawnFigure, seatIndex)
+	end
+	-- Held cards move to where the new look holds them (dealt in again)
+	for seatIndex, hand in pairs(opponentHands) do
+		local count = hand:GetAttribute("CardCount")
+		hand:Destroy()
+		opponentHands[seatIndex] = nil
+		if type(count) == "number" then
+			renderOpponentFannedHand(seatIndex, count)
+		end
+	end
+end
+
+-- A seated player's own Roblox avatar is hidden from everyone (their figure stands in
+-- for it). Parts that load later (accessories) are hidden as they arrive.
+local hideConnections: { [Model]: RBXScriptConnection } = {}
+
+-- Read or set the transparency of a part or decal (nil for anything else)
+local function transparencyOf(d: Instance, set: number?): number?
+	if not (d:IsA("BasePart") or d:IsA("Decal")) then
+		return nil
+	end
+	local thing = d :: any -- both have a Transparency number
+	if set then
+		thing.Transparency = set
+	end
+	return thing.Transparency
+end
+
+local function hideThing(d: Instance)
+	local current = transparencyOf(d)
+	if current then
+		if d:GetAttribute("ShownTransparency") == nil then
+			d:SetAttribute("ShownTransparency", current)
+		end
+		transparencyOf(d, 1)
+	end
+end
+
+local function setCharacterHidden(char: Model, hidden: boolean)
+	local old = hideConnections[char]
+	if old then
+		old:Disconnect()
+		hideConnections[char] = nil
+	end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum.DisplayDistanceType = if hidden
+			then Enum.HumanoidDisplayDistanceType.None
+			else Enum.HumanoidDisplayDistanceType.Viewer
+	end
+	for _, d in ipairs(char:GetDescendants()) do
+		if hidden then
+			hideThing(d)
+		else
+			local shown = d:GetAttribute("ShownTransparency")
+			if type(shown) == "number" then
+				transparencyOf(d, shown)
+				d:SetAttribute("ShownTransparency", nil)
+			end
+		end
+	end
+	if hidden then
+		hideConnections[char] = char.DescendantAdded:Connect(hideThing)
+		char.Destroying:Connect(function()
+			local conn = hideConnections[char]
+			if conn then
+				conn:Disconnect()
+				hideConnections[char] = nil
+			end
+		end)
+	end
+end
+
+function TableBuilder.SpawnStandingBot(botName: string, seatIndex: number)
+	seatOccupants[seatIndex] = { name = botName }
+	spawnFigure(seatIndex)
 	-- Render starting circular tokens in hand (4 tokens)
 	renderOpponentFannedHand(seatIndex, 4)
 	print("[TableBuilder] Spawned bot:", botName, "at seat", seatIndex)
@@ -898,6 +1043,10 @@ function TableBuilder.PlayReaction(seatIndex: number, kind: string, seconds: num
 	local character = seatCharacters[seatIndex]
 	local animId = ANIM[kind]
 	if not character or not character.Parent or not animId then
+		return
+	end
+	if character:GetAttribute("Look") == "bean" then
+		BeanFigure.Hop(character, math.min(seconds or REACTION_SECONDS, 2.5)) -- no rig to animate
 		return
 	end
 	local track = getTrack(character, animId)
@@ -928,18 +1077,17 @@ function TableBuilder.StandPlayer(player: Player, seatIndex: number)
 		end
 
 		task.wait(0.1)
-		local head = char:FindFirstChild("Head") :: BasePart?
-		if head then
-			seatBillboards[seatIndex] = createPlayerTag(head, player.DisplayName, seatIndex, player)
-		end
+		-- The player's own avatar waits, hidden, in the seat; everyone sees their figure
 		local cf = CFrame.lookAt(cfg.standPos, cfg.lookAt)
 		char:PivotTo(cf)
 		hrp.CFrame = cf
 		hrp.Anchored = true
-		seatCharacters[seatIndex] = char
 		setTablePose(char, true)
+		setCharacterHidden(char, true)
 		hum.WalkSpeed = 0
 		hum.JumpPower = 0
+		seatOccupants[seatIndex] = { name = player.DisplayName, owner = player }
+		spawnFigure(seatIndex)
 	end
 
 	setStandHook(player, setupChar)
@@ -1096,10 +1244,7 @@ function TableBuilder.SetSeatCardSet(seatIndex: number, setId: string?)
 	if setId and seatCardSets[seatIndex] ~= setId then
 		seatCardSets[seatIndex] = setId
 		applySeatStatus(seatIndex) -- recolour the name tag
-		local bot = botDummies[seatIndex]
-		if bot and bot:FindFirstChildOfClass("Humanoid") then
-			colorBot(bot, CardArt.Get(setId).accent)
-		end
+		colorFigure(seatIndex)
 	end
 end
 
@@ -1140,6 +1285,7 @@ function TableBuilder.ClearSeat(seatIndex: number)
 		opponentHands[seatIndex] = nil
 	end
 	seatBillboards[seatIndex] = nil
+	seatOccupants[seatIndex] = nil
 	local dotGui = turnDots[seatIndex]
 	if dotGui then
 		dotGui:Destroy()
@@ -1173,6 +1319,7 @@ function TableBuilder.StandSpectator(player: Player)
 		local o = TableContext.origin
 		local cf = CFrame.lookAt(o + Vector3.new(0, 3.4, 15), o + Vector3.new(0, 3.0, 0))
 		setTablePose(char, false) -- standing back from the table
+		setCharacterHidden(char, false) -- watching as themselves, not as a figure
 		char:PivotTo(cf)
 		hrp.Anchored = true
 		hum.WalkSpeed = 0

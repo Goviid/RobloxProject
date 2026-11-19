@@ -31,6 +31,7 @@ local TableView = require(script.TableView)
 local MainMenu = require(script.UI.MainMenu)
 local LeaveTable = require(script.UI.LeaveTable)
 local PileOutlines = require(script.UI.PileOutlines)
+local CharacterLook = require(script.UI.CharacterLook)
 local AudioController = require(script.AudioController)
 
 local localPlayer = Players.LocalPlayer
@@ -80,8 +81,11 @@ local HAND_DOCK_POS = UDim2.fromScale(0.5, 0.86)
 local mySeatIndex: number? = nil
 
 local function hideOwnHandModel(inst: Instance)
-	if mySeatIndex and inst.Name == "OpponentHand_" .. mySeatIndex then
-		inst:Destroy() -- local only; other players still see it
+	-- Your own fanned hand, and your own seat figure (and its costume), which would sit
+	-- right under your camera. Removed locally only; other players still see them.
+	local ownHand = mySeatIndex ~= nil and inst.Name == "OpponentHand_" .. mySeatIndex
+	if ownHand or inst:GetAttribute("OwnerUserId") == localPlayer.UserId then
+		inst:Destroy()
 	end
 end
 
@@ -278,6 +282,9 @@ local function buildUI()
 	PileOutlines.Create(screenGui, function()
 		return TableView.GetArena()
 	end)
+
+	-- 12. Character look test switch (Classic / Bean, for the whole table)
+	CharacterLook.Create(screenGui)
 
 	print("[Skulls & Roses] Fresh SkullsGui built and parented successfully.")
 end
