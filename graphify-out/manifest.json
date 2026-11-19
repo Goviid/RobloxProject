@@ -114,9 +114,9 @@
     "semantic_hash": ""
   },
   "CODE_GUIDE.md": {
-    "mtime": 1795053220.929218,
-    "seen": 1795053309.6491187,
-    "ast_hash": "5b597259a650c3550175204950fa0d94",
+    "mtime": 1795054086.8396218,
+    "seen": 1795054952.076246,
+    "ast_hash": "08aaf8882b8ef5d099607a5af128bd0a",
     "semantic_hash": ""
   },
   "HANDOVER.md": {
@@ -282,9 +282,9 @@
     "semantic_hash": ""
   },
   "src/shared/Theme.luau": {
-    "mtime": 1795045490.3924758,
-    "seen": 1795052252.0960326,
-    "ast_hash": "8e20bcd0ebf8caa350acabf5cbe52982",
+    "mtime": 1795053988.3799992,
+    "seen": 1795054952.0762432,
+    "ast_hash": "ff672820f094640b5e2eaeb9c79b878c",
     "semantic_hash": ""
   },
   "src/client/UI/UIKit.luau": {
@@ -294,9 +294,9 @@
     "semantic_hash": ""
   },
   "src/first/LoadingScreen.client.luau": {
-    "mtime": 1795045490.3909438,
-    "seen": 1795052252.0960226,
-    "ast_hash": "e41e10b9cf7fd6b042b27b189ab714a3",
+    "mtime": 1795054026.3551161,
+    "seen": 1795054952.0762312,
+    "ast_hash": "95b2adf80154c0a81608b2ab258475cd",
     "semantic_hash": ""
   },
   "src/client/UI/Hand3D.luau": {
@@ -318,15 +318,15 @@
     "semantic_hash": ""
   },
   "src/client/UI/LeaveTable.luau": {
-    "mtime": 1795045490.7418742,
-    "seen": 1795052252.0960143,
-    "ast_hash": "64ed802fbe0c5aef384c7416ed805438",
+    "mtime": 1795053681.9907005,
+    "seen": 1795054952.0762222,
+    "ast_hash": "b5e0be4ebbeb3f98c54fac25fd3837f0",
     "semantic_hash": ""
   },
   "src/client/UI/MainMenu.luau": {
-    "mtime": 1795045490.7459357,
-    "seen": 1795052252.096016,
-    "ast_hash": "5130e163637ee41583675f3cc23b0bdc",
+    "mtime": 1795053943.596281,
+    "seen": 1795054952.0762234,
+    "ast_hash": "cb2e8bad8d101cc8e924afe343a70652",
     "semantic_hash": ""
   },
   "src/server/Table/BotController.luau": {
@@ -372,27 +372,75 @@
     "semantic_hash": ""
   },
   "src/client/UI/PileOutlines.luau": {
-    "mtime": 1795052157.110265,
-    "seen": 1795052252.0960176,
-    "ast_hash": "174237693a97cda1e2a4f794b13f3a2c",
+    "mtime": 1795053681.991207,
+    "seen": 1795054952.0762253,
+    "ast_hash": "b8ea8fac32ff3038909384cba1fa39f1",
     "semantic_hash": ""
   },
   "tools/world/build_world.luau": {
-    "mtime": 1795048048.7132657,
-    "seen": 1795052252.0960333,
-    "ast_hash": "7015975c4c575e806356de9ed4ef3676",
+    "mtime": 1795054259.2231622,
+    "seen": 1795054952.0762439,
+    "ast_hash": "041ee4701366e14d3f80bafd3da330ad",
     "semantic_hash": ""
   },
   "src/client/UI/CharacterLook.luau": {
-    "mtime": 1795052845.0669835,
-    "seen": 1795053309.6490903,
-    "ast_hash": "0e973a32e0daae82286320f6a2fc9190",
+    "mtime": 1795053690.0539248,
+    "seen": 1795054952.0762157,
+    "ast_hash": "c134a1293eaa80c9b3e82e63cd57f415",
     "semantic_hash": ""
   },
   "src/server/Table/BeanFigure.luau": {
     "mtime": 1795053254.7986739,
     "seen": 1795053309.649105,
     "ast_hash": "e00e4c79896db8a626e4049132d6a26c",
+    "semantic_hash": ""
+  },
+  "src/client/UI/CornerPill.luau": {
+    "mtime": 1795053932.2739596,
+    "seen": 1795054952.0762172,
+    "ast_hash": "148f960fde0e10fe5c403aef9764e64c",
+    "semantic_hash": ""
+  },
+  "Artwork assets/UI/glow.png": {
+    "mtime": 1795053955.1287363,
+    "seen": 1795054952.0762663,
+    "ast_hash": "8f12dcf1ce03eb850f9497c468e500cf",
+    "semantic_hash": ""
+  },
+  "Artwork assets/UI/icon_close.png": {
+    "mtime": 1795053887.1935773,
+    "seen": 1795054952.0762672,
+    "ast_hash": "3632a8052acdbeba96eb06581fc97a3c",
+    "semantic_hash": ""
+  },
+  "Artwork assets/UI/icon_leave.png": {
+    "mtime": 1795053607.8498707,
+    "seen": 1795054952.0762677,
+    "ast_hash": "dbba99b4ade1ea74809d46d79b56ec12",
+    "semantic_hash": ""
+  },
+  "Artwork assets/UI/icon_look.png": {
+    "mtime": 1795053607.8534586,
+    "seen": 1795054952.0762684,
+    "ast_hash": "0eae02eeccbcaa633735be5bd7bbec25",
+    "semantic_hash": ""
+  },
+  "Artwork assets/UI/icon_piles.png": {
+    "mtime": 1795053607.857026,
+    "seen": 1795054952.0762694,
+    "ast_hash": "ad7d9e18da71f627a38cba8b732a2198",
+    "semantic_hash": ""
+  },
+  "Artwork assets/UI/icon_settings.png": {
+    "mtime": 1795053887.1902602,
+    "seen": 1795054952.0762699,
+    "ast_hash": "f8309f69db5a342706fd477d8619c1ac",
+    "semantic_hash": ""
+  },
+  "Artwork assets/UI/logo.png": {
+    "mtime": 1795053869.7387128,
+    "seen": 1795054952.0762706,
+    "ast_hash": "c87c3296a4641029535bf7a02100e86b",
     "semantic_hash": ""
   }
 }
